@@ -323,25 +323,76 @@ const NewBill = () => {
     setLoading(true);
     
     try {
+      console.log('Saving bill data to Firestore:', billData);
+      
+      // Deep sanitize the data to ensure no undefined values exist
+      const sanitizeObject = (obj: any): any => {
+        if (obj === null || obj === undefined) return null;
+        
+        if (obj instanceof Date) return obj;
+        
+        if (Array.isArray(obj)) {
+          return obj.map(sanitizeObject).filter(item => item !== null && item !== undefined);
+        }
+        
+        if (typeof obj === 'object') {
+          const sanitized: any = {};
+          Object.keys(obj).forEach(key => {
+            const value = sanitizeObject(obj[key]);
+            if (value !== null && value !== undefined) {
+              sanitized[key] = value;
+            }
+          });
+          return sanitized;
+        }
+        
+        return obj;
+      };
+      
+      // Sanitize the bill data
+      const sanitizedBillData = sanitizeObject(billData);
+      
+      // Ensure required fields are present
+      if (!sanitizedBillData.billId) {
+        sanitizedBillData.billId = generateBillId();
+      }
+      
       if (isEditing && billId) {
-        // Update existing bill
-        await updateDoc(doc(db, 'bills', billId), {
-          ...billData,
+        // Update existing bill - use serverTimestamp for updatedAt only
+        const updateData = {
+          ...sanitizedBillData,
           updatedAt: serverTimestamp(),
+        };
+        
+        // Remove undefined fields before updating
+        Object.keys(updateData).forEach(key => {
+          if (updateData[key] === undefined) {
+            delete updateData[key];
+          }
         });
+        
+        await updateDoc(doc(db, 'bills', billId), updateData);
         
         toast({
           title: "✅ Success",
-          description: `Bill ${billData.billId} updated successfully`,
+          description: `Bill ${sanitizedBillData.billId} updated successfully`,
         });
       } else {
-        // Create new bill
+        // Create new bill - use serverTimestamp for both createdAt and updatedAt
         const newBillData = {
-          ...billData,
-          billId: billData.billId || generateBillId(),
+          ...sanitizedBillData,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
+        
+        // Remove any undefined fields before saving
+        Object.keys(newBillData).forEach(key => {
+          if (newBillData[key] === undefined) {
+            delete newBillData[key];
+          }
+        });
+        
+        console.log('Final bill data being saved:', newBillData);
         
         const docRef = await addDoc(collection(db, 'bills'), newBillData);
         

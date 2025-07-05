@@ -532,26 +532,58 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!formData.customerName?.trim()) {
+    // Validate required fields with trimmed values
+    const customerName = formData.customerName?.trim() || '';
+    const customerPhone = formData.customerPhone?.trim() || '';
+    
+    if (!customerName) {
       toast({
         title: "Validation Error",
         description: "Customer name is required",
         variant: "destructive"
       });
+      // Scroll to customer name field
+      const customerNameField = document.querySelector('input[placeholder="Customer name"]') || 
+                               document.querySelector('#customerName');
+      if (customerNameField) {
+        customerNameField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (customerNameField as HTMLElement).focus();
+      }
       return;
     }
     
-    if (!formData.customerPhone?.trim()) {
+    if (!customerPhone) {
       toast({
         title: "Validation Error", 
         description: "Customer phone is required",
         variant: "destructive"
       });
+      // Scroll to customer phone field
+      const customerPhoneField = document.querySelector('input[placeholder="Customer phone"]');
+      if (customerPhoneField) {
+        customerPhoneField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (customerPhoneField as HTMLElement).focus();
+      }
       return;
     }
     
-    if (workItems.length === 0) {
+    // Additional phone validation to ensure it's at least 10 digits
+    const phoneDigits = customerPhone.replace(/\D/g, ''); // Remove non-digits
+    if (phoneDigits.length < 10) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid phone number (at least 10 digits)",
+        variant: "destructive"
+      });
+      const customerPhoneField = document.querySelector('input[placeholder="Customer phone"]');
+      if (customerPhoneField) {
+        customerPhoneField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (customerPhoneField as HTMLElement).focus();
+      }
+      return;
+    }
+    
+    if (workItems.length === 0 && enhancedBillItems.length === 0) {
       toast({
         title: "Validation Error",
         description: "At least one work item or material item is required",
@@ -560,15 +592,41 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
       return;
     }
     
-    // Validate that all items have description and positive rates
-    const invalidItems = formData.items.filter(item => 
+    // Enhanced validation with visual feedback
+    const itemsToValidate = enhancedBillItems.length > 0 ? enhancedBillItems : formData.items;
+    const invalidItems = itemsToValidate.filter(item => 
       !item.description?.trim() || item.rate <= 0 || item.quantity <= 0
     );
     
     if (invalidItems.length > 0) {
+      // Scroll to first invalid item and add visual feedback
+      const firstInvalidId = invalidItems[0].id;
+      const firstInvalidElement = document.getElementById(`item-${firstInvalidId}`) || 
+                                  document.querySelector(`[data-item-id="${firstInvalidId}"]`);
+      
+      if (firstInvalidElement) {
+        firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Add red border to invalid fields
+        const inputs = firstInvalidElement.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+          const element = input as HTMLElement;
+          if (element.classList.contains('bg-white') || element.classList.contains('border-input')) {
+            element.classList.add('border-red-500', 'border-2');
+            element.style.borderColor = '#ef4444';
+            
+            // Remove red border after 3 seconds
+            setTimeout(() => {
+              element.classList.remove('border-red-500', 'border-2');
+              element.style.borderColor = '';
+            }, 3000);
+          }
+        });
+      }
+      
       toast({
         title: "Validation Error",
-        description: "All items must have a description, positive rate, and quantity",
+        description: "All items must have a description, positive rate, and quantity. Please check the highlighted fields.",
         variant: "destructive"
       });
       return;
@@ -621,12 +679,34 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
       const billData: BillCreate = {
         billId: formData.billId!,
         customerId: formData.customerId || selectedCustomer?.id || '',
-        customerName: formData.customerName!,
-        customerPhone: formData.customerPhone!,
-        customerEmail: formData.customerEmail || '',
-        customerAddress: formData.customerAddress || '',
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerEmail: formData.customerEmail?.trim() || '',
+        customerAddress: formData.customerAddress?.trim() || '',
         orderId: formData.orderId || '',
-        items: formData.items || [],
+        items: (formData.items || []).map(item => {
+          const cleanItem: any = {
+            id: item.id,
+            type: item.type || 'service',
+            description: item.description || '',
+            quantity: item.quantity || 0,
+            rate: item.rate || 0,
+            cost: item.cost || 0,
+            amount: item.amount || 0,
+            isSubItem: item.isSubItem || false
+          };
+          
+          // Only add optional fields if they have values
+          if (item.sourceId) cleanItem.sourceId = item.sourceId;
+          if (item.chargeType) cleanItem.chargeType = item.chargeType;
+          if (item.materialName) cleanItem.materialName = item.materialName;
+          if (item.materialCost) cleanItem.materialCost = item.materialCost;
+          if (item.inventoryId) cleanItem.inventoryId = item.inventoryId;
+          if (item.subItems && item.subItems.length > 0) cleanItem.subItems = item.subItems;
+          if (item.parentId) cleanItem.parentId = item.parentId;
+          
+          return cleanItem;
+        }).filter(item => item.description && item.quantity > 0), // Only include valid items
         breakdown: safeBreakdown,
         subtotal: formData.subtotal || 0,
         gstPercent: formData.gstPercent || 0,
@@ -644,12 +724,103 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         upiLink: finalUpiLink,
         qrCodeUrl: finalQrCodeUrl,
         qrAmount: formData.qrAmount || formData.balance || 0,
-        notes: formData.notes || '',
+        notes: formData.notes?.trim() || '',
         createdAt: bill?.createdAt || new Date(),
         updatedAt: new Date()
       };
 
-      console.log('Saving bill data:', billData);
+      // Add optional payment fields only if they have valid values
+      if (formData.paymentRecords && formData.paymentRecords.length > 0) {
+        billData.paymentRecords = formData.paymentRecords;
+      }
+      if (typeof formData.totalCashReceived === 'number' && formData.totalCashReceived >= 0) {
+        billData.totalCashReceived = formData.totalCashReceived;
+      }
+      if (typeof formData.totalOnlineReceived === 'number' && formData.totalOnlineReceived >= 0) {
+        billData.totalOnlineReceived = formData.totalOnlineReceived;
+      }
+
+      // Sanitize bill data to remove any undefined values and ensure proper types
+      const deepSanitize = (obj: any): any => {
+        if (obj === null || obj === undefined) return null;
+        
+        // Handle Date objects specially
+        if (obj instanceof Date) {
+          return obj; // Keep Date objects as-is
+        }
+        
+        if (Array.isArray(obj)) {
+          return obj.map(deepSanitize).filter(item => item !== null && item !== undefined);
+        }
+        
+        if (typeof obj === 'object' && obj.constructor === Object) {
+          const sanitized: any = {};
+          Object.keys(obj).forEach(key => {
+            const value = obj[key];
+            
+            // Skip undefined and null values entirely
+            if (value === undefined || value === null) {
+              return;
+            }
+            
+            // Handle special cases
+            if (typeof value === 'number' && isNaN(value)) {
+              sanitized[key] = 0;
+              return;
+            }
+            
+            if (typeof value === 'string') {
+              const trimmed = value.trim ? value.trim() : value;
+              if (trimmed !== '') {
+                sanitized[key] = trimmed;
+              }
+              return;
+            }
+            
+            // Handle booleans
+            if (typeof value === 'boolean') {
+              sanitized[key] = value;
+              return;
+            }
+            
+            // Handle numbers
+            if (typeof value === 'number') {
+              sanitized[key] = value;
+              return;
+            }
+            
+            // Recursively sanitize objects and arrays
+            const sanitizedValue = deepSanitize(value);
+            if (sanitizedValue !== null && sanitizedValue !== undefined) {
+              sanitized[key] = sanitizedValue;
+            }
+          });
+          return sanitized;
+        }
+        
+        return obj;
+      };
+      
+      let sanitizedBillData = deepSanitize(billData) as BillCreate;
+      
+      // Additional explicit cleanup for critical fields
+      if (!sanitizedBillData) {
+        throw new Error('Bill data sanitization failed');
+      }
+
+      // Additional validation to catch any potential issues before Firebase save
+      const requiredFields = ['billId', 'customerName', 'customerPhone'];
+      const missingFields = requiredFields.filter(field => !sanitizedBillData[field as keyof BillCreate]);
+      
+      if (missingFields.length > 0) {
+        console.error('Missing required fields:', missingFields);
+        toast({
+          title: "Validation Error",
+          description: `Missing required fields: ${missingFields.join(', ')}`,
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Handle inventory deduction for inventory items
       if (billData.items && billData.items.length > 0) {
@@ -695,7 +866,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         }
       }
       
-      await onSave(billData);
+      await onSave(sanitizedBillData);
       
       if (onSuccess) {
         onSuccess();
@@ -761,34 +932,72 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           </CardHeader>
           <CardContent className="space-y-4">
             {(!bill || isEditingCustomer) ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <CustomerAutoSuggest
-                    value={formData.customerName || ''}
-                    onChange={(value) => setFormData(prev => ({ ...prev, customerName: value }))}
-                    onCustomerSelect={handleCustomerSelect}
-                    placeholder="Type customer name..."
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <CustomerAutoSuggest
+                      value={formData.customerName || ''}
+                      onChange={(value) => setFormData(prev => ({ ...prev, customerName: value }))}
+                      onCustomerSelect={handleCustomerSelect}
+                      placeholder="Type customer name..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Select Order (Optional)</Label>
+                    <Select onValueChange={handleOrderSelect}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Link to existing order" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {orders
+                          .filter(order => 
+                            !selectedCustomer || 
+                            order.customerName.toLowerCase() === selectedCustomer.name.toLowerCase()
+                          )
+                          .map(order => (
+                          <SelectItem key={order.id} value={order.id}>
+                            {order.orderId || order.id} - {formatCurrency(order.totalAmount || 0)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+                
+                {/* Editable customer details */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Phone *</Label>
+                    <Input
+                      value={formData.customerPhone || ''}
+                      onChange={(e) => {
+                        // Only allow digits, spaces, hyphens, and plus sign
+                        const value = e.target.value.replace(/[^0-9\s\-\+]/g, '');
+                        setFormData(prev => ({ ...prev, customerPhone: value }));
+                      }}
+                      placeholder="Customer phone"
+                      required
+                      className={!formData.customerPhone?.trim() ? 'border-red-500' : ''}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email (Optional)</Label>
+                    <Input
+                      value={formData.customerEmail || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                      placeholder="Customer email"
+                      type="email"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <Label>Select Order (Optional)</Label>
-                  <Select onValueChange={handleOrderSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Link to existing order" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {orders
-                        .filter(order => 
-                          !selectedCustomer || 
-                          order.customerName.toLowerCase() === selectedCustomer.name.toLowerCase()
-                        )
-                        .map(order => (
-                        <SelectItem key={order.id} value={order.id}>
-                          {order.orderId || order.id} - {formatCurrency(order.totalAmount || 0)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Address (Optional)</Label>
+                  <Input
+                    value={formData.customerAddress || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, customerAddress: e.target.value }))}
+                    placeholder="Customer address"
+                  />
                 </div>
               </div>
             ) : (
@@ -801,38 +1010,16 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
                   <Label>Phone</Label>
                   <Input value={formData.customerPhone} readOnly className="bg-gray-50" />
                 </div>
+                <div>
+                  <Label>Email (Optional)</Label>
+                  <Input value={formData.customerEmail || ''} readOnly className="bg-gray-50" />
+                </div>
+                <div>
+                  <Label>Address (Optional)</Label>
+                  <Input value={formData.customerAddress || ''} readOnly className="bg-gray-50" />
+                </div>
               </div>
             )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <Label>Phone</Label>
-                <Input
-                  value={formData.customerPhone || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
-                  placeholder="Customer phone"
-                  required
-                />
-              </div>
-              <div>
-                <Label>Email (Optional)</Label>
-                <Input
-                  value={formData.customerEmail || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                  placeholder="Customer email"
-                  type="email"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Address (Optional)</Label>
-              <Input
-                value={formData.customerAddress || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, customerAddress: e.target.value }))}
-                placeholder="Customer address"
-              />
-            </div>
           </CardContent>
         </Card>
 

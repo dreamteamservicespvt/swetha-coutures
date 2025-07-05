@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +41,23 @@ const RequiredMaterials: React.FC<RequiredMaterialsProps> = ({
   const [isAddingMaterial, setIsAddingMaterial] = useState(false);
   const [addMaterialDialogOpen, setAddMaterialDialogOpen] = useState(false);
 
+  // Debounced update function to prevent rapid-fire changes
+  const debouncedOnChange = useCallback(
+    debounce((materials: RequiredMaterial[]) => {
+      onChange(materials);
+    }, 300),
+    [onChange]
+  );
+
+  // Debounce utility function
+  function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
+    let timeout: NodeJS.Timeout;
+    return ((...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    }) as T;
+  }
+
   useEffect(() => {
     fetchInventory();
   }, []);
@@ -68,21 +85,26 @@ const RequiredMaterials: React.FC<RequiredMaterialsProps> = ({
         quantity: 1,
         unit: item.unit
       };
+      // Use immediate onChange for adding/removing materials
       onChange([...selectedMaterials, newMaterial]);
     } else {
+      // Use immediate onChange for adding/removing materials
       onChange(selectedMaterials.filter(m => m.id !== item.id));
     }
   };
 
   const updateMaterialQuantity = (materialId: string, quantity: number) => {
     if (quantity <= 0) {
+      // Use immediate onChange for removing materials
       onChange(selectedMaterials.filter(m => m.id !== materialId));
       return;
     }
     
-    onChange(selectedMaterials.map(m => 
+    // Use debounced onChange for quantity updates to prevent rapid firing
+    const updatedMaterials = selectedMaterials.map(m => 
       m.id === materialId ? { ...m, quantity } : m
-    ));
+    );
+    debouncedOnChange(updatedMaterials);
   };
 
   const addNewMaterial = async () => {

@@ -48,6 +48,26 @@ interface BillWorkAndMaterialsProps {
   initialBillItems?: BillItem[]; // New prop to pass existing bill items for edit mode
 }
 
+// Helper function to validate if an item is complete and valid
+const isItemValid = (item: BillItem): boolean => {
+  return !!(item.description?.trim() && item.rate > 0 && item.quantity > 0);
+};
+
+// Helper function to get validation classes for input fields
+const getValidationClasses = (item: BillItem, field: 'description' | 'rate' | 'quantity'): string => {
+  const baseClasses = 'bg-white';
+  
+  if (field === 'description') {
+    return item.description?.trim() ? baseClasses : `${baseClasses} border-red-500 border-2`;
+  } else if (field === 'rate') {
+    return item.rate > 0 ? baseClasses : `${baseClasses} border-red-500 border-2`;
+  } else if (field === 'quantity') {
+    return item.quantity > 0 ? baseClasses : `${baseClasses} border-red-500 border-2`;
+  }
+  
+  return baseClasses;
+};
+
 const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
   workItems,
   onWorkItemsChange,
@@ -113,10 +133,10 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       id: uuidv4(),
       type: 'service',
       description: '',
-      quantity: 1,
-      rate: 0,
+      quantity: 1, // Default to 1 (positive value)
+      rate: 1, // Default to 1 (positive value) instead of 0
       cost: 0,
-      amount: 0,
+      amount: 1, // quantity * rate = 1 * 1 = 1
       subItems: [],
       isSubItem: false
     };
@@ -130,10 +150,10 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       id: uuidv4(),
       type: 'service',
       description: '',
-      quantity: 1,
-      rate: 0,
+      quantity: 1, // Default to 1 (positive value)
+      rate: 1, // Default to 1 (positive value) instead of 0
       cost: 0,
-      amount: 0,
+      amount: 1, // quantity * rate = 1 * 1 = 1
       parentId: parentId,
       isSubItem: true
     };
@@ -161,9 +181,19 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
     const updatedItems = billItems.map(item => {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value };
-        if (field === 'quantity' || field === 'rate') {
-          updatedItem.amount = updatedItem.quantity * updatedItem.rate;
+        
+        // Ensure valid numbers and prevent NaN
+        if (field === 'quantity') {
+          updatedItem.quantity = Math.max(1, parseInt(value) || 1);
+        } else if (field === 'rate') {
+          updatedItem.rate = Math.max(0, parseFloat(value) || 0);
         }
+        
+        // Recalculate amount with safe numbers
+        const safeQuantity = updatedItem.quantity || 1;
+        const safeRate = updatedItem.rate || 0;
+        updatedItem.amount = safeQuantity * safeRate;
+        
         return updatedItem;
       }
       
@@ -172,9 +202,19 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
         const updatedSubItems = item.subItems.map(subItem => {
           if (subItem.id === id) {
             const updatedSubItem = { ...subItem, [field]: value };
-            if (field === 'quantity' || field === 'rate') {
-              updatedSubItem.amount = updatedSubItem.quantity * updatedSubItem.rate;
+            
+            // Ensure valid numbers and prevent NaN
+            if (field === 'quantity') {
+              updatedSubItem.quantity = Math.max(1, parseInt(value) || 1);
+            } else if (field === 'rate') {
+              updatedSubItem.rate = Math.max(0, parseFloat(value) || 0);
             }
+            
+            // Recalculate amount with safe numbers
+            const safeQuantity = updatedSubItem.quantity || 1;
+            const safeRate = updatedSubItem.rate || 0;
+            updatedSubItem.amount = safeQuantity * safeRate;
+            
             return updatedSubItem;
           }
           return subItem;
@@ -312,7 +352,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
     const hasSubItems = item.subItems && item.subItems.length > 0;
     
     return (
-      <div key={item.id} className={`space-y-2 ${isSubItem ? 'ml-2 lg:ml-6' : ''}`}>
+      <div key={item.id} className={`space-y-2 ${isSubItem ? 'ml-2 lg:ml-6' : ''}`} id={`item-${item.id}`} data-item-id={item.id}>
         <div className={`grid grid-cols-1 lg:grid-cols-7 gap-4 p-4 border rounded-lg ${
           isSubItem 
             ? 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200' 
@@ -350,20 +390,22 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               </Label>
             </div>
             
-            <EditableItemSelector
-              onSelect={(selectedItem) => handleWorkItemSelect(item.id, selectedItem)}
-              selectedItem={item.sourceId ? {
-                id: item.id,
-                type: item.type,
-                sourceId: item.sourceId,
-                description: item.description,
-                rate: item.rate,
-                cost: item.cost,
-                category: '',
-                icon: getItemIcon(item.type)
-              } : null}
-              placeholder={isSubItem ? "Select sub-item..." : "Select work item..."}
-            />
+            <div className={`${!item.description?.trim() ? 'border-red-500 border-2 rounded-md' : ''}`}>
+              <EditableItemSelector
+                onSelect={(selectedItem) => handleWorkItemSelect(item.id, selectedItem)}
+                selectedItem={item.sourceId ? {
+                  id: item.id,
+                  type: item.type,
+                  sourceId: item.sourceId,
+                  description: item.description,
+                  rate: item.rate,
+                  cost: item.cost,
+                  category: '',
+                  icon: getItemIcon(item.type)
+                } : null}
+                placeholder={isSubItem ? "Select sub-item..." : "Select work item..."}
+              />
+            </div>
             
             {item.type && (
               <div className="flex items-center gap-2">
@@ -388,10 +430,27 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                 <Input
                   id={`item-qty-mobile-${item.id}`}
                   type="number"
-                  value={item.quantity}
-                  onChange={(e) => updateBillItem(item.id, 'quantity', Number(e.target.value))}
+                  value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity.toString()}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      // Don't update on empty string to prevent NaN
+                      return;
+                    }
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue) && numValue > 0) {
+                      updateBillItem(item.id, 'quantity', numValue);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Ensure we have a valid value on blur
+                    const value = e.target.value;
+                    if (value === '' || isNaN(parseInt(value)) || parseInt(value) <= 0) {
+                      updateBillItem(item.id, 'quantity', 1);
+                    }
+                  }}
                   min="1"
-                  className="bg-white"
+                  className={getValidationClasses(item, 'quantity')}
                   required
                 />
               </div>
@@ -402,11 +461,28 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                 <Input
                   id={`item-rate-mobile-${item.id}`}
                   type="number"
-                  value={item.rate === 0 ? '' : item.rate}
-                  onChange={(e) => updateBillItem(item.id, 'rate', e.target.value === '' ? 0 : Number(e.target.value))}
+                  value={item.rate == null || item.rate === 0 || isNaN(item.rate) ? '' : item.rate.toString()}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      // Don't update on empty string to prevent NaN
+                      return;
+                    }
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= 0) {
+                      updateBillItem(item.id, 'rate', numValue);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Ensure we have a valid value on blur
+                    const value = e.target.value;
+                    if (value === '' || isNaN(parseFloat(value))) {
+                      updateBillItem(item.id, 'rate', 0);
+                    }
+                  }}
                   min="0"
                   step="0.01"
-                  className="bg-white"
+                  className={getValidationClasses(item, 'rate')}
                   placeholder="Enter rate"
                   required
                 />
@@ -510,7 +586,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                   {isSubItem ? 'Sub-Item Selection *' : 'Item Selection *'}
                 </Label>
               </div>
-              
+                  <div className={`mt-1 ${!item.description?.trim() ? 'border-red-500 border-2 rounded-md' : ''}`}>
               <EditableItemSelector
                 onSelect={(selectedItem) => handleWorkItemSelect(item.id, selectedItem)}
                 selectedItem={item.sourceId ? {
@@ -526,6 +602,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                 placeholder={isSubItem ? "Select sub-item..." : "Select work item..."}
                 className="mt-1"
               />
+            </div>
               
               {item.type && (
                 <div className="flex items-center gap-2 mt-2">
@@ -550,10 +627,27 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               <Input
                 id={`item-qty-${item.id}`}
                 type="number"
-                value={item.quantity}
-                onChange={(e) => updateBillItem(item.id, 'quantity', Number(e.target.value))}
+                value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity.toString()}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    // Don't update on empty string to prevent NaN
+                    return;
+                  }
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue) && numValue > 0) {
+                    updateBillItem(item.id, 'quantity', numValue);
+                  }
+                }}
+                onBlur={(e) => {
+                  // Ensure we have a valid value on blur
+                  const value = e.target.value;
+                  if (value === '' || isNaN(parseInt(value)) || parseInt(value) <= 0) {
+                    updateBillItem(item.id, 'quantity', 1);
+                  }
+                }}
                 min="1"
-                className="mt-1 bg-white"
+                className={`mt-1 ${getValidationClasses(item, 'quantity')}`}
                 required
               />
             </div>
@@ -566,11 +660,28 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               <Input
                 id={`item-rate-${item.id}`}
                 type="number"
-                value={item.rate === 0 ? '' : item.rate}
-                onChange={(e) => updateBillItem(item.id, 'rate', e.target.value === '' ? 0 : Number(e.target.value))}
+                value={item.rate == null || item.rate === 0 || isNaN(item.rate) ? '' : item.rate.toString()}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    // Don't update on empty string to prevent NaN
+                    return;
+                  }
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue >= 0) {
+                    updateBillItem(item.id, 'rate', numValue);
+                  }
+                }}
+                onBlur={(e) => {
+                  // Ensure we have a valid value on blur
+                  const value = e.target.value;
+                  if (value === '' || isNaN(parseFloat(value))) {
+                    updateBillItem(item.id, 'rate', 0);
+                  }
+                }}
                 min="0"
                 step="0.01"
-                className="mt-1 bg-white"
+                className={`mt-1 ${getValidationClasses(item, 'rate')}`}
                 placeholder="Enter rate"
                 required
               />
@@ -682,6 +793,30 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
           </div>
         </CardContent>
       </Card>
+      
+      {/* Validation Summary */}
+      {billItems.length > 0 && (
+        <Card className="mt-4">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${
+                  billItems.every(item => isItemValid(item)) ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                <span className="text-sm font-medium">
+                  {billItems.every(item => isItemValid(item)) 
+                    ? 'All items are valid' 
+                    : `${billItems.filter(item => !isItemValid(item)).length} item(s) need attention`
+                  }
+                </span>
+              </div>
+              <div className="text-xs text-gray-500">
+                Total Items: {billItems.length} | Total Amount: {formatCurrency(billItems.reduce((sum, item) => sum + item.amount, 0))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

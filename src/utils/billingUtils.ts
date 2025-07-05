@@ -144,23 +144,31 @@ export const calculateBillTotals = (
   discount: number,
   discountType: 'amount' | 'percentage' = 'amount'
 ) => {
-  const itemsTotal = items.reduce((sum, item) => sum + item.amount, 0);
-  const breakdownTotal = Object.values(breakdown).reduce((sum, value) => sum + value, 0);
-  const subtotal = itemsTotal + breakdownTotal;
-  const gstAmount = (subtotal * gstPercent) / 100;
+  // Sanitize inputs to prevent NaN
+  const safeItems = items.filter(item => item.amount && !isNaN(item.amount));
+  const safeBreakdown = Object.fromEntries(
+    Object.entries(breakdown).map(([key, value]) => [key, isNaN(value) ? 0 : value])
+  ) as BillBreakdown;
+  const safeGstPercent = isNaN(gstPercent) ? 0 : gstPercent;
+  const safeDiscount = isNaN(discount) ? 0 : discount;
   
-  let discountAmount = discount;
+  const itemsTotal = safeItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const breakdownTotal = Object.values(safeBreakdown).reduce((sum, value) => sum + (value || 0), 0);
+  const subtotal = itemsTotal + breakdownTotal;
+  const gstAmount = (subtotal * safeGstPercent) / 100;
+  
+  let discountAmount = safeDiscount;
   if (discountType === 'percentage') {
-    discountAmount = (subtotal * discount) / 100;
+    discountAmount = (subtotal * safeDiscount) / 100;
   }
   
   const totalAmount = subtotal + gstAmount - discountAmount;
   
   return {
-    subtotal,
-    gstAmount,
+    subtotal: Math.max(0, subtotal),
+    gstAmount: Math.max(0, gstAmount),
     totalAmount: Math.max(0, totalAmount),
-    discountAmount
+    discountAmount: Math.max(0, discountAmount)
   };
 };
 

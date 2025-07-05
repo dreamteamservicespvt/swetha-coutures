@@ -232,7 +232,7 @@ const Inventory = () => {
     try {
       const quantity = parseFloat(formData.quantity) || 0;
       const costPerUnit = parseFloat(formData.costPerUnit) || 0;
-      const totalValue = quantity * costPerUnit;
+      const totalValue = quantity * costPerUnit; // This will always be a valid number
       
       const itemData = {
         name: formData.name,
@@ -241,7 +241,7 @@ const Inventory = () => {
         quantity,
         unit: formData.unit,
         costPerUnit,
-        totalValue,
+        totalValue, // Ensure this is always a valid number
         reorderLevel: parseFloat(formData.reorderLevel) || 0,
         supplier: {
           name: formData.supplierName,
@@ -350,7 +350,8 @@ const Inventory = () => {
       if (!item) return;
 
       const newQuantity = Math.max(0, item.quantity + adjustment);
-      const newTotalValue = newQuantity * item.costPerUnit;
+      const safeCostPerUnit = item.costPerUnit || 0; // Ensure costPerUnit is not undefined
+      const newTotalValue = newQuantity * safeCostPerUnit;
 
       await updateDoc(doc(db, 'inventory', itemId), {
         quantity: newQuantity,
