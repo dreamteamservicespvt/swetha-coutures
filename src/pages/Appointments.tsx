@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Calendar as CalendarIcon, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, User, ExternalLink, Video } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, User, ExternalLink, Video, Grid, List } from 'lucide-react';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -44,6 +44,7 @@ const Appointments = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid view
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -116,15 +117,15 @@ const Appointments = () => {
       const appointmentData = {
         customerName: formData.customerName,
         customerPhone: formData.customerPhone,
-        customerEmail: formData.customerEmail || undefined,
+        customerEmail: formData.customerEmail || null,
         appointmentDate: appointmentDateTime,
         appointmentTime: formData.appointmentTime,
         duration: parseInt(formData.duration),
         purpose: formData.purpose,
-        notes: formData.notes || undefined,
-        gmeetUrl: formData.gmeetUrl || undefined,
-        status: 'scheduled' as const,
-        reminderSent: false,
+        notes: formData.notes || null,
+        gmeetUrl: formData.gmeetUrl || null,
+        status: editingAppointment ? editingAppointment.status : 'scheduled' as const,
+        reminderSent: editingAppointment ? editingAppointment.reminderSent || false : false,
         ...(editingAppointment ? {} : { createdAt: serverTimestamp() })
       };
 
@@ -210,7 +211,8 @@ const Appointments = () => {
   const updateStatus = async (appointmentId: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, 'appointments', appointmentId), {
-        status: newStatus
+        status: newStatus,
+        updatedAt: serverTimestamp()
       });
       
       toast({
@@ -313,19 +315,43 @@ const Appointments = () => {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-dark-fix">Appointments</h1>
             <p className="responsive-text-base text-muted-dark-fix">Schedule and manage customer appointments</p>
           </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              className="btn-responsive w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600 shadow-lg hover:shadow-xl transition-all duration-200"
-              onClick={() => {
-                setEditingAppointment(null);
-                resetForm();
-              }}
-            >
-              <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-              Book Appointment
-            </Button>
-          </DialogTrigger>
+          <div className="responsive-actions">
+            {/* View Toggle */}
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-r-none responsive-text-sm"
+                title="List View"
+              >
+                <List className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline ml-1 sm:ml-2">List</span>
+              </Button>
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="rounded-l-none responsive-text-sm"
+                title="Grid View"
+              >
+                <Grid className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline ml-1 sm:ml-2">Grid</span>
+              </Button>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  className="btn-responsive w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600 shadow-lg hover:shadow-xl transition-all duration-200"
+                  onClick={() => {
+                    setEditingAppointment(null);
+                    resetForm();
+                  }}
+                >
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Book Appointment
+                </Button>
+              </DialogTrigger>
           <DialogContent className="mobile-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -475,7 +501,8 @@ const Appointments = () => {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+          </div>
+        </div>
 
       {/* Stats Cards */}
       <div className="stats-grid-responsive">
@@ -559,102 +586,230 @@ const Appointments = () => {
         </CardHeader>
         <CardContent className="card-content-responsive">
           {filteredAppointments.length > 0 ? (
-            <div className="space-y-4">
-              {filteredAppointments.map((appointment) => {
-                const appointmentDate = appointment?.appointmentDate?.toDate?.() || new Date(appointment?.appointmentDate);
-                
-                return (
-                  <div key={appointment?.id} className="mobile-item-card">
-                    <div className="flex-1 space-y-2 md:space-y-0">
-                      <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100 responsive-text-base">
-                            {appointment?.customerName || 'Unknown Customer'}
-                          </h3>
-                          <p className="responsive-text-sm text-gray-600 dark:text-gray-400">
-                            {format(appointmentDate, 'PPP')} at {appointment?.appointmentTime || 'No time'} • {appointment?.purpose || 'No purpose'}
-                          </p>
-                          <p className="responsive-text-xs text-gray-500 dark:text-gray-500">
-                            Duration: {appointment?.duration || 0} minutes
-                          </p>
-                          {appointment?.gmeetUrl && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <Video className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                              <Button
-                                size="sm"
-                                variant="link"
-                                className="p-0 h-auto text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                                onClick={() => window.open(appointment.gmeetUrl, '_blank')}
+            <>
+              {viewMode === 'grid' ? (
+                // Grid View - Default
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {filteredAppointments.map((appointment) => {
+                    const appointmentDate = appointment?.appointmentDate?.toDate?.() || new Date(appointment?.appointmentDate);
+                    
+                    return (
+                      <Card 
+                        key={appointment?.id} 
+                        className="hover:shadow-lg transition-all duration-200 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-xl"
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                <span className="font-bold text-lg truncate">{appointment?.customerName || 'Unknown'}</span>
+                              </div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                                {format(appointmentDate, 'PPP')}
+                              </div>
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {appointment?.appointmentTime || 'No time'} • {appointment?.duration || 0} min
+                              </div>
+                            </div>
+                            <Badge 
+                              className={`status-badge-responsive ${
+                                appointment?.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' : 
+                                appointment?.status === 'confirmed' ? 'bg-blue-100 text-blue-700 border-blue-200' : 
+                                appointment?.status === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200' : 
+                                'bg-gray-100 text-gray-700 border-gray-200'
+                              }`}
+                            >
+                              {appointment?.status || 'Unknown'}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                              <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <span className="truncate flex-1">{appointment?.purpose || 'No purpose'}</span>
+                            </div>
+                            
+                            {appointment?.notes && (
+                              <div className="flex items-start text-sm">
+                                <Clock className="h-4 w-4 mr-2 mt-0.5 text-purple-600 flex-shrink-0" />
+                                <span className="text-gray-600 dark:text-gray-400 truncate flex-1">{appointment.notes}</span>
+                              </div>
+                            )}
+                            
+                            {appointment?.gmeetUrl && (
+                              <div className="flex items-center text-sm">
+                                <Video className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                <Button
+                                  size="sm"
+                                  variant="link"
+                                  className="p-0 h-auto text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs"
+                                  onClick={() => window.open(appointment.gmeetUrl, '_blank')}
+                                >
+                                  Join Meeting
+                                  <ExternalLink className="h-3 w-3 ml-1" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+                            {/* Contact Actions */}
+                            <div className="mb-2">
+                              <ContactActions 
+                                phone={appointment?.customerPhone}
+                                message={`Hi ${appointment?.customerName}, this is regarding your appointment on ${format(appointmentDate, 'PPP')} at ${appointment?.appointmentTime}.`}
+                              />
+                            </div>
+
+                            {/* Actions Row */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <Select 
+                                value={appointment?.status} 
+                                onValueChange={(value) => updateStatus(appointment?.id, value)}
                               >
-                                Join Google Meet
-                                <ExternalLink className="h-3 w-3 ml-1" />
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleEdit(appointment)}
+                                className="text-blue-600 hover:bg-blue-50 hover:border-blue-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-1.5" />
+                                Edit
                               </Button>
                             </div>
-                          )}
+
+                            {/* Delete Button */}
+                            <div className="mt-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleDelete(appointment?.id)}
+                                className="w-full text-red-600 hover:bg-red-50 hover:border-red-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                // List View
+                <div className="space-y-4">
+                  {filteredAppointments.map((appointment) => {
+                    const appointmentDate = appointment?.appointmentDate?.toDate?.() || new Date(appointment?.appointmentDate);
+                    
+                    return (
+                      <div key={appointment?.id} className="mobile-item-card">
+                        <div className="flex-1 space-y-2 md:space-y-0">
+                          <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 responsive-text-base">
+                                {appointment?.customerName || 'Unknown Customer'}
+                              </h3>
+                              <p className="responsive-text-sm text-gray-600 dark:text-gray-400">
+                                {format(appointmentDate, 'PPP')} at {appointment?.appointmentTime || 'No time'} • {appointment?.purpose || 'No purpose'}
+                              </p>
+                              <p className="responsive-text-xs text-gray-500 dark:text-gray-500">
+                                Duration: {appointment?.duration || 0} minutes
+                              </p>
+                              {appointment?.gmeetUrl && (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Video className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                  <Button
+                                    size="sm"
+                                    variant="link"
+                                    className="p-0 h-auto text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                    onClick={() => window.open(appointment.gmeetUrl, '_blank')}
+                                  >
+                                    Join Google Meet
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2 md:mt-0">
+                              <Badge 
+                                className={`status-badge-responsive ${
+                                  appointment?.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-300 dark:border-green-700' : 
+                                  appointment?.status === 'confirmed' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700' : 
+                                  appointment?.status === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-300 dark:border-red-700' : 
+                                  'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
+                                }`}
+                              >
+                                {appointment?.status || 'Unknown'}
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-2 md:mt-0">
-                          <Badge 
-                            className={`status-badge-responsive ${
-                              appointment?.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-300 dark:border-green-700' : 
-                              appointment?.status === 'confirmed' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700' : 
-                              appointment?.status === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-300 dark:border-red-700' : 
-                              'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
-                            }`}
+                        <div className="responsive-actions">
+                          <ContactActions 
+                            phone={appointment?.customerPhone}
+                            message={`Hi ${appointment?.customerName}, this is regarding your appointment on ${format(appointmentDate, 'PPP')} at ${appointment?.appointmentTime}.`}
+                          />
+                          {appointment?.gmeetUrl && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => sendGmeetWhatsApp(appointment)}
+                              className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                              title="Send appointment details with Google Meet link"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Meet Link</span>
+                            </Button>
+                          )}
+                          <Select 
+                            value={appointment?.status} 
+                            onValueChange={(value) => updateStatus(appointment?.id, value)}
                           >
-                            {appointment?.status || 'Unknown'}
-                          </Badge>
+                            <SelectTrigger className="btn-responsive min-w-[8rem]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="scheduled">Scheduled</SelectItem>
+                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(appointment)} className="btn-responsive">
+                            <Edit className="h-4 w-4" />
+                            <span className="hidden sm:inline ml-1">Edit</span>
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDelete(appointment?.id)}
+                            className="btn-responsive text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="hidden sm:inline ml-1">Delete</span>
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                    <div className="responsive-actions">
-                      <ContactActions 
-                        phone={appointment?.customerPhone}
-                        message={`Hi ${appointment?.customerName}, this is regarding your appointment on ${format(appointmentDate, 'PPP')} at ${appointment?.appointmentTime}.`}
-                      />
-                      {appointment?.gmeetUrl && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => sendGmeetWhatsApp(appointment)}
-                          className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
-                          title="Send appointment details with Google Meet link"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          <span className="hidden sm:inline ml-1">Meet Link</span>
-                        </Button>
-                      )}
-                      <Select 
-                        value={appointment?.status} 
-                        onValueChange={(value) => updateStatus(appointment?.id, value)}
-                      >
-                        <SelectTrigger className="btn-responsive min-w-[8rem]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="scheduled">Scheduled</SelectItem>
-                          <SelectItem value="confirmed">Confirmed</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(appointment)} className="btn-responsive">
-                        <Edit className="h-4 w-4" />
-                        <span className="hidden sm:inline ml-1">Edit</span>
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleDelete(appointment?.id)}
-                        className="btn-responsive text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="hidden sm:inline ml-1">Delete</span>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-12">
               <CalendarIcon className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />

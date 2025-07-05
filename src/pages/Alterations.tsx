@@ -532,18 +532,18 @@ const Alterations = () => {
                 {filteredAlterations.map((alteration) => (
                   <Card key={alteration?.id} className="hover:shadow-lg transition-shadow border-2 hover:border-primary/20">
                     <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                         <div className="space-y-1 flex-1 min-w-0">
                           <CardTitle className="text-lg font-bold truncate">
                             {alteration?.customerName || 'Unknown Customer'}
                           </CardTitle>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
                             <Badge variant="outline" className="text-xs">{alteration?.garmentType || 'N/A'}</Badge>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span className="truncate">{alteration?.alterationType || 'N/A'}</span>
                           </div>
                         </div>
-                        <div className="flex flex-col space-y-1 items-end">
+                        <div className="flex flex-row sm:flex-col gap-1 sm:space-y-1 sm:items-end">
                           <Badge 
                             variant={
                               alteration?.status === 'delivered' ? 'default' : 
@@ -584,17 +584,19 @@ const Alterations = () => {
                         </div>
                       )}
                       
-                      <div className="flex justify-between items-center pt-2">
-                        <ContactActions 
-                          phone={alteration?.customerPhone}
-                          message={`Hi ${alteration?.customerName}, your ${alteration?.garmentType} alteration is ${alteration?.status}. Due date: ${alteration?.dueDate ? format(new Date(alteration.dueDate), 'PPP') : 'TBD'}.`}
-                        />
-                        <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 pt-2">
+                        <div className="order-2 sm:order-1">
+                          <ContactActions 
+                            phone={alteration?.customerPhone}
+                            message={`Hi ${alteration?.customerName}, your ${alteration?.garmentType} alteration is ${alteration?.status}. Due date: ${alteration?.dueDate ? format(new Date(alteration.dueDate), 'PPP') : 'TBD'}.`}
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-1 sm:gap-2 order-1 sm:order-2 justify-end">
                           <Select 
                             value={alteration?.status} 
                             onValueChange={(value) => updateStatus(alteration?.id, value)}
                           >
-                            <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectTrigger className="w-28 sm:w-32 h-8 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -604,14 +606,14 @@ const Alterations = () => {
                               <SelectItem value="delivered">Delivered</SelectItem>
                             </SelectContent>
                           </Select>
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(alteration)} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(alteration)} className="h-8 w-8 p-0 flex-shrink-0">
                             <Edit className="h-3 w-3" />
                           </Button>
                           <Button 
                             size="sm" 
                             variant="outline" 
                             onClick={() => handleDelete(alteration?.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 flex-shrink-0"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>

@@ -794,8 +794,13 @@ const Staff = () => {
                     <div 
                       className="flex-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-3 rounded-lg transition-colors"
                       onClick={() => {
-                        setSelectedStaff(member);
-                        setShowStaffProfile(true);
+                        // Force clear previous selection to prevent caching
+                        setSelectedStaff(null);
+                        // Use setTimeout to ensure state is cleared before setting new staff
+                        setTimeout(() => {
+                          setSelectedStaff(member);
+                          setShowStaffProfile(true);
+                        }, 0);
                       }}
                     >
                       <div className="flex items-center space-x-4">
@@ -874,8 +879,13 @@ const Staff = () => {
                   <div 
                     className="md:hidden space-y-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-3 rounded-lg transition-colors"
                     onClick={() => {
-                      setSelectedStaff(member);
-                      setShowStaffProfile(true);
+                      // Force clear previous selection to prevent caching
+                      setSelectedStaff(null);
+                      // Use setTimeout to ensure state is cleared before setting new staff
+                      setTimeout(() => {
+                        setSelectedStaff(member);
+                        setShowStaffProfile(true);
+                      }, 0);
                     }}
                   >
                     <div className="flex justify-between items-start">
@@ -980,141 +990,16 @@ const Staff = () => {
         </CardContent>
       </Card>
 
-      {/* Staff Profile Modal */}
-      <Dialog open={showStaffProfile} onOpenChange={setShowStaffProfile}>
-        <DialogContent className="mobile-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Staff Profile
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-4 sm:p-6">
-            {selectedStaff && (
-              <div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-                  <div className="flex-1 mb-4 sm:mb-0">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">{selectedStaff.name}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{selectedStaff.role} • {selectedStaff.department}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <Badge 
-                      variant={selectedStaff.status === 'active' ? 'default' : 'secondary'}
-                      className="cursor-pointer"
-                      onClick={() => toggleStatus(selectedStaff.id, selectedStaff.status)}
-                    >
-                      {selectedStaff.status}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-gray-700 dark:text-gray-300">Phone Number</Label>
-                    <Input
-                      value={selectedStaff.phone}
-                      readOnly
-                      className="bg-gray-100 dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-700 dark:text-gray-300">Email</Label>
-                    <Input
-                      value={selectedStaff.email}
-                      readOnly
-                      className="bg-gray-100 dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-700 dark:text-gray-300">Skills</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {(selectedStaff.skills || []).map((skill, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-gray-700 dark:text-gray-300">Salary</Label>
-                    <Input
-                      value={`₹${selectedStaff.salaryAmount?.toLocaleString()}/${selectedStaff.salaryMode}`}
-                      readOnly
-                      className="bg-gray-100 dark:bg-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-gray-700 dark:text-gray-300">Join Date</Label>
-                    <Input
-                      value={selectedStaff.joinDate?.toDate().toLocaleDateString()}
-                      readOnly
-                      className="bg-gray-100 dark:bg-gray-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Emergency Contact */}
-                {selectedStaff.emergencyContact && (
-                  <div className="mt-6">
-                    <h4 className="text-md font-medium text-gray-900 dark:text-gray-100">Emergency Contact</h4>
-                    <div className="space-y-2">
-                      <div>
-                        <Label className="text-gray-700 dark:text-gray-300">Name</Label>
-                        <Input
-                          value={selectedStaff.emergencyContact.name}
-                          readOnly
-                          className="bg-gray-100 dark:bg-gray-700"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-gray-700 dark:text-gray-300">Phone</Label>
-                        <Input
-                          value={selectedStaff.emergencyContact.phone}
-                          readOnly
-                          className="bg-gray-100 dark:bg-gray-700"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-gray-700 dark:text-gray-300">Relation</Label>
-                        <Input
-                          value={selectedStaff.emergencyContact.relation}
-                          readOnly
-                          className="bg-gray-100 dark:bg-gray-700"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-6 flex justify-end space-x-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowStaffProfile(false)}
-                    className="btn-responsive"
-                  >
-                    Close
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      handleEdit(selectedStaff);
-                      setShowStaffProfile(false);
-                    }}
-                    className="btn-responsive bg-gradient-to-r from-blue-600 to-purple-600"
-                  >
-                    Edit Staff Member
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      
+      {/* Staff Profile Modal - Full featured modal with tabs */}
       
       {/* Staff Profile Modal */}
       <StaffProfileModal
         isOpen={showStaffProfile}
         onClose={() => {
           setShowStaffProfile(false);
-          setSelectedStaff(null);
+          // Clear selected staff to ensure fresh data on next open
+          setTimeout(() => setSelectedStaff(null), 100);
         }}
         staff={selectedStaff}
       />

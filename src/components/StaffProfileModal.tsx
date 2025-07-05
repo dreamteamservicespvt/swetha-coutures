@@ -80,8 +80,14 @@ const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, onClose, 
   useEffect(() => {
     if (isOpen && staff) {
       fetchStaffOrders();
+    } else if (!isOpen) {
+      // Clear previous data when modal closes to prevent stale data
+      setOrders([]);
+      setSelectedOrder(null);
+      setShowOrderDetails(false);
+      setLoading(true);
     }
-  }, [isOpen, staff]);
+  }, [isOpen, staff?.id]); // Use staff.id to ensure proper re-fetch on staff change
 
   const fetchStaffOrders = async () => {
     if (!staff) return;
