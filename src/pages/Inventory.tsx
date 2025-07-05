@@ -37,6 +37,7 @@ interface InventoryItem {
   quantity: number;
   unit: string;
   costPerUnit: number;
+  sellingPrice?: number; // Selling price to customers (if not set, use costPerUnit * markup)
   totalValue: number;
   reorderLevel: number;
   supplier: {
@@ -81,7 +82,7 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // Date filter states

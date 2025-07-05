@@ -42,6 +42,41 @@ const defaultBusinessSettings: BusinessSettings = {
 };
 
 /**
+ * Get dynamic company information from business settings
+ */
+export const getCompanyInfo = async () => {
+  try {
+    const settings = await getBusinessSettings();
+    
+    // Parse address into components
+    const addressParts = settings.businessAddress ? settings.businessAddress.split('\n') : [];
+    const streetAddress = addressParts[0] || 'Premium Tailoring & Fashion Excellence';
+    const cityAddress = addressParts.slice(1).join(', ') || 'Bangalore, Karnataka';
+    
+    return {
+      name: settings.businessName || 'Swetha\'s Couture',
+      address: streetAddress,
+      city: cityAddress,
+      phone: settings.businessPhone || '+91 98765 43210',
+      email: settings.businessEmail || 'contact@swethascouture.com',
+      taxNumber: settings.taxNumber || '',
+      fullAddress: settings.businessAddress || 'Premium Tailoring & Fashion Excellence\nBangalore, Karnataka'
+    };
+  } catch (error) {
+    console.warn('Could not load company info, using defaults:', error);
+    return {
+      name: 'Swetha\'s Couture',
+      address: 'Premium Tailoring & Fashion Excellence',
+      city: 'Bangalore, Karnataka',
+      phone: '+91 98765 43210',
+      email: 'contact@swethascouture.com',
+      taxNumber: '',
+      fullAddress: 'Premium Tailoring & Fashion Excellence\nBangalore, Karnataka'
+    };
+  }
+};
+
+/**
  * Get business settings from Firestore with fallback to defaults
  */
 export const getBusinessSettings = async (): Promise<BusinessSettings> => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useBusinessSettings } from '@/components/BusinessSettingsProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ import BillFormAdvanced from '@/components/BillFormAdvanced';
 const BillDetails = () => {
   const { billId } = useParams<{ billId: string }>();
   const navigate = useNavigate();
+  const { settings: businessSettings } = useBusinessSettings();
   const [bill, setBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -211,13 +213,13 @@ const BillDetails = () => {
       await downloadPDF(bill);
       toast({
         title: "PDF Downloaded",
-        description: "Bill has been downloaded successfully",
+        description: "Invoice has been downloaded successfully",
       });
     } catch (error) {
       console.error('Error downloading PDF:', error);
       toast({
         title: "Download Failed",
-        description: "Failed to download PDF",
+        description: "Failed to download PDF. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -261,16 +263,16 @@ const BillDetails = () => {
     if (!bill) return;
     
     try {
-      printBill(bill);
+      await printBill(bill);
       toast({
         title: "Print Ready",
-        description: "Bill is ready for printing",
+        description: "Invoice is ready for printing",
       });
     } catch (error) {
       console.error('Error printing bill:', error);
       toast({
         title: "Print Failed",
-        description: "Failed to prepare bill for printing. Please try again.",
+        description: "Failed to prepare invoice for printing. Please try again.",
         variant: "destructive",
       });
     }
@@ -393,7 +395,7 @@ const BillDetails = () => {
         {/* Header Card */}
         <Card className="mb-4 sm:mb-6">
           <CardHeader className="text-center bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-            <CardTitle className="text-xl sm:text-2xl">Swetha's Couture</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">{businessSettings?.businessName || 'Business Management'}</CardTitle>
             <p className="text-purple-100 text-sm sm:text-base">Premium Tailoring & Fashion</p>
           </CardHeader>
           <CardContent className="pt-4 sm:pt-6">
@@ -598,7 +600,7 @@ const BillDetails = () => {
         {/* Footer */}
         <Card>
           <CardContent className="pt-6 text-center">
-            <p className="text-gray-600 mb-2 text-sm sm:text-base">Thank you for choosing Swetha's Couture!</p>
+            <p className="text-gray-600 mb-2 text-sm sm:text-base">Thank you for choosing {businessSettings?.businessName || 'us'}!</p>
             <p className="text-xs sm:text-sm text-gray-500">
               For any queries, please contact us. Payment due within 7 days.
             </p>

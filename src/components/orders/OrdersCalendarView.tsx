@@ -197,27 +197,36 @@ const OrdersCalendarView: React.FC<OrdersCalendarViewProps> = ({ orders, onDateS
               onSelect={handleDateSelect}
               className="rounded-md border"
               components={{
-                Day: ({ date, ...props }) => {
+                Day: ({ date, ...otherProps }) => {
                   const dateKey = format(date, 'yyyy-MM-dd');
                   const dayData = ordersByDate[dateKey];
+                  const isSelected = selectedDate && format(selectedDate, 'yyyy-MM-dd') === dateKey;
                   
                   return (
-                    <div {...props} className="relative">
-                      <button className="w-9 h-9 text-sm p-0 font-normal rounded-md hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                    <div className="relative h-9 w-9">
+                      <button 
+                        className={`w-full h-full text-sm p-0 font-normal rounded-md transition-colors ${
+                          isSelected 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground'
+                        }`}
+                        onClick={() => handleDateSelect(date)}
+                        type="button"
+                      >
                         {date.getDate()}
                         {dayData && (
                           <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex space-x-0.5">
                             {dayData.placed.length > 0 && (
-                              <div key={`placed-${dateKey}`} className="w-1 h-1 bg-teal-500 rounded-full"></div>
+                              <div key={`placed-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-teal-500'}`}></div>
                             )}
                             {dayData.due.length > 0 && (
-                              <div key={`due-${dateKey}`} className="w-1 h-1 bg-orange-500 rounded-full"></div>
+                              <div key={`due-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-orange-500'}`}></div>
                             )}
                             {dayData.overdue.length > 0 && (
-                              <div key={`overdue-${dateKey}`} className="w-1 h-1 bg-red-500 rounded-full"></div>
+                              <div key={`overdue-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-red-500'}`}></div>
                             )}
                             {dayData.ready.length > 0 && (
-                              <div key={`ready-${dateKey}`} className="w-1 h-1 bg-green-500 rounded-full"></div>
+                              <div key={`ready-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-green-500'}`}></div>
                             )}
                           </div>
                         )}

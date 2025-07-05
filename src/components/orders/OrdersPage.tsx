@@ -68,7 +68,11 @@ const OrdersPage = () => {
   const [view, setView] = useState<'grid' | 'list' | 'calendar'>(() => {
     try {
       const saved = localStorage.getItem('orders-view');
-      return (saved as 'grid' | 'list' | 'calendar') || 'grid';
+      // Explicitly check if saved view exists and is valid, otherwise default to grid
+      if (saved && ['grid', 'list', 'calendar'].includes(saved)) {
+        return saved as 'grid' | 'list' | 'calendar';
+      }
+      return 'grid';
     } catch (e) {
       return 'grid';
     }
@@ -367,7 +371,7 @@ const OrdersPage = () => {
   };
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 overflow-x-hidden">
+    <div className="orders-page-container space-y-6 p-4 sm:p-6">
       {/* Header with view toggle */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>

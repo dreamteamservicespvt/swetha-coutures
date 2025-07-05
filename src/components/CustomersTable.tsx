@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, MessageSquare } from 'lucide-react';
 import ContactActions from '@/components/ContactActions';
 import CustomersEmptyState from './CustomersEmptyState';
 
@@ -35,6 +35,7 @@ interface CustomersTableProps {
   onCustomerClick: (customer: Customer) => void;
   onEdit: (customer: Customer) => void;
   onDelete: (customerId: string) => void;
+  onWhatsApp: (customer: Customer) => void;
   onAddCustomer: () => void;
 }
 
@@ -48,6 +49,7 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
   onCustomerClick,
   onEdit,
   onDelete,
+  onWhatsApp,
   onAddCustomer
 }) => {
   const getCustomerTypeColor = (type: Customer['customerType']) => {
@@ -86,7 +88,7 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
             {customer.phone && (
               <ContactActions 
                 phone={customer.phone}
-                message={`Hi ${customer.name}, thank you for choosing Swetha's Couture! How can we assist you today?`}
+                message={`Hi ${customer.name}, thank you for choosing us! How can we assist you today?`}
               />
             )}
           </div>
@@ -110,6 +112,17 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
           Last Order: {customer.lastOrderDate || 'Never'}
         </div>
         <div className="flex space-x-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onWhatsApp(customer);
+            }}
+            className="h-8 w-8 p-0 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+          >
+            <MessageSquare className="h-3 w-3" />
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -189,7 +202,7 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                             {customer.phone && (
                               <ContactActions 
                                 phone={customer.phone}
-                                message={`Hi ${customer.name}, thank you for choosing Swetha's Couture! How can we assist you today?`}
+                                message={`Hi ${customer.name}, thank you for choosing us! How can we assist you today?`}
                               />
                             )}
                           </div>
@@ -210,6 +223,17 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                         <TableCell onClick={() => onCustomerClick(customer)} className="text-dark-fix table-cell-responsive">{customer.lastOrderDate || 'Never'}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onWhatsApp(customer);
+                              }}
+                              className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -286,7 +310,7 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                             {customer.phone && (
                               <ContactActions 
                                 phone={customer.phone}
-                                message={`Hi ${customer.name}, thank you for choosing Swetha's Couture! How can we assist you today?`}
+                                message={`Hi ${customer.name}, thank you for choosing us! How can we assist you today?`}
                               />
                             )}
                           </div>
@@ -306,6 +330,17 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                         <TableCell onClick={() => onCustomerClick(customer)} className="text-dark-fix">₹{(customer.totalSpent || 0).toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onWhatsApp(customer);
+                              }}
+                              className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"

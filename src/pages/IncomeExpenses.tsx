@@ -60,23 +60,57 @@ const IncomeExpenses = () => {
       let totalIncome = 0;
       let totalExpenses = 0;
       
-      // Fetch billing data for income
-      let billingQuery = collection(db, 'billing');
+      // Fetch bills for income (using the new 'bills' collection)
+      let billsQuery = collection(db, 'bills');
       if (dateRange) {
-        billingQuery = query(
+        billsQuery = query(
+          collection(db, 'bills'),
+          where('date', '>=', dateRange.start),
+          where('date', '<=', dateRange.end)
+        ) as any;
+      }
+      
+      const billsSnapshot = await getDocs(billsQuery);
+      const billsIncome = billsSnapshot.docs.reduce((sum, doc) => {
+        const data = doc.data();
+        return sum + (data.totalAmount || 0);
+      }, 0);
+      
+      totalIncome += billsIncome;
+      
+      // Calculate expenses from Cost of Goods Sold (COGS) - from bill items
+      const cogsExpenses = billsSnapshot.docs.reduce((sum, doc) => {
+        const data = doc.data();
+        if (data.items && Array.isArray(data.items)) {
+          const itemsCost = data.items.reduce((itemSum: number, item: any) => {
+            // Calculate cost for each item type
+            const itemCost = (item.cost || 0) * (item.quantity || 1);
+            return itemSum + itemCost;
+          }, 0);
+          return sum + itemsCost;
+        }
+        return sum;
+      }, 0);
+      
+      totalExpenses += cogsExpenses;
+      
+      // Fetch legacy billing data for backward compatibility
+      let legacyBillingQuery = collection(db, 'billing');
+      if (dateRange) {
+        legacyBillingQuery = query(
           collection(db, 'billing'),
           where('createdAt', '>=', dateRange.start),
           where('createdAt', '<=', dateRange.end)
         ) as any;
       }
       
-      const billingSnapshot = await getDocs(billingQuery);
-      const billingIncome = billingSnapshot.docs.reduce((sum, doc) => {
+      const legacyBillingSnapshot = await getDocs(legacyBillingQuery);
+      const legacyBillingIncome = legacyBillingSnapshot.docs.reduce((sum, doc) => {
         const data = doc.data();
         return sum + (data.totalAmount || 0);
       }, 0);
       
-      totalIncome += billingIncome;
+      totalIncome += legacyBillingIncome;
       
       // Fetch custom income
       let incomeQuery = collection(db, 'income');
@@ -96,25 +130,7 @@ const IncomeExpenses = () => {
       
       totalIncome += customIncome;
       
-      // Fetch inventory purchases for expenses
-      let inventoryQuery = collection(db, 'inventory');
-      if (dateRange) {
-        inventoryQuery = query(
-          collection(db, 'inventory'),
-          where('broughtAt', '>=', dateRange.start),
-          where('broughtAt', '<=', dateRange.end)
-        ) as any;
-      }
-      
-      const inventorySnapshot = await getDocs(inventoryQuery);
-      const inventoryCosts = inventorySnapshot.docs.reduce((sum, doc) => {
-        const data = doc.data();
-        return sum + (data.cost || 0);
-      }, 0);
-      
-      totalExpenses += inventoryCosts;
-      
-      // Fetch custom expenses
+      // Fetch custom expenses (operational expenses not related to sales)
       let expensesQuery = collection(db, 'expenses');
       if (dateRange) {
         expensesQuery = query(
@@ -132,12 +148,33 @@ const IncomeExpenses = () => {
       
       totalExpenses += customExpenses;
       
+      // Fetch inventory purchases for expenses (only if not in date range or for reference)
+      let inventoryQuery = collection(db, 'inventory');
+      if (dateRange) {
+        inventoryQuery = query(
+          collection(db, 'inventory'),
+          where('broughtAt', '>=', dateRange.start),
+          where('broughtAt', '<=', dateRange.end)
+        ) as any;
+      }
+      
+      const inventorySnapshot = await getDocs(inventoryQuery);
+      const inventoryCosts = inventorySnapshot.docs.reduce((sum, doc) => {
+        const data = doc.data();
+        return sum + (data.cost || 0);
+      }, 0);
+      
+      // Only add inventory costs if COGS is zero (for backward compatibility)
+      if (cogsExpenses === 0) {
+        totalExpenses += inventoryCosts;
+      }
+      
       setFinancialData({
         totalIncome,
         totalExpenses,
         netProfit: totalIncome - totalExpenses,
-        incomeData: [...billingSnapshot.docs, ...incomeSnapshot.docs],
-        expenseData: [...inventorySnapshot.docs, ...expensesSnapshot.docs]
+        incomeData: [...billsSnapshot.docs, ...legacyBillingSnapshot.docs, ...incomeSnapshot.docs],
+        expenseData: [...expensesSnapshot.docs, ...(cogsExpenses === 0 ? inventorySnapshot.docs : [])]
       });
       
     } catch (error) {

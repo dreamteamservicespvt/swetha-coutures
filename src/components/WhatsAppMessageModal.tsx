@@ -50,29 +50,113 @@ const WhatsAppMessageModal: React.FC<WhatsAppMessageModalProps> = ({
 
   const [templates, setTemplates] = useState<MessageTemplate[]>([
     {
-      id: 'order-enquiry',
-      name: 'Order Enquiry',
-      content: 'Hello {customerName}, thank you for your order #{orderNumber}. We have received your {itemType} order and will begin work shortly. Total amount: ₹{totalAmount}. Expected delivery: {deliveryDate}.'
+      id: 'order-confirmation',
+      name: 'Order Confirmation Letter',
+      content: `Dear {customerName},
+
+We are pleased to acknowledge receipt of your order #{orderNumber} at Swetha's Couture.
+
+ORDER DETAILS:
+━━━━━━━━━━━━━━━━━━━━
+• Order Number: {orderNumber}
+• Item Type: {itemType}
+• Order Date: {orderDate}
+• Expected Delivery: {deliveryDate}
+• Total Amount: ₹{totalAmount}
+• Current Status: {status}
+
+We are committed to delivering exceptional quality and service. Our team will begin working on your order shortly, and we will keep you informed of the progress.
+
+Should you have any questions or concerns, please do not hesitate to contact us.
+
+Thank you for choosing Swetha's Couture.
+
+Best regards,
+Swetha's Couture Team`
     },
     {
       id: 'status-update',
-      name: 'Status Update',
-      content: 'Hi {customerName}, your order #{orderNumber} status has been updated to: {status}. We will keep you informed of further progress. Thank you for choosing us!'
+      name: 'Status Update Notice',
+      content: `Dear {customerName},
+
+We would like to update you on the progress of your order #{orderNumber}.
+
+STATUS UPDATE:
+━━━━━━━━━━━━━━━━━━━━
+• Order Number: {orderNumber}
+• Current Status: {status}
+• Item Type: {itemType}
+• Expected Delivery: {deliveryDate}
+
+We are working diligently to ensure your order meets our high standards of quality. We will continue to keep you informed of any further developments.
+
+Thank you for your patience and for choosing Swetha's Couture.
+
+Best regards,
+Swetha's Couture Team`
     },
     {
-      id: 'payment-alert',
-      name: 'Payment Alert',
-      content: 'Dear {customerName}, this is a gentle reminder that your order #{orderNumber} has a pending balance of ₹{balance}. Please arrange payment at your earliest convenience.'
+      id: 'payment-reminder',
+      name: 'Payment Reminder Notice',
+      content: `Dear {customerName},
+
+We hope this message finds you well. We would like to bring to your attention the outstanding balance for your order.
+
+PAYMENT DETAILS:
+━━━━━━━━━━━━━━━━━━━━
+• Order Number: {orderNumber}
+• Total Amount: ₹{totalAmount}
+• Outstanding Balance: ₹{balance}
+• Item Type: {itemType}
+
+We kindly request you to arrange payment at your earliest convenience. Your prompt attention to this matter would be greatly appreciated.
+
+Thank you for your cooperation and for choosing Swetha's Couture.
+
+Best regards,
+Swetha's Couture Team`
     },
     {
       id: 'ready-notification',
-      name: 'Ready for Pickup',
-      content: 'Great news {customerName}! Your order #{orderNumber} is ready for pickup. Please visit us at your convenience. Balance due: ₹{balance}'
+      name: 'Order Ready Notice',
+      content: `Dear {customerName},
+
+We are delighted to inform you that your order #{orderNumber} has been completed and is ready for collection.
+
+COLLECTION DETAILS:
+━━━━━━━━━━━━━━━━━━━━
+• Order Number: {orderNumber}
+• Item Type: {itemType}
+• Status: Ready for Pickup
+• Outstanding Balance: ₹{balance}
+
+Please visit us at your convenience during our business hours to collect your order. We trust that you will be pleased with the quality of our work.
+
+Thank you for choosing Swetha's Couture.
+
+Best regards,
+Swetha's Couture Team`
     },
     {
       id: 'delivery-confirmation',
       name: 'Delivery Confirmation',
-      content: 'Hi {customerName}, your order #{orderNumber} has been successfully delivered. Thank you for choosing Swetha\'s Couture! We hope you love your {itemType}.'
+      content: `Dear {customerName},
+
+We are pleased to confirm that your order #{orderNumber} has been successfully delivered.
+
+DELIVERY CONFIRMATION:
+━━━━━━━━━━━━━━━━━━━━
+• Order Number: {orderNumber}
+• Item Type: {itemType}
+• Delivery Status: Completed
+• Delivery Date: {orderDate}
+
+We trust that you are completely satisfied with your order. It has been our pleasure to serve you, and we look forward to your continued patronage.
+
+Thank you for choosing Swetha's Couture.
+
+Best regards,
+Swetha's Couture Team`
     }
   ]);
 

@@ -65,11 +65,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden; /* Prevent horizontal scrolling globally */
-  }
-  
-  html {
-    overflow-x: hidden; /* Prevent horizontal scrolling on html as well */
+    /* Allow horizontal scrolling for specific components like tables */
   }
 }
 
@@ -745,246 +741,143 @@
   }
 }
 
-/* Enhanced horizontal scroll tables */
-.table-horizontal-scroll {
+.table-horizontal-scroll::-webkit-scrollbar {
+  height: 12px;
+  background: transparent;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin: 0 8px;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-thumb {
+  background: #dee2e6;
+  border-radius: 6px;
+  border: 2px solid #f8f9fa;
+}
+
+.table-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #adb5bd;
+}
+
+/* Scroll indicator for better UX */
+.table-scroll-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 16px;
+  font-size: 0.75rem;
+  color: #6c757d;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Hide scroll hint on larger screens where it's not needed */
+@media (min-width: 1400px) {
+  .table-scroll-hint {
+    display: none;
+  }
+}
+
+/* Ensure action buttons in table cells don't wrap */
+.table-horizontal-scroll td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Allow specific content to wrap if needed */
+.table-horizontal-scroll .text-wrap {
+  white-space: normal;
+}
+
+/* Fix for orders page container to allow horizontal scrolling */
+.orders-page-container {
+  overflow-x: visible !important;
   width: 100%;
-  overflow-x: auto;
-  border-radius: 0.5rem;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
+}
+
+/* Override mobile layout overflow hidden for specific components */
+.enable-horizontal-scroll {
+  overflow-x: auto !important;
+  max-width: none !important;
+}
+
+/* Responsive table cell adjustments */
+.table-horizontal-scroll th,
+.table-horizontal-scroll td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.table-horizontal-scroll th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* Enhanced button spacing in action columns */
+.table-horizontal-scroll .action-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-width: fit-content;
+}
+
+.table-horizontal-scroll .action-buttons button {
+  flex-shrink: 0;
+}
+
+/* Dropdown override for action buttons */
+.table-horizontal-scroll select {
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+/* Prevent horizontal scrolling on most containers but allow for tables */
+.container, .mobile-page-wrapper, .container-responsive {
+  overflow-x: hidden;
+}
+
+/* Allow horizontal scrolling for the main layout content when it contains tables */
+main:has(.table-horizontal-scroll) {
+  overflow-x: visible !important;
+}
+
+/* Ensure page containers allow horizontal scrolling for their table children */
+.orders-page-container:has(.table-horizontal-scroll),
+.page-container:has(.table-horizontal-scroll) {
+  overflow-x: visible !important;
+}
+
+/* Enhanced table responsiveness and horizontal scrolling */
+.table-horizontal-scroll {
+  overflow-x: auto !important;
+  overflow-y: visible;
+  width: 100%;
+  max-width: 100vw !important;
   position: relative;
+  background: white;
+  border-radius: 8px;
+  /* Force enable horizontal scrolling */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .table-horizontal-scroll table {
   width: 100%;
-  min-width: 800px; /* Ensure minimum width for horizontal scrolling */
-  border-collapse: collapse;
+  min-width: 1200px; /* Ensure minimum width for horizontal scrolling */
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-/* Enhanced scroll indicators */
-.table-horizontal-scroll::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 20px;
-  background: linear-gradient(to left, hsl(var(--card)), transparent);
-  pointer-events: none;
-  z-index: 1;
+/* Override any parent overflow hidden for tables */
+.table-horizontal-scroll * {
+  box-sizing: border-box;
 }
-
-.table-horizontal-scroll::after {
-  content: 'Scroll →';
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.7;
-}
-
-@media (min-width: 1024px) {
-  .table-horizontal-scroll::before,
-  .table-horizontal-scroll::after {
-    display: none;
-  }
-  
-  .table-horizontal-scroll table {
-    min-width: 100%;
-  }
-}
-
-.table-horizontal-scroll::-webkit-scrollbar {
-  height: 8px;
-}
-
-.table-horizontal-scroll::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
-}
-
-.table-horizontal-scroll::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.4);
-  border-radius: 4px;
-}
-
-.table-horizontal-scroll::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.6);
-}
-
-/* Enhanced table cell responsiveness */
-.table-cell-responsive {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  position: relative;
-}
-
-@media (max-width: 640px) {
-  .table-cell-responsive {
-    max-width: 120px;
-  }
-}
-
-@media (max-width: 480px) {
-  .table-cell-responsive {
-    max-width: 100px;
-  }
-}
-
-.table-cell-responsive:hover {
-  overflow: visible;
-  white-space: normal;
-  position: relative;
-  z-index: 10;
-  background: hsl(var(--background));
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid hsl(var(--border));
-  max-width: none;
-}
-
-.dark .table-cell-responsive:hover {
-  background: hsl(var(--card));
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-
-/* Enhanced mobile form grids */
-.form-grid-responsive {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .form-grid-responsive {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-  }
-}
-
-.form-grid-responsive-3 {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-@media (min-width: 768px) {
-  .form-grid-responsive-3 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .form-grid-responsive-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* Enhanced container responsiveness */
-.container-responsive {
-  width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-@media (min-width: 640px) {
-  .container-responsive {
-    max-width: 640px;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .container-responsive {
-    max-width: 768px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .container-responsive {
-    max-width: 1024px;
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  .container-responsive {
-    max-width: 1280px;
-  }
-}
-
-@media (min-width: 1536px) {
-  .container-responsive {
-    max-width: 1536px;
-  }
-}
-
-/* Enhanced touch targets for mobile */
-@media (max-width: 640px) {
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .touch-friendly {
-    padding: 0.75rem;
-    margin: 0.25rem;
-  }
-}
-
-/* Enhanced overflow management */
-.prevent-horizontal-scroll {
-  overflow-x: hidden;
-  max-width: 100vw;
-}
-
-.safe-area-inset {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-}
-
-/* Enhanced mobile page layout */
-.mobile-page-layout {
-  min-height: 100vh;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  overflow-x: hidden;
-}
-
-.mobile-page-wrapper {
-  padding: 0.5rem;
-}
-
-@media (min-width: 640px) {
-  .mobile-page-wrapper {
-    padding: 1rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .mobile-page-wrapper {
-    padding: 1.5rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  .mobile-page-wrapper {
-    padding: 2rem;
-  }
-}
-
-/* ...existing code... */

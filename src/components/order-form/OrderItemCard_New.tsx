@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import StaffAssignment from '@/components/StaffAssignment';
 import RequiredMaterials from '@/components/RequiredMaterials';
 import { OrderItem, Staff, Material } from '@/types/orderTypes';
+import { getSizeSuggestions, getMadeForSuggestions, MadeForSuggestion } from '@/utils/customerHistoryUtils';
 
 interface OrderItemCardProps {
   item: OrderItem;
@@ -20,6 +21,7 @@ interface OrderItemCardProps {
   canRemove: boolean;
   staff: Staff[];
   materials: Material[];
+  customerName?: string; // Add customer name for history lookup
 }
 
 const OrderItemCard: React.FC<OrderItemCardProps> = ({
@@ -29,11 +31,16 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
   onRemove,
   canRemove,
   staff,
-  materials
+  materials,
+  customerName
 }) => {
   const [customSizeLabel, setCustomSizeLabel] = useState('');
   const [customSizeValue, setCustomSizeValue] = useState('');
   const [isExpanded, setIsExpanded] = useState(index === 0); // First item expanded by default
+  const [madeForSuggestions, setMadeForSuggestions] = useState<MadeForSuggestion[]>([]);
+  const [showMadeForSuggestions, setShowMadeForSuggestions] = useState(false);
+  const [sizeSuggestions, setSizeSuggestions] = useState<Record<string, string> | null>(null);
+  const [showSizeSuggestions, setShowSizeSuggestions] = useState(false);
 
   const itemTypes = [
     'Lehenga', 'Saree Blouse', 'Salwar Kameez', 'Kurti', 'Gown', 'Dress',
@@ -83,6 +90,47 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
     onUpdate(index, 'sizes', newSizes);
   };
 
+  // Load made for suggestions when customer name is available
+  useEffect(() => {
+    const loadMadeForSuggestions = async () => {
+      if (customerName && customerName.trim()) {
+        try {
+          const suggestions = await getMadeForSuggestions(customerName);
+          setMadeForSuggestions(suggestions);
+        } catch (error) {
+          console.error('Error loading made for suggestions:', error);
+        }
+      }
+    };
+    loadMadeForSuggestions();
+  }, [customerName]);
+
+  // Load size suggestions when item type or made for changes
+  useEffect(() => {
+    const loadSizeSuggestions = async () => {
+      if (customerName && item.category && item.madeFor) {
+        try {
+          const suggestions = await getSizeSuggestions(customerName, item.category, item.madeFor);
+          if (suggestions && Object.keys(suggestions).length > 0) {
+            setSizeSuggestions(suggestions);
+            setShowSizeSuggestions(true);
+          } else {
+            setSizeSuggestions(null);
+            setShowSizeSuggestions(false);
+          }
+        } catch (error) {
+          console.error('Error loading size suggestions:', error);
+          setSizeSuggestions(null);
+          setShowSizeSuggestions(false);
+        }
+      } else {
+        setSizeSuggestions(null);
+        setShowSizeSuggestions(false);
+      }
+    };
+    loadSizeSuggestions();
+  }, [customerName, item.category, item.madeFor]);
+
   const handleSizeChange = (sizeKey: string, value: string) => {
     const updatedSizes = { ...item.sizes, [sizeKey]: value };
     onUpdate(index, 'sizes', updatedSizes);
@@ -101,6 +149,24 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
     const updatedSizes = { ...item.sizes };
     delete updatedSizes[sizeKey];
     onUpdate(index, 'sizes', updatedSizes);
+  };
+
+  const applySizeSuggestions = () => {
+    if (sizeSuggestions) {
+      const updatedSizes = { ...item.sizes, ...sizeSuggestions };
+      onUpdate(index, 'sizes', updatedSizes);
+      setShowSizeSuggestions(false);
+    }
+  };
+
+  const dismissSizeSuggestions = () => {
+    setShowSizeSuggestions(false);
+    setSizeSuggestions(null);
+  };
+
+  const selectMadeForSuggestion = (madeFor: string) => {
+    onUpdate(index, 'madeFor', madeFor);
+    setShowMadeForSuggestions(false);
   };
 
   const currentSizeTemplate = getSizeTemplate(item.category);
@@ -151,14 +217,54 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
           <CardContent className="pt-0 space-y-6">
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div className="relative">
                 <Label htmlFor={`madeFor-${index}`}>Made For</Label>
                 <Input
                   id={`madeFor-${index}`}
                   value={item.madeFor}
-                  onChange={(e) => onUpdate(index, 'madeFor', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(index, 'madeFor', e.target.value);
+                    if (e.target.value.length > 0 && madeForSuggestions.length > 0) {
+                      setShowMadeForSuggestions(true);
+                    } else {
+                      setShowMadeForSuggestions(false);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (madeForSuggestions.length > 0) {
+                      setShowMadeForSuggestions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay hiding to allow clicking on suggestions
+                    setTimeout(() => setShowMadeForSuggestions(false), 200);
+                  }}
                   placeholder="Customer name"
                 />
+                
+                {/* Made For Suggestions */}
+                {showMadeForSuggestions && madeForSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {madeForSuggestions
+                      .filter(suggestion => 
+                        suggestion.name.toLowerCase().includes(item.madeFor.toLowerCase())
+                      )
+                      .slice(0, 5)
+                      .map((suggestion, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => selectMadeForSuggestion(suggestion.name)}
+                        >
+                          <div className="font-medium">{suggestion.name}</div>
+                          <div className="text-xs text-gray-500">
+                            Used {suggestion.frequency} time{suggestion.frequency !== 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor={`category-${index}`}>Item Type *</Label>
@@ -239,7 +345,48 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">Sizes & Measurements</Label>
+                  {showSizeSuggestions && sizeSuggestions && (
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={applySizeSuggestions}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        Apply Previous Sizes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={dismissSizeSuggestions}
+                        className="text-gray-500"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  )}
                 </div>
+                
+                {/* Size suggestion notice */}
+                {showSizeSuggestions && sizeSuggestions && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <p className="text-sm text-blue-700">
+                        Found previous measurements for <strong>{item.madeFor}</strong> - {item.category}
+                      </p>
+                    </div>
+                    <div className="mt-2 text-xs text-blue-600">
+                      {Object.entries(sizeSuggestions).map(([key, value]) => (
+                        <span key={key} className="inline-block mr-3">
+                          {key}: {value}"
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 {allSizeKeys.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

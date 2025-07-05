@@ -12,6 +12,7 @@ interface MultipleOrderItemsSectionProps {
   customerName: string;
   staff: Staff[];
   materials: Material[];
+  orderId?: string; // Optional orderId for existing orders
 }
 
 const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
@@ -19,7 +20,8 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
   setOrderItems,
   customerName,
   staff,
-  materials
+  materials,
+  orderId
 }) => {
   const addOrderItem = () => {
     // Initialize a new item with explicitly set category as an empty string
@@ -95,6 +97,8 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
             canRemove={orderItems.length > 1}
             staff={staff}
             materials={materials}
+            customerName={customerName}
+            orderId={orderId}
           />
         ))}
       </CardContent>

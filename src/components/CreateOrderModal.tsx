@@ -102,6 +102,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
     }
   };
 
+  // Customer selection handler for auto-fill
+  const handleCustomerSelect = (customer: any) => {
+    // Auto-fill basic customer info is already handled by CustomerInfoSection
+    // Here we could add additional logic for auto-filling sizes if needed
+    console.log('Customer selected:', customer.name);
+  };
+
   const resetForm = () => {
     reset();
     setOrderItems([{
@@ -195,9 +202,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
     try {
       const totalQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
+      // Find existing customer to get customerId
+      const existingCustomer = customers.find(c => 
+        c.name.toLowerCase() === data.customerName.toLowerCase()
+      );
+
       const baseOrderData = {
         orderId: editingOrder?.orderNumber || `ORD-${Date.now().toString().slice(-6)}`,
         orderNumber: editingOrder?.orderNumber || `ORD-${Date.now().toString().slice(-6)}`,
+        customerId: existingCustomer?.id || null,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail || '',
@@ -238,7 +251,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
         const docRef = await addDoc(collection(db, 'orders'), newOrderData);
 
         // Create customer if not exists or update existing customer with measurements
-        const existingCustomer = customers.find(c => c.name === data.customerName);
+        const existingCustomer = customers.find(c => 
+          c.name.toLowerCase() === data.customerName.toLowerCase()
+        );
         
         // Collect all measurements from order items
         const allMeasurements: Record<string, any> = {};
@@ -330,6 +345,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
             customers={customers}
             showCustomerSuggestions={showCustomerSuggestions}
             setShowCustomerSuggestions={setShowCustomerSuggestions}
+            onCustomerSelect={handleCustomerSelect}
           />
 
           {/* Multiple Order Items */}
@@ -339,6 +355,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
             customerName={customerNameValue}
             staff={staff}
             materials={materials}
+            orderId={editingOrder?.id}
           />
 
           {/* Footer Buttons */}

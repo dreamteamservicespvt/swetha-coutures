@@ -16,6 +16,7 @@ interface CustomerInfoSectionProps {
   customers: any[];
   showCustomerSuggestions: boolean;
   setShowCustomerSuggestions: (show: boolean) => void;
+  onCustomerSelect?: (customer: any) => void; // New callback for enhanced customer selection
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -25,7 +26,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
   customerNameValue,
   customers,
   showCustomerSuggestions,
-  setShowCustomerSuggestions
+  setShowCustomerSuggestions,
+  onCustomerSelect
 }) => {
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(customerNameValue?.toLowerCase() || '')
@@ -35,7 +37,13 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     setValue('customerName', customer.name);
     setValue('customerPhone', customer.phone || '');
     setValue('customerEmail', customer.email || '');
+    // Note: customerAddress field would need to be added to OrderFormData type
     setShowCustomerSuggestions(false);
+    
+    // Call the enhanced callback if provided
+    if (onCustomerSelect) {
+      onCustomerSelect(customer);
+    }
   };
 
   return (
@@ -62,15 +70,37 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
             
             {/* Customer Suggestions */}
             {showCustomerSuggestions && filteredCustomers.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
                 {filteredCustomers.slice(0, 5).map((customer) => (
                   <div
                     key={customer.id}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                    className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b last:border-b-0"
                     onClick={() => selectCustomer(customer)}
                   >
-                    <div className="font-medium">{customer.name}</div>
-                    <div className="text-sm text-gray-600">{customer.phone}</div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100">{customer.name}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{customer.phone}</div>
+                    {customer.email && (
+                      <div className="text-xs text-gray-500 dark:text-gray-500">{customer.email}</div>
+                    )}
+                    {customer.address && (
+                      <div className="text-xs text-gray-500 dark:text-gray-500 truncate">{customer.address}</div>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                        {customer.totalOrders || 0} orders
+                      </span>
+                      <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+                        ₹{(customer.totalSpent || 0).toLocaleString()}
+                      </span>
+                      <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">
+                        {customer.customerType || 'regular'}
+                      </span>
+                    </div>
+                    {customer.lastOrderDate && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Last order: {customer.lastOrderDate}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

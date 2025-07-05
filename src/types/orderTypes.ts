@@ -26,6 +26,9 @@ export interface Staff {
   phone: string;
   photo?: string;
   role?: string;
+  designation?: string;
+  billingRate?: number; // Rate charged to customers for this staff member's services
+  costRate?: number; // Cost to business (salary/hourly rate)
   activeOrdersCount?: number;
 }
 

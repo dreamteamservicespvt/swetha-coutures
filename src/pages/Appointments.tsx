@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Calendar as CalendarIcon, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, User } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, User, ExternalLink, Video } from 'lucide-react';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -32,6 +31,7 @@ interface Appointment {
   status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
   notes?: string;
   reminderSent?: boolean;
+  gmeetUrl?: string;
   createdAt: any;
 }
 
@@ -53,7 +53,8 @@ const Appointments = () => {
     appointmentTime: '',
     duration: '60',
     purpose: '',
-    notes: ''
+    notes: '',
+    gmeetUrl: ''
   });
 
   const appointmentPurposes = [
@@ -121,6 +122,7 @@ const Appointments = () => {
         duration: parseInt(formData.duration),
         purpose: formData.purpose,
         notes: formData.notes || undefined,
+        gmeetUrl: formData.gmeetUrl || undefined,
         status: 'scheduled' as const,
         reminderSent: false,
         ...(editingAppointment ? {} : { createdAt: serverTimestamp() })
@@ -163,7 +165,8 @@ const Appointments = () => {
       appointmentTime: '',
       duration: '60',
       purpose: '',
-      notes: ''
+      notes: '',
+      gmeetUrl: ''
     });
   };
 
@@ -178,7 +181,8 @@ const Appointments = () => {
       appointmentTime: appointment.appointmentTime || '',
       duration: appointment.duration?.toString() || '60',
       purpose: appointment.purpose || '',
-      notes: appointment.notes || ''
+      notes: appointment.notes || '',
+      gmeetUrl: appointment.gmeetUrl || ''
     });
     setIsDialogOpen(true);
   };
@@ -222,6 +226,37 @@ const Appointments = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const sendGmeetWhatsApp = (appointment: Appointment) => {
+    if (!appointment.customerPhone) {
+      toast({
+        title: "Error",
+        description: "Customer phone number not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const appointmentDate = appointment.appointmentDate?.toDate?.() || new Date(appointment.appointmentDate);
+    
+    let message = `Hi ${appointment.customerName || 'Customer'},\n\n`;
+    message += `Your appointment is scheduled for:\n`;
+    message += `📅 Date: ${format(appointmentDate, 'PPP')}\n`;
+    message += `⏰ Time: ${appointment.appointmentTime}\n`;
+    message += `📝 Purpose: ${appointment.purpose}\n`;
+    message += `⏱️ Duration: ${appointment.duration} minutes\n\n`;
+    
+    if (appointment.gmeetUrl) {
+      message += `🎥 Google Meet Link:\n${appointment.gmeetUrl}\n\n`;
+      message += `Please join the meeting at the scheduled time.\n\n`;
+    }
+    
+    message += `Looking forward to meeting with you!\n\n`;
+    message += `Best regards,\nSwetha Couture`;
+
+    const whatsappUrl = `https://wa.me/${appointment.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   if (!userData) {
@@ -391,6 +426,34 @@ const Appointments = () => {
               </div>
 
               <div>
+                <Label htmlFor="gmeetUrl">Google Meet URL (Optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="gmeetUrl"
+                    type="url"
+                    value={formData.gmeetUrl}
+                    onChange={(e) => setFormData({...formData, gmeetUrl: e.target.value})}
+                    placeholder="https://meet.google.com/..."
+                    className="flex-1"
+                  />
+                  {formData.gmeetUrl && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(formData.gmeetUrl, '_blank')}
+                      title="Test Google Meet link"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add a Google Meet link for virtual appointments
+                </p>
+              </div>
+
+              <div>
                 <Label htmlFor="notes">Notes (Optional)</Label>
                 <Textarea
                   id="notes"
@@ -514,6 +577,20 @@ const Appointments = () => {
                           <p className="responsive-text-xs text-gray-500 dark:text-gray-500">
                             Duration: {appointment?.duration || 0} minutes
                           </p>
+                          {appointment?.gmeetUrl && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <Video className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              <Button
+                                size="sm"
+                                variant="link"
+                                className="p-0 h-auto text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                onClick={() => window.open(appointment.gmeetUrl, '_blank')}
+                              >
+                                Join Google Meet
+                                <ExternalLink className="h-3 w-3 ml-1" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 mt-2 md:mt-0">
                           <Badge 
@@ -534,6 +611,18 @@ const Appointments = () => {
                         phone={appointment?.customerPhone}
                         message={`Hi ${appointment?.customerName}, this is regarding your appointment on ${format(appointmentDate, 'PPP')} at ${appointment?.appointmentTime}.`}
                       />
+                      {appointment?.gmeetUrl && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => sendGmeetWhatsApp(appointment)}
+                          className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                          title="Send appointment details with Google Meet link"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          <span className="hidden sm:inline ml-1">Meet Link</span>
+                        </Button>
+                      )}
                       <Select 
                         value={appointment?.status} 
                         onValueChange={(value) => updateStatus(appointment?.id, value)}

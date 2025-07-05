@@ -155,9 +155,7 @@ const InventoryTableView: React.FC<InventoryTableViewProps> = ({
               ))}
             </TableBody>
           </Table>
-          <div className="table-scroll-hint">
-            Scroll horizontally to view all columns
-          </div>
+         
         </div>
       </div>
 
@@ -239,9 +237,7 @@ const InventoryTableView: React.FC<InventoryTableViewProps> = ({
               ))}
             </TableBody>
           </Table>
-          <div className="table-scroll-hint">
-            Scroll horizontally to view all columns
-          </div>
+     
         </div>
       </div>
     </>

@@ -149,9 +149,9 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
           <CardTitle className="text-lg">Orders List</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {/* Horizontal scroll wrapper */}
-          <div className="overflow-x-auto w-full">
-            <table className="w-full min-w-[900px]">
+          {/* Horizontal scroll wrapper with enhanced scrolling */}
+          <div className="table-horizontal-scroll">
+            <table className="w-full min-w-[1200px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
@@ -216,62 +216,91 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
                           <span className="truncate">Delivery: {order.deliveryDate}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-1 flex-wrap gap-1">
+                      <td className="px-4 py-4 text-sm font-medium">
+                        <div className="action-buttons">
+                          {/* Primary Actions - Always visible */}
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleViewOrder(order)}
-                            className="text-xs min-w-[40px] h-8 hover:bg-blue-50 hover:border-blue-200"
-                            title="View Order"
+                            className="text-xs px-3 py-1.5 h-8 hover:bg-blue-50 hover:border-blue-200 text-blue-600"
+                            title="View Order Details"
                           >
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditOrder(order)}
-                            className="text-xs min-w-[40px] h-8 hover:bg-green-50 hover:border-green-200"
-                            title="Edit Order"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleBillClick(order)}
-                            className="text-blue-600 text-xs min-w-[40px] h-8 hover:bg-blue-50 hover:border-blue-200"
-                            title="Create Bill"
-                          >
-                            <Receipt className="h-3 w-3" />
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleSendWhatsApp(order)}
-                            className="text-green-600 text-xs min-w-[40px] h-8 hover:bg-green-50 hover:border-green-200"
-                            title="Send WhatsApp"
+                            className="text-green-600 text-xs px-3 py-1.5 h-8 hover:bg-green-50 hover:border-green-200"
+                            title="Send WhatsApp Message"
                           >
-                            <MessageSquare className="h-3 w-3" />
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            Message
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => window.open(`tel:${order.customerPhone}`)}
-                            className="text-xs min-w-[40px] h-8 hover:bg-gray-50 hover:border-gray-200"
-                            title="Call Customer"
-                          >
-                            <Phone className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteClick(order)}
-                            className="text-red-600 text-xs min-w-[40px] h-8 hover:bg-red-50 hover:border-red-200"
-                            title="Delete Order"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          
+                          {/* Secondary Actions - Show on larger screens */}
+                          <div className="hidden xl:contents">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditOrder(order)}
+                              className="text-xs px-2 py-1.5 h-8 hover:bg-green-50 hover:border-green-200 text-green-600"
+                              title="Edit Order"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleBillClick(order)}
+                              className="text-blue-600 text-xs px-2 py-1.5 h-8 hover:bg-blue-50 hover:border-blue-200"
+                              title="Create Bill"
+                            >
+                              <Receipt className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(`tel:${order.customerPhone}`)}
+                              className="text-xs px-2 py-1.5 h-8 hover:bg-gray-50 hover:border-gray-200 text-gray-600"
+                              title="Call Customer"
+                            >
+                              <Phone className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteClick(order)}
+                              className="text-red-600 text-xs px-2 py-1.5 h-8 hover:bg-red-50 hover:border-red-200"
+                              title="Delete Order"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+
+                          {/* Dropdown menu for medium screens */}
+                          <div className="xl:hidden">
+                            <select
+                              className="text-xs px-2 py-1 border rounded hover:bg-gray-50 min-w-[80px]"
+                              onChange={(e) => {
+                                const action = e.target.value;
+                                if (action === 'edit') handleEditOrder(order);
+                                else if (action === 'bill') handleBillClick(order);
+                                else if (action === 'call') window.open(`tel:${order.customerPhone}`);
+                                else if (action === 'delete') handleDeleteClick(order);
+                                e.target.value = ''; // Reset selection
+                              }}
+                              defaultValue=""
+                            >
+                              <option value="" disabled>More</option>
+                              <option value="edit">Edit</option>
+                              <option value="bill">Bill</option>
+                              <option value="call">Call</option>
+                              <option value="delete">Delete</option>
+                            </select>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -279,6 +308,7 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
                 })}
               </tbody>
             </table>
+           
           </div>
         </CardContent>
       </Card>

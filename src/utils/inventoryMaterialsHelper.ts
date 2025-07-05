@@ -141,3 +141,87 @@ export const restoreInventoryForBillItems = async (billItems: any[]): Promise<{
     };
   }
 };
+
+/**
+ * Handle inventory updates when a bill is edited
+ * This function calculates the difference between old and new quantities
+ */
+export const updateInventoryForBillEdit = async (
+  oldBillItems: any[],
+  newBillItems: any[]
+): Promise<{
+  success: boolean;
+  messages: string[];
+}> => {
+  const messages: string[] = [];
+  let success = true;
+  
+  try {
+    // Create maps for easier comparison
+    const oldItemsMap = new Map();
+    const newItemsMap = new Map();
+    
+    // Map old items by inventory ID
+    oldBillItems.forEach(item => {
+      if (item.inventoryId) {
+        oldItemsMap.set(item.inventoryId, item.quantity);
+      }
+    });
+    
+    // Map new items by inventory ID
+    newBillItems.forEach(item => {
+      if (item.inventoryId || (item.type === 'inventory' && item.sourceId)) {
+        const inventoryId = item.inventoryId || item.sourceId;
+        newItemsMap.set(inventoryId, item.quantity);
+      }
+    });
+    
+    // Calculate differences and update inventory
+    const allInventoryIds = new Set([...oldItemsMap.keys(), ...newItemsMap.keys()]);
+    
+    for (const inventoryId of allInventoryIds) {
+      const oldQuantity = oldItemsMap.get(inventoryId) || 0;
+      const newQuantity = newItemsMap.get(inventoryId) || 0;
+      const difference = newQuantity - oldQuantity;
+      
+      if (difference !== 0) {
+        const inventoryDoc = await getDoc(doc(db, 'inventory', inventoryId));
+        
+        if (!inventoryDoc.exists()) {
+          messages.push(`Inventory item not found: ${inventoryId}`);
+          success = false;
+          continue;
+        }
+        
+        const inventoryData = inventoryDoc.data();
+        const currentQuantity = inventoryData.quantity || 0;
+        const newInventoryQuantity = currentQuantity - difference; // Subtract because we're deducting from inventory
+        
+        if (newInventoryQuantity < 0) {
+          messages.push(`Insufficient stock for ${inventoryData.name}: need ${difference} more, have ${currentQuantity}`);
+          success = false;
+          continue;
+        }
+        
+        await updateDoc(doc(db, 'inventory', inventoryId), {
+          quantity: newInventoryQuantity,
+          updatedAt: new Date()
+        });
+        
+        if (difference > 0) {
+          messages.push(`Deducted additional ${difference} units of ${inventoryData.name}`);
+        } else {
+          messages.push(`Restored ${Math.abs(difference)} units of ${inventoryData.name}`);
+        }
+      }
+    }
+    
+    return { success, messages };
+  } catch (error) {
+    console.error('Error updating inventory for bill edit:', error);
+    return { 
+      success: false,
+      messages: ['Error updating inventory for bill edit']
+    };
+  }
+};

@@ -29,7 +29,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (adminOnly && userData?.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/staff/dashboard" replace />;
   }
 
   if (staffOnly && userData?.role !== 'staff') {

@@ -111,7 +111,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="mobile-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
@@ -121,7 +121,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Name and Phone - Responsive Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -144,7 +145,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          {/* Email and Customer Type - Responsive Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="email">Email (Optional)</Label>
               <Input
@@ -159,7 +161,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
               <Label htmlFor="customerType">Customer Type</Label>
               <select
                 id="customerType"
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={formData.customerType}
                 onChange={(e) => setFormData({...formData, customerType: e.target.value as 'regular' | 'premium' | 'vip'})}
               >
@@ -170,6 +172,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
             </div>
           </div>
 
+          {/* Address - Full Width */}
           <div>
             <Label htmlFor="address">Address</Label>
             <Textarea
@@ -181,7 +184,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* City and Pincode - Responsive Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="city">City</Label>
               <Input
@@ -202,6 +206,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
             </div>
           </div>
 
+          {/* Notes - Full Width */}
           <div>
             <Label htmlFor="notes">Notes</Label>
             <Textarea
@@ -213,11 +218,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
             />
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <Button type="button" variant="outline" onClick={onClose}>
+          {/* Action Buttons - Responsive */}
+          <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600">
+            <Button type="submit" className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600">
               {editingCustomer ? 'Update Customer' : 'Add Customer'}
             </Button>
           </div>

@@ -125,6 +125,8 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
   // Keep empty materialItems for compatibility
   const [materialItems, setMaterialItems] = useState<MaterialItem[]>([]);
+  // Enhanced bill items state
+  const [enhancedBillItems, setEnhancedBillItems] = useState<BillItem[]>([]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -132,8 +134,28 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     fetchOrders();
     fetchInventory();
     loadPaymentSettings(); // Load dynamic payment settings
+    
+    // Initialize with bill data if provided, otherwise use defaults
     if (bill) {
-      setFormData(bill);
+      setFormData({
+        ...formData,
+        ...bill,
+        // Ensure breakdown is never undefined
+        breakdown: bill.breakdown || {
+          fabric: 0,
+          stitching: 0,
+          accessories: 0,
+          customization: 0,
+          otherCharges: 0
+        },
+        // Ensure bankDetails is never undefined
+        bankDetails: bill.bankDetails || {
+          accountName: 'Swetha\'s Couture',
+          accountNumber: '',
+          ifsc: '',
+          bankName: ''
+        }
+      });
       setSelectedCustomer({
         id: bill.customerId || '',
         name: bill.customerName,
@@ -142,12 +164,32 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         address: bill.customerAddress || ''
       });
       
-      // Convert existing bill items to work items only
+      // Convert existing bill items to both enhanced bill items and legacy work items
       if (bill.items) {
         const work: WorkItem[] = [];
+        const enhancedItems: BillItem[] = [];
         
         bill.items.forEach(item => {
-          // Check if it's not a material item or convert all to work items
+          // Add to enhanced bill items (with full structure)
+          enhancedItems.push({
+            id: item.id,
+            type: item.type || 'service',
+            sourceId: item.sourceId,
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.rate,
+            cost: item.cost || 0,
+            amount: item.amount,
+            chargeType: item.chargeType,
+            materialName: item.materialName,
+            materialCost: item.materialCost,
+            inventoryId: item.inventoryId,
+            subItems: item.subItems || [],
+            parentId: item.parentId,
+            isSubItem: item.isSubItem || false
+          });
+          
+          // Also add to legacy work items for backward compatibility
           if (!item.inventoryId && !item.materialName) {
             work.push({
               id: item.id,
@@ -159,25 +201,45 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           }
         });
         
+        setEnhancedBillItems(enhancedItems);
         setWorkItems(work);
         setMaterialItems([]);
       }
+    } else {
+      // Ensure default initialization has proper breakdown
+      setFormData(prev => ({
+        ...prev,
+        breakdown: {
+          fabric: 0,
+          stitching: 0,
+          accessories: 0,
+          customization: 0,
+          otherCharges: 0
+        },
+        bankDetails: {
+          accountName: 'Swetha\'s Couture',
+          accountNumber: '',
+          ifsc: '',
+          bankName: ''
+        }
+      }));
     }
   }, [bill]);
 
-  // Recalculate totals when work or materials change
+  // Recalculate totals when enhanced bill items change
   useEffect(() => {
-    // Convert work items to bill items for calculation
-    const allItems: BillItem[] = [
+    // Use enhanced bill items if available, otherwise convert work items for backward compatibility
+    const allItems: BillItem[] = enhancedBillItems.length > 0 ? enhancedBillItems : [
       ...workItems.map(item => ({
         id: item.id,
+        type: 'service' as const,
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
+        cost: 0,
         amount: item.amount,
         chargeType: 'Work'
       }))
-      // Material items have been removed from the UI
     ];
 
     const totals = calculateBillTotals(
@@ -202,7 +264,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
       // Auto-set QR amount to balance if not manually set
       qrAmount: prev.qrAmount === 0 ? Math.max(0, balance) : prev.qrAmount
     }));
-  }, [workItems, formData.gstPercent, formData.discount, formData.discountType, formData.paidAmount]);
+  }, [enhancedBillItems, workItems, formData.gstPercent, formData.discount, formData.discountType, formData.paidAmount]);
 
   // Load dynamic payment settings from business settings
   const loadPaymentSettings = async () => {
@@ -296,8 +358,11 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
 
   // Calculate totals whenever relevant fields change
   useEffect(() => {
+    // Use enhanced bill items if available, otherwise fall back to legacy items
+    const itemsToUse = enhancedBillItems.length > 0 ? enhancedBillItems : formData.items || [];
+    
     const { subtotal, gstAmount, totalAmount } = calculateBillTotals(
-      formData.items || [],
+      itemsToUse,
       formData.breakdown || { fabric: 0, stitching: 0, accessories: 0, customization: 0, otherCharges: 0 },
       formData.gstPercent || 0,
       formData.discount || 0,
@@ -327,6 +392,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     }));
   }, [
     formData.items,
+    enhancedBillItems,
     formData.breakdown,
     formData.gstPercent,
     formData.discount,
@@ -376,7 +442,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
   // Generate UPI link and QR code
   const generateUpiAndQr = useCallback(async () => {
     if (formData.upiId && formData.customerName && (formData.qrAmount || 0) > 0 && formData.billId) {
-      const newUpiLink = generateUPILink(
+      const newUpiLink = await generateUPILink(
         formData.upiId,
         formData.customerName,
         formData.qrAmount || formData.balance || 0,
@@ -441,9 +507,11 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         orderId: selectedOrder.orderId,
         items: selectedOrder.items.map(item => ({
           id: uuidv4(),
+          type: 'service' as const,
           description: item.description || item.type,
           quantity: item.quantity || 1,
           rate: item.rate || 0,
+          cost: 0,
           amount: item.amount || 0,
           chargeType: 'Order Item'
         }))
@@ -509,38 +577,124 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     setLoading(true);
 
     try {
+      // Ensure UPI link and QR code are properly generated before saving
+      let finalUpiLink = '';
+      let finalQrCodeUrl = '';
+      
+      if (formData.upiId && formData.customerName && (formData.qrAmount || 0) > 0 && formData.billId) {
+        finalUpiLink = await generateUPILink(
+          formData.upiId,
+          formData.customerName,
+          formData.qrAmount || formData.balance || 0,
+          formData.billId,
+          orderDetails.orderName,
+          orderDetails.madeFor,
+          orderDetails.orderId,
+          orderDetails.deliveryDate
+        );
+        
+        try {
+          finalQrCodeUrl = await generateQRCodeDataURL(finalUpiLink);
+        } catch (error) {
+          console.error('Error generating QR code during save:', error);
+          finalQrCodeUrl = '';
+        }
+      }
+
+      // Ensure breakdown is properly initialized
+      const safeBreakdown: BillBreakdown = {
+        fabric: formData.breakdown?.fabric || 0,
+        stitching: formData.breakdown?.stitching || 0,
+        accessories: formData.breakdown?.accessories || 0,
+        customization: formData.breakdown?.customization || 0,
+        otherCharges: formData.breakdown?.otherCharges || 0
+      };
+
+      // Ensure bank details are properly initialized
+      const safeBankDetails: BankDetails = {
+        accountName: formData.bankDetails?.accountName || 'Swetha\'s Couture',
+        accountNumber: formData.bankDetails?.accountNumber || '',
+        ifsc: formData.bankDetails?.ifsc || '',
+        bankName: formData.bankDetails?.bankName || ''
+      };
+
       const billData: BillCreate = {
-        ...formData,
-        // Remove the custom ID generation - let Firestore handle the document ID
         billId: formData.billId!,
         customerId: formData.customerId || selectedCustomer?.id || '',
         customerName: formData.customerName!,
         customerPhone: formData.customerPhone!,
         customerEmail: formData.customerEmail || '',
         customerAddress: formData.customerAddress || '',
-        items: formData.items!,
-        breakdown: formData.breakdown!,
-        subtotal: formData.subtotal!,
-        gstPercent: formData.gstPercent!,
-        gstAmount: formData.gstAmount!,
-        discount: formData.discount!,
-        discountType: formData.discountType!,
-        totalAmount: formData.totalAmount!,
-        paidAmount: formData.paidAmount!,
-        balance: formData.balance!,
-        status: formData.status!,
-        date: formData.date!,
+        orderId: formData.orderId || '',
+        items: formData.items || [],
+        breakdown: safeBreakdown,
+        subtotal: formData.subtotal || 0,
+        gstPercent: formData.gstPercent || 0,
+        gstAmount: formData.gstAmount || 0,
+        discount: formData.discount || 0,
+        discountType: formData.discountType || 'amount',
+        totalAmount: formData.totalAmount || 0,
+        paidAmount: formData.paidAmount || 0,
+        balance: formData.balance || 0,
+        status: formData.status || 'unpaid',
+        date: formData.date || new Date(),
         dueDate: formData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 1000),
-        bankDetails: formData.bankDetails!,
-        upiId: formData.upiId!,
-        upiLink,
-        qrCodeUrl,
-        qrAmount: formData.qrAmount || formData.balance,
+        bankDetails: safeBankDetails,
+        upiId: formData.upiId || '',
+        upiLink: finalUpiLink,
+        qrCodeUrl: finalQrCodeUrl,
+        qrAmount: formData.qrAmount || formData.balance || 0,
         notes: formData.notes || '',
         createdAt: bill?.createdAt || new Date(),
         updatedAt: new Date()
       };
 
+      console.log('Saving bill data:', billData);
+      
+      // Handle inventory deduction for inventory items
+      if (billData.items && billData.items.length > 0) {
+        const inventoryItems = billData.items.filter(item => item.type === 'inventory' && item.sourceId);
+        
+        if (inventoryItems.length > 0) {
+          try {
+            // Import and use the inventory helper function
+            const { deductInventoryForBillItems } = await import('@/utils/inventoryMaterialsHelper');
+            
+            // Convert bill items to the format expected by the helper
+            const itemsForDeduction = inventoryItems.map(item => ({
+              inventoryId: item.sourceId,
+              materialName: item.description,
+              quantity: item.quantity
+            }));
+            
+            const deductionResult = await deductInventoryForBillItems(itemsForDeduction);
+            
+            if (!deductionResult.success) {
+              // Show warning but don't prevent bill creation
+              toast({
+                title: "Inventory Warning",
+                description: `Some inventory items couldn't be deducted: ${deductionResult.messages.join(', ')}`,
+                variant: "destructive"
+              });
+            } else {
+              // Show success message for inventory deduction
+              toast({
+                title: "Inventory Updated",
+                description: `Successfully deducted ${inventoryItems.length} inventory items`,
+              });
+            }
+          } catch (inventoryError) {
+            console.error('Error deducting inventory:', inventoryError);
+            // Continue with bill creation even if inventory deduction fails
+            toast({
+              title: "Inventory Warning",
+              description: "Bill saved but inventory couldn't be updated. Please check manually.",
+              variant: "destructive"
+            });
+          }
+        }
+      }
+      
       await onSave(billData);
       
       if (onSuccess) {
@@ -688,6 +842,8 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           materialItems={materialItems}
           onWorkItemsChange={setWorkItems}
           onMaterialItemsChange={setMaterialItems}
+          onBillItemsChange={setEnhancedBillItems}
+          initialBillItems={enhancedBillItems}
         />
 
         {/* Payment Calculation */}
@@ -756,7 +912,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, qrAmount: e.target.value === '' ? 0 : Number(e.target.value) }))}
                   min="0"
                   step="0.01"
-                  placeholder="Auto-set to balance amount"
+                  placeholder={`Auto-set to balance (₹${formData.balance || 0})`}
                   className="flex-1"
                 />
                 <Button 
@@ -764,12 +920,13 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
                   variant="outline"
                   onClick={() => setFormData(prev => ({ ...prev, qrAmount: prev.balance || 0 }))}
                   className="whitespace-nowrap"
+                  disabled={!formData.balance || formData.balance === 0}
                 >
                   Use Balance
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Amount for QR code payment. Edit as needed or click "Use Balance" to use the remaining amount.
+                Amount for QR code payment. Balance: ₹{formData.balance || 0}. Auto-updates with balance or edit manually.
               </p>
             </div>
 
@@ -845,10 +1002,10 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
               <div className="pt-4 border-t border-border">
                 <Button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     // Generate UPI link on-the-fly if needed
                     if (!formData.upiLink && formData.upiId && formData.customerName && formData.billId) {
-                      const dynamicUpiLink = generateUPILink(
+                      const dynamicUpiLink = await generateUPILink(
                         formData.upiId,
                         formData.customerName,
                         formData.qrAmount || formData.balance || 0,

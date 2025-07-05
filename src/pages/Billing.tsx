@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Table,
   TableBody,
@@ -35,7 +36,8 @@ import {
   FileText,
   Users,
   RefreshCw,
-  Printer
+  Printer,
+  X
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, where, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -44,7 +46,7 @@ import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
-import BillingDateFilter from '@/components/BillingDateFilter';
+import BillingFilters from '@/components/BillingFilters';
 
 const Billing = () => {
   const navigate = useNavigate();
@@ -53,11 +55,16 @@ const Billing = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
   const [filterDateRange, setFilterDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilterLoading, setDateFilterLoading] = useState(false);
+  
+  // Mobile date filter states
+  const [mobileSingleDate, setMobileSingleDate] = useState<Date | undefined>();
+  const [mobileStartDate, setMobileStartDate] = useState<Date | undefined>();
+  const [mobileEndDate, setMobileEndDate] = useState<Date | undefined>();
 
   // Calculate stats
   const stats = {
@@ -141,6 +148,50 @@ const Billing = () => {
     } finally {
       setDateFilterLoading(false);
     }
+  };
+
+  // Handle mobile date filter changes
+  const handleMobileDateChange = (type: 'single' | 'from' | 'to', date: Date | undefined) => {
+    if (type === 'single') {
+      setMobileSingleDate(date);
+      setMobileStartDate(undefined);
+      setMobileEndDate(undefined);
+      if (date) {
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+        handleDateFilter(start, end);
+      }
+    } else if (type === 'from') {
+      setMobileStartDate(date);
+      setMobileSingleDate(undefined);
+      if (date && mobileEndDate) {
+        const start = new Date(date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(mobileEndDate);
+        end.setHours(23, 59, 59, 999);
+        handleDateFilter(start, end);
+      }
+    } else if (type === 'to') {
+      setMobileEndDate(date);
+      setMobileSingleDate(undefined);
+      if (mobileStartDate && date) {
+        const start = new Date(mobileStartDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+        handleDateFilter(start, end);
+      }
+    }
+  };
+
+  // Clear mobile date filters
+  const clearMobileDateFilters = () => {
+    setMobileSingleDate(undefined);
+    setMobileStartDate(undefined);
+    setMobileEndDate(undefined);
+    handleDateFilter(null, null);
   };
 
   const filteredBills = bills.filter((bill: Bill) => {
@@ -253,7 +304,7 @@ const Billing = () => {
   const handlePrintBill = async (bill: Bill, event: React.MouseEvent) => {
     event.stopPropagation();
     try {
-      printBill(bill);
+      await printBill(bill);
       toast({
         title: "Print Ready",
         description: `Bill ${bill.billId} is ready for printing`,
@@ -355,7 +406,7 @@ const Billing = () => {
         </Card>
       </div>
 
-      {/* Filters - Enhanced Mobile Layout */}
+      {/* Filters - Compact Layout Matching Orders Page */}
       <Card className="border-0 shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3 sm:pb-4">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
@@ -363,63 +414,128 @@ const Billing = () => {
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 sm:space-y-6">
-          {/* Main Filters Row */}
-          <div className="form-grid-responsive-3">
-            {/* Search */}
-            <div className="space-y-2">
-              <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Search Bills</label>
-              <div className="relative">
-                <Search className="absolute left-2 sm:left-3 top-2 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
-                <Input
-                  placeholder="Search by bill ID, customer, phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 sm:pl-10 responsive-text-sm h-8 sm:h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-                />
+        <CardContent className="pb-4 sm:pb-6">
+          <div className="hidden lg:block">
+            {/* Desktop version - compact filters */}
+            <BillingFilters
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              filterDateRange={filterDateRange}
+              setFilterDateRange={setFilterDateRange}
+              onDateFilter={handleDateFilter}
+              dateFilterLoading={dateFilterLoading}
+            />
+          </div>
+          
+          {/* Mobile version - preserve the original stacked layout for better mobile experience */}
+          <div className="lg:hidden space-y-4 sm:space-y-6">
+            {/* Main Filters Row */}
+            <div className="form-grid-responsive-3">
+              {/* Search */}
+              <div className="space-y-2">
+                <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Search Bills</label>
+                <div className="relative">
+                  <Search className="absolute left-2 sm:left-3 top-2 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+                  <Input
+                    placeholder="Search by bill ID, customer, phone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 sm:pl-10 responsive-text-sm h-8 sm:h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  />
+                </div>
+              </div>
+  
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Payment Status</label>
+                <Select value={filterStatus} onValueChange={(value: 'all' | 'paid' | 'partial' | 'unpaid') => setFilterStatus(value)}>
+                  <SelectTrigger className="h-8 sm:h-10 responsive-text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectItem value="all" className="text-gray-900 dark:text-gray-100">All Status</SelectItem>
+                    <SelectItem value="paid" className="text-gray-900 dark:text-gray-100">✅ Paid</SelectItem>
+                    <SelectItem value="partial" className="text-gray-900 dark:text-gray-100">⚠️ Partial</SelectItem>
+                    <SelectItem value="unpaid" className="text-gray-900 dark:text-gray-100">❌ Unpaid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+  
+              {/* Date Range Filter */}
+              <div className="space-y-2">
+                <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Date Range</label>
+                <Select value={filterDateRange} onValueChange={(value: 'all' | 'today' | 'week' | 'month') => setFilterDateRange(value)}>
+                  <SelectTrigger className="h-8 sm:h-10 responsive-text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectItem value="all" className="text-gray-900 dark:text-gray-100">All Time</SelectItem>
+                    <SelectItem value="today" className="text-gray-900 dark:text-gray-100">Today</SelectItem>
+                    <SelectItem value="week" className="text-gray-900 dark:text-gray-100">This Week</SelectItem>
+                    <SelectItem value="month" className="text-gray-900 dark:text-gray-100">This Month</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            {/* Status Filter */}
-            <div className="space-y-2">
-              <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Payment Status</label>
-              <Select value={filterStatus} onValueChange={(value: 'all' | 'paid' | 'partial' | 'unpaid') => setFilterStatus(value)}>
-                <SelectTrigger className="h-8 sm:h-10 responsive-text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <SelectItem value="all" className="text-gray-900 dark:text-gray-100">All Status</SelectItem>
-                  <SelectItem value="paid" className="text-gray-900 dark:text-gray-100">✅ Paid</SelectItem>
-                  <SelectItem value="partial" className="text-gray-900 dark:text-gray-100">⚠️ Partial</SelectItem>
-                  <SelectItem value="unpaid" className="text-gray-900 dark:text-gray-100">❌ Unpaid</SelectItem>
-                </SelectContent>
-              </Select>
+  
+            {/* Date Filter Row - Clean and Compact */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 sm:pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  📅 Date Filter
+                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearMobileDateFilters}
+                  disabled={dateFilterLoading}
+                  className="text-red-600 hover:bg-red-50 h-7 px-2"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Pick Date */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">🗓️ Pick Date</label>
+                    <DatePicker
+                      date={mobileSingleDate}
+                      onDateChange={(date) => handleMobileDateChange('single', date)}
+                      placeholder="Pick"
+                      className="text-xs h-8"
+                    />
+                  </div>
+                  
+                  {/* From Date */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">📆 From Date</label>
+                    <DatePicker
+                      date={mobileStartDate}
+                      onDateChange={(date) => handleMobileDateChange('from', date)}
+                      placeholder="From"
+                      className="text-xs h-8"
+                    />
+                  </div>
+                  
+                  {/* To Date */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">📆 To Date</label>
+                    <DatePicker
+                      date={mobileEndDate}
+                      onDateChange={(date) => handleMobileDateChange('to', date)}
+                      placeholder="To"
+                      className="text-xs h-8"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {/* Date Range Filter */}
-            <div className="space-y-2">
-              <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Date Range</label>
-              <Select value={filterDateRange} onValueChange={(value: 'all' | 'today' | 'week' | 'month') => setFilterDateRange(value)}>
-                <SelectTrigger className="h-8 sm:h-10 responsive-text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <SelectItem value="all" className="text-gray-900 dark:text-gray-100">All Time</SelectItem>
-                  <SelectItem value="today" className="text-gray-900 dark:text-gray-100">Today</SelectItem>
-                  <SelectItem value="week" className="text-gray-900 dark:text-gray-100">This Week</SelectItem>
-                  <SelectItem value="month" className="text-gray-900 dark:text-gray-100">This Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Custom Date Filter Row */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 sm:pt-4">
-            <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 block">Custom Date Range</label>
-            <BillingDateFilter 
-              onDateFilter={handleDateFilter}
-              loading={dateFilterLoading}
-            />
           </div>
         </CardContent>
       </Card>
@@ -481,78 +597,133 @@ const Billing = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <>
-              {/* Grid View - Enhanced Mobile-First Design */}
-              <div className="responsive-card-grid">
+              {/* Grid View - Enhanced to Match Orders Page */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {filteredBills.map((bill: Bill) => {
                   const status = calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0);
                   return (
                     <Card 
                       key={bill.id} 
-                      className="hover:shadow-lg transition-all duration-200 cursor-pointer border-gray-200"
+                      className="hover:shadow-lg transition-all duration-200 border border-gray-200 rounded-xl shadow-sm hover:shadow-xl"
                       onClick={() => navigate(`/billing/${bill.id}`)}
                     >
                       <CardContent className="p-4">
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {/* Header */}
                           <div className="flex justify-between items-start">
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-purple-600 text-lg truncate">{bill.billId || 'N/A'}</h3>
-                              <p className="text-sm text-gray-500 truncate">
-                                {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
-                              </p>
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-bold text-lg">#{bill.billId?.slice(-4) || 'N/A'}</span>
+                                <Badge className={`${getBillStatusColor(status)} font-medium`} variant="outline">
+                                  {status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' : '❌ Unpaid'}
+                                </Badge>
+                              </div>
+                              <div className="text-xl font-semibold text-gray-900 truncate">{bill.customerName || 'N/A'}</div>
                             </div>
-                            <Badge className={getBillStatusColor(status)}>
-                              {status === 'paid' ? '✅' : status === 'partial' ? '⚠️' : '❌'}
-                            </Badge>
+                            <div className="text-right text-sm text-gray-500 ml-2 flex-shrink-0">
+                              <div className="flex items-center">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                <span className="text-xs">
+                                  {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
 
-                          {/* Customer Info */}
-                          <div className="space-y-1">
-                            <p className="font-medium text-gray-900 truncate">{bill.customerName || 'N/A'}</p>
-                            <p className="text-sm text-gray-500 truncate">{bill.customerPhone || 'N/A'}</p>
-                          </div>
-
-                          {/* Financial Info */}
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Total:</span>
-                              <span className="font-semibold">{formatCurrency(bill.totalAmount || 0)}</span>
+                          <div className="space-y-2">
+                            <div className="flex items-center text-sm text-gray-600">
+                              <span className="truncate flex-1">{bill.customerPhone || 'N/A'}</span>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Paid:</span>
-                              <span className="text-green-600">{formatCurrency(bill.paidAmount || 0)}</span>
+                            
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Total Amount:</span>
+                              <span className="font-medium text-xs">{formatCurrency(bill.totalAmount || 0)}</span>
                             </div>
-                            <div className="flex justify-between">
+                            
+                            <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600">Balance:</span>
-                              <span className={`font-semibold ${(bill.balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              <span className={`font-medium text-xs ${(bill.balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {formatCurrency(bill.balance || 0)}
                               </span>
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="grid grid-cols-2 gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/billing/${bill.id}`);
-                              }}
-                              className="hover:bg-blue-50 hover:border-blue-300 text-xs"
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => handleWhatsAppShare(bill, e)}
-                              className="hover:bg-green-50 hover:border-green-300 text-green-600 text-xs"
-                            >
-                              <MessageSquare className="h-3 w-3 mr-1" />
-                              Share
-                            </Button>
+                          {/* Action Buttons - Following Orders Page Pattern */}
+                          <div className="pt-3 border-t border-gray-100">
+                            {/* First Actions Row - 2 buttons */}
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/billing/${bill.id}`);
+                                }}
+                                className="text-xs flex items-center justify-center hover:bg-blue-50 hover:border-blue-200 transition-colors h-9 font-medium"
+                              >
+                                <Eye className="h-3.5 w-3.5 mr-1.5" />
+                                View
+                              </Button>
+                              
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/billing/${bill.id}/edit`);
+                                }}
+                                className="text-xs flex items-center justify-center hover:bg-green-50 hover:border-green-200 transition-colors h-9 font-medium"
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-1.5" />
+                                Edit
+                              </Button>
+                            </div>
+
+                            {/* Second Actions Row - 2 buttons */}
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => handlePrintBill(bill, e)}
+                                className="hover:bg-gray-50 hover:border-gray-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
+                              >
+                                <Printer className="h-3.5 w-3.5 mr-1.5" />
+                                Print
+                              </Button>
+                              
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => handleDownloadPDF(bill, e)}
+                                className="hover:bg-purple-50 hover:border-purple-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
+                              >
+                                <Download className="h-3.5 w-3.5 mr-1.5" />
+                                Download
+                              </Button>
+                            </div>
+
+                            {/* Third Actions Row - 2 buttons */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => handleWhatsAppShare(bill, e)}
+                                className="text-green-600 hover:bg-green-50 hover:border-green-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                                WhatsApp
+                              </Button>
+                              
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => handleDeleteBill(bill.id, e)}
+                                className="text-red-600 hover:bg-red-50 hover:border-red-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                Delete
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardContent>

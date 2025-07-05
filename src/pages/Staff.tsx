@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Users, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, Filter, X } from 'lucide-react';
+import { Plus, Users, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, Filter, X, UserCheck } from 'lucide-react';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ContactActions from '@/components/ContactActions';
+import StaffProfileModal from '@/components/StaffProfileModal';
 
 interface StaffMember {
   id: string;
@@ -54,6 +54,10 @@ const Staff = () => {
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Staff profile modal states
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [showStaffProfile, setShowStaffProfile] = useState(false);
   
   // Date filter states
   const [joinDateFrom, setJoinDateFrom] = useState<Date | undefined>();
@@ -205,29 +209,32 @@ const Staff = () => {
       const staffData = {
         name: formData.name,
         phone: formData.phone,
-        email: formData.email || undefined,
-        password,
         role: formData.role,
         department: formData.department,
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean),
-        salary: formData.salary ? parseFloat(formData.salary) : undefined,
-        address: formData.address || undefined,
-        upiId: formData.upiId || undefined,
-        bankName: formData.bankName || undefined,
-        accountNo: formData.accountNo || undefined,
-        ifsc: formData.ifsc || undefined,
-        salaryAmount: formData.salaryAmount ? parseFloat(formData.salaryAmount) : undefined,
-        salaryMode: formData.salaryMode,
-        emergencyContact: formData.emergencyContactName ? {
-          name: formData.emergencyContactName,
-          phone: formData.emergencyContactPhone,
-          relation: formData.emergencyContactRelation
-        } : undefined,
+        salary: formData.salary ? parseFloat(formData.salary) : 0,
+        salaryAmount: formData.salaryAmount ? parseFloat(formData.salaryAmount) : 0,
+        salaryMode: formData.salaryMode || 'monthly',
         status: 'active' as const,
         ...(editingStaff ? {} : { 
           joinDate: serverTimestamp(),
           createdAt: serverTimestamp() 
-        })
+        }),
+        // Only include optional fields if they have values
+        ...(formData.email && { email: formData.email }),
+        ...(formData.address && { address: formData.address }),
+        ...(formData.upiId && { upiId: formData.upiId }),
+        ...(formData.bankName && { bankName: formData.bankName }),
+        ...(formData.accountNo && { accountNo: formData.accountNo }),
+        ...(formData.ifsc && { ifsc: formData.ifsc }),
+        ...(formData.emergencyContactName && {
+          emergencyContact: {
+            name: formData.emergencyContactName,
+            phone: formData.emergencyContactPhone,
+            relation: formData.emergencyContactRelation
+          }
+        }),
+        password
       };
 
       if (editingStaff) {
@@ -784,10 +791,19 @@ const Staff = () => {
                 <div key={member.id} className="mobile-item-card">
                   {/* Desktop Layout */}
                   <div className="hidden md:flex items-center justify-between">
-                    <div className="flex-1">
+                    <div 
+                      className="flex-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-3 rounded-lg transition-colors"
+                      onClick={() => {
+                        setSelectedStaff(member);
+                        setShowStaffProfile(true);
+                      }}
+                    >
                       <div className="flex items-center space-x-4">
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.name || 'Unknown'}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.name || 'Unknown'}</h3>
+                            <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          </div>
                           <p className="text-sm text-gray-600 dark:text-gray-400">{member.role || 'No Role'} • {member.department || 'No Department'}</p>
                           {member.email && (
                             <p className="text-xs text-blue-600 dark:text-blue-400">Email: {member.email}</p>
@@ -816,7 +832,10 @@ const Staff = () => {
                         <Badge 
                           variant={member.status === 'active' ? 'default' : 'secondary'}
                           className="cursor-pointer"
-                          onClick={() => toggleStatus(member.id, member.status)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleStatus(member.id, member.status);
+                          }}
                         >
                           {member.status || 'Unknown'}
                         </Badge>
@@ -827,13 +846,23 @@ const Staff = () => {
                         phone={member.phone}
                         message={`Hi ${member.name}, this is regarding your work schedule.`}
                       />
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(member)}>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(member);
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        onClick={() => handleDelete(member.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(member.id);
+                        }}
                         className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -842,16 +871,28 @@ const Staff = () => {
                   </div>
 
                   {/* Mobile Layout */}
-                  <div className="md:hidden space-y-3">
+                  <div 
+                    className="md:hidden space-y-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-3 rounded-lg transition-colors"
+                    onClick={() => {
+                      setSelectedStaff(member);
+                      setShowStaffProfile(true);
+                    }}
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.name || 'Unknown'}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{member.name || 'Unknown'}</h3>
+                          <UserCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{member.role || 'No Role'} • {member.department || 'No Department'}</p>
                       </div>
                       <Badge 
                         variant={member.status === 'active' ? 'default' : 'secondary'}
                         className="cursor-pointer text-xs"
-                        onClick={() => toggleStatus(member.id, member.status)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleStatus(member.id, member.status);
+                        }}
                       >
                         {member.status || 'Unknown'}
                       </Badge>
@@ -890,13 +931,24 @@ const Staff = () => {
                         message={`Hi ${member.name}, this is regarding your work schedule.`}
                       />
                       <div className="responsive-actions">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(member)} className="h-8 w-8 p-0">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(member);
+                          }} 
+                          className="h-8 w-8 p-0"
+                        >
                           <Edit className="h-3 w-3" />
                         </Button>
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          onClick={() => handleDelete(member.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(member.id);
+                          }}
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -927,6 +979,145 @@ const Staff = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Staff Profile Modal */}
+      <Dialog open={showStaffProfile} onOpenChange={setShowStaffProfile}>
+        <DialogContent className="mobile-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Staff Profile
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4 sm:p-6">
+            {selectedStaff && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+                  <div className="flex-1 mb-4 sm:mb-0">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">{selectedStaff.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{selectedStaff.role} • {selectedStaff.department}</p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <Badge 
+                      variant={selectedStaff.status === 'active' ? 'default' : 'secondary'}
+                      className="cursor-pointer"
+                      onClick={() => toggleStatus(selectedStaff.id, selectedStaff.status)}
+                    >
+                      {selectedStaff.status}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">Phone Number</Label>
+                    <Input
+                      value={selectedStaff.phone}
+                      readOnly
+                      className="bg-gray-100 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">Email</Label>
+                    <Input
+                      value={selectedStaff.email}
+                      readOnly
+                      className="bg-gray-100 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">Skills</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(selectedStaff.skills || []).map((skill, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">Salary</Label>
+                    <Input
+                      value={`₹${selectedStaff.salaryAmount?.toLocaleString()}/${selectedStaff.salaryMode}`}
+                      readOnly
+                      className="bg-gray-100 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">Join Date</Label>
+                    <Input
+                      value={selectedStaff.joinDate?.toDate().toLocaleDateString()}
+                      readOnly
+                      className="bg-gray-100 dark:bg-gray-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Emergency Contact */}
+                {selectedStaff.emergencyContact && (
+                  <div className="mt-6">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-gray-100">Emergency Contact</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-gray-700 dark:text-gray-300">Name</Label>
+                        <Input
+                          value={selectedStaff.emergencyContact.name}
+                          readOnly
+                          className="bg-gray-100 dark:bg-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-700 dark:text-gray-300">Phone</Label>
+                        <Input
+                          value={selectedStaff.emergencyContact.phone}
+                          readOnly
+                          className="bg-gray-100 dark:bg-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-700 dark:text-gray-300">Relation</Label>
+                        <Input
+                          value={selectedStaff.emergencyContact.relation}
+                          readOnly
+                          className="bg-gray-100 dark:bg-gray-700"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 flex justify-end space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowStaffProfile(false)}
+                    className="btn-responsive"
+                  >
+                    Close
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      handleEdit(selectedStaff);
+                      setShowStaffProfile(false);
+                    }}
+                    className="btn-responsive bg-gradient-to-r from-blue-600 to-purple-600"
+                  >
+                    Edit Staff Member
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Staff Profile Modal */}
+      <StaffProfileModal
+        isOpen={showStaffProfile}
+        onClose={() => {
+          setShowStaffProfile(false);
+          setSelectedStaff(null);
+        }}
+        staff={selectedStaff}
+      />
       </div>
     </div>
   );

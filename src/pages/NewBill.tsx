@@ -19,6 +19,7 @@ import {
 } from '@/utils/billingUtils';
 import { toast } from '@/hooks/use-toast';
 import BillFormAdvanced from '@/components/BillFormAdvanced';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Customer {
   id: string;
@@ -27,6 +28,116 @@ interface Customer {
   email?: string;
   address?: string;
 }
+
+// Helper function to convert order items to enhanced bill items
+const convertOrderItemsToBillItems = async (orderData: any): Promise<BillItem[]> => {
+  const billItems: BillItem[] = [];
+
+  try {
+    // Handle order items (if exists)
+    if (orderData.items && Array.isArray(orderData.items)) {
+      orderData.items.forEach((item: any, index: number) => {
+        billItems.push({
+          id: `item-${index}`,
+          type: 'service', // Default to service, user can change via selector
+          description: `${item.category} - ${item.description}`.trim(),
+          quantity: item.quantity || 1,
+          rate: 0, // To be filled by user
+          cost: 0, // To be filled by user
+          amount: 0
+        });
+      });
+    }
+
+    // Handle required materials (if exists)
+    if (orderData.requiredMaterials && Array.isArray(orderData.requiredMaterials)) {
+      for (const material of orderData.requiredMaterials) {
+        if (material.inventoryId) {
+          // Try to get inventory details
+          try {
+            const inventoryDoc = await getDoc(doc(db, 'inventory', material.inventoryId));
+            if (inventoryDoc.exists()) {
+              const inventoryData = inventoryDoc.data();
+              billItems.push({
+                id: uuidv4(),
+                type: 'inventory',
+                sourceId: material.inventoryId,
+                description: inventoryData.name || material.materialName || 'Material',
+                quantity: material.quantity || 1,
+                rate: inventoryData.sellingPrice || (inventoryData.costPerUnit * 1.25), // 25% markup
+                cost: inventoryData.costPerUnit || 0,
+                amount: (inventoryData.sellingPrice || (inventoryData.costPerUnit * 1.25)) * (material.quantity || 1)
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching inventory details:', error);
+            // Fallback to generic material item
+            billItems.push({
+              id: uuidv4(),
+              type: 'service',
+              description: material.materialName || 'Material',
+              quantity: material.quantity || 1,
+              rate: 0,
+              cost: 0,
+              amount: 0
+            });
+          }
+        }
+      }
+    }
+
+    // Handle assigned staff (if exists)
+    if (orderData.assignedStaff && Array.isArray(orderData.assignedStaff)) {
+      for (const staffAssignment of orderData.assignedStaff) {
+        try {
+          const staffDoc = await getDoc(doc(db, 'staff', staffAssignment.id));
+          if (staffDoc.exists()) {
+            const staffData = staffDoc.data();
+            billItems.push({
+              id: uuidv4(),
+              type: 'staff',
+              sourceId: staffAssignment.id,
+              description: `${staffData.name} - ${staffData.role || staffData.designation || 'Staff'}`,
+              quantity: 1, // Can be hours or service instances
+              rate: staffData.billingRate || 0,
+              cost: staffData.costRate || 0,
+              amount: staffData.billingRate || 0
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching staff details:', error);
+        }
+      }
+    }
+
+    // If no items found, add a default item
+    if (billItems.length === 0) {
+      billItems.push({
+        id: 'item-0',
+        type: 'service',
+        description: orderData.itemType || 'Custom Item',
+        quantity: orderData.quantity || 1,
+        rate: 0,
+        cost: 0,
+        amount: 0
+      });
+    }
+
+    return billItems;
+  } catch (error) {
+    console.error('Error converting order items to bill items:', error);
+    // Return default item on error
+    return [{
+      id: 'item-0',
+      type: 'service',
+      description: orderData.itemType || 'Custom Item',
+      quantity: orderData.quantity || 1,
+      rate: 0,
+      cost: 0,
+      amount: 0
+    }];
+  }
+};
 
 const NewBill = () => {
   const { billId, orderId } = useParams();
@@ -147,27 +258,41 @@ const NewBill = () => {
         const orderData = { id: orderDoc.id, ...orderDoc.data() } as any;
         setOrderData(orderData);
         
-        // Convert order to bill format for preloading
+        // Convert order to bill format for preloading with enhanced BillItem structure
         const preloadedBill: Partial<Bill> = {
           customerName: orderData.customerName || '',
           customerPhone: orderData.customerPhone || '',
           customerEmail: orderData.customerEmail || '',
           customerAddress: orderData.customerAddress || '',
-          items: orderData.items?.map((item: any, index: number) => ({
-            id: `item-${index}`,
-            description: `${item.category} - ${item.description}`.trim(),
-            quantity: item.quantity || 1,
-            rate: 0, // To be filled by user
-            amount: 0,
-            notes: item.notes || ''
-          })) || [{
-            id: 'item-0',
-            description: orderData.itemType || 'Custom Item',
-            quantity: orderData.quantity || 1,
-            rate: 0,
-            amount: 0,
-            notes: ''
-          }],
+          items: await convertOrderItemsToBillItems(orderData),
+          breakdown: {
+            fabric: 0,
+            stitching: 0,
+            accessories: 0,
+            customization: 0,
+            otherCharges: 0
+          },
+          subtotal: 0,
+          gstPercent: 0,
+          gstAmount: 0,
+          discount: 0,
+          discountType: 'amount',
+          totalAmount: 0,
+          paidAmount: 0,
+          balance: 0,
+          status: 'unpaid',
+          date: new Date(),
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 1000),
+          bankDetails: {
+            accountName: 'Swetha\'s Couture',
+            accountNumber: '',
+            ifsc: '',
+            bankName: ''
+          },
+          upiId: '',
+          upiLink: '',
+          qrCodeUrl: '',
+          qrAmount: 0,
           notes: `Order #${orderData.orderNumber || orderData.orderId} - Delivery: ${orderData.deliveryDate}`,
           orderId: orderData.id
         };

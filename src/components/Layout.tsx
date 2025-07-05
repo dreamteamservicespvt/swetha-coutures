@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useBusinessSettings } from '@/components/BusinessSettingsProvider';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,7 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const { userData } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { settings: businessSettings } = useBusinessSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -62,18 +63,16 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Alterations', href: '/alterations', icon: Scissors },
     { name: 'Staff', href: '/staff', icon: UserPlus },
     { name: 'Income & Expenses', href: '/income-expenses', icon: DollarSign },
+    { name: 'ROI Analytics', href: '/roi-analytics', icon: BarChart3 },
     { name: 'Reports', href: '/reports', icon: BarChart3 },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   const staffMenuItems = [
     { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
-    { name: 'Orders', href: '/orders', icon: ShoppingBag },
-    { name: 'Billing', href: '/billing', icon: Receipt },
-    { name: 'Customers', href: '/customers', icon: Users },
-    { name: 'Inventory', href: '/inventory', icon: Package },
-    { name: 'Appointments', href: '/appointments', icon: Calendar },
-    { name: 'Alterations', href: '/alterations', icon: Scissors },
+    { name: 'My Orders', href: '/staff/orders', icon: ShoppingBag },
+    { name: 'My Alterations', href: '/staff/alterations', icon: Scissors },
+    { name: 'Inventory View', href: '/staff/inventory', icon: Package },
   ];
 
   const menuItems = isAdmin ? adminMenuItems : staffMenuItems;
@@ -137,7 +136,7 @@ const Layout = ({ children }: LayoutProps) => {
                     <span className="text-white font-bold text-sm">SC</span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-base font-semibold text-foreground truncate">Swetha's Couture</h1>
+                    <h1 className="text-base font-semibold text-foreground truncate">{businessSettings?.businessName || 'Business Management'}</h1>
                     <p className="text-xs text-muted-foreground truncate">{isAdmin ? 'Admin Panel' : 'Staff Panel'}</p>
                   </div>
                 </div>
@@ -151,7 +150,7 @@ const Layout = ({ children }: LayoutProps) => {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="font-medium">Swetha's Couture</p>
+                    <p className="font-medium">{businessSettings?.businessName || 'Business Management'}</p>
                     <p className="text-xs">{isAdmin ? 'Admin Panel' : 'Staff Panel'}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -350,7 +349,7 @@ const Layout = ({ children }: LayoutProps) => {
                   <span className="text-white font-bold text-sm">SC</span>
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">Swetha's Couture</h1>
+                  <h1 className="text-lg font-semibold text-foreground">{businessSettings?.businessName || 'Business Management'}</h1>
                   <p className="text-xs text-muted-foreground">{isAdmin ? 'Admin Panel' : 'Staff Panel'}</p>
                 </div>
               </div>
@@ -480,7 +479,7 @@ const Layout = ({ children }: LayoutProps) => {
           </header>
 
           {/* Page Content - Scrollable main content area */}
-          <main className="flex-1 p-6 lg:p-8 overflow-y-auto bg-background">
+          <main className="flex-1 p-6 lg:p-8 overflow-y-auto overflow-x-visible bg-background">
             <div className="min-h-full">
               {children}
             </div>

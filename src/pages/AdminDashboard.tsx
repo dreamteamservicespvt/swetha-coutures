@@ -27,11 +27,13 @@ import {
   Eye,
   ArrowUpRight,
   Building2,
-  PieChart
+  PieChart,
+  Calculator
 } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AttendanceManagement from '@/components/AttendanceManagement';
 import RoleAnalytics from '@/components/RoleAnalytics';
+import ROIDashboard from '@/components/ROIDashboard';
 
 interface ExtendedStats {
   totalOrders: number;
@@ -480,10 +482,11 @@ const AdminDashboard = () => {
 
       {/* Enhanced Tabs for different sections */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 p-1 bg-gray-100 rounded-lg">
+        <TabsList className="grid w-full grid-cols-5 p-1 bg-gray-100 rounded-lg">
           <TabsTrigger value="overview" className="rounded-md">Overview</TabsTrigger>
           <TabsTrigger value="attendance" className="rounded-md">Attendance</TabsTrigger>
           <TabsTrigger value="analytics" className="rounded-md">Analytics</TabsTrigger>
+          <TabsTrigger value="roi" className="rounded-md">ROI Dashboard</TabsTrigger>
           <TabsTrigger value="insights" className="rounded-md">Insights</TabsTrigger>
         </TabsList>
 
@@ -590,6 +593,10 @@ const AdminDashboard = () => {
 
         <TabsContent value="analytics">
           <RoleAnalytics />
+        </TabsContent>
+
+        <TabsContent value="roi">
+          <ROIDashboard />
         </TabsContent>
 
         <TabsContent value="insights">

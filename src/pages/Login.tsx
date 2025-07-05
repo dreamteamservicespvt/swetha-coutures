@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessSettings } from '@/components/BusinessSettingsProvider';
 import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const { user, login, createAdminUser } = useAuth();
+  const { settings: businessSettings } = useBusinessSettings();
 
   if (user) {
     return <Navigate to="/dashboard" replace />;
@@ -62,7 +63,7 @@ const Login = () => {
             <Scissors className="h-8 w-8 text-blue-600" />
           </div>
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Swetha's Couture
+            {businessSettings?.businessName || 'Business Management'}
           </CardTitle>
           <CardDescription className="text-gray-600">
             Premium Business Management System

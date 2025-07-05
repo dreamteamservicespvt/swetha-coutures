@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBusinessSettings } from '@/components/BusinessSettingsProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -93,6 +93,7 @@ interface SystemSettings {
 
 const AdminControlPanel = () => {
   const { userData } = useAuth();
+  const { settings: businessSettings } = useBusinessSettings();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('metrics');
   
@@ -111,10 +112,10 @@ const AdminControlPanel = () => {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
-    systemName: "Swetha's Couture",
-    adminEmail: 'admin@swethascouture.com',
-    primaryPhone: '+91 9876543210',
-    businessLocation: 'Bangalore, India',
+    systemName: businessSettings?.businessName || "Business Management System",
+    adminEmail: businessSettings?.businessEmail || 'admin@business.com',
+    primaryPhone: businessSettings?.businessPhone || '+91 9876543210',
+    businessLocation: businessSettings?.businessAddress?.split('\n').slice(-1)[0] || 'Business Location',
     enabledModules: {
       expenses: true,
       inventory: true,

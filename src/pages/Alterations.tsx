@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Scissors, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, Calendar } from 'lucide-react';
+import { Plus, Scissors, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, Calendar, Grid, List } from 'lucide-react';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -45,6 +45,7 @@ const Alterations = () => {
   const [editingAlteration, setEditingAlteration] = useState<Alteration | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -493,6 +494,28 @@ const Alterations = () => {
             <SelectItem value="delivered" className="text-gray-900 dark:text-gray-100">Delivered</SelectItem>
           </SelectContent>
         </Select>
+        
+        {/* View Toggle */}
+        <div className="flex rounded-lg border bg-white dark:bg-gray-800">
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+            className="rounded-r-none"
+            title="List View"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+            className="rounded-l-none"
+            title="Grid View"
+          >
+            <Grid className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Alterations List */}
@@ -503,8 +526,105 @@ const Alterations = () => {
         </CardHeader>
         <CardContent>
           {filteredAlterations.length > 0 ? (
-            <div className="space-y-4">
-              {filteredAlterations.map((alteration) => (
+            viewMode === 'grid' ? (
+              // Grid View
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredAlterations.map((alteration) => (
+                  <Card key={alteration?.id} className="hover:shadow-lg transition-shadow border-2 hover:border-primary/20">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <CardTitle className="text-lg font-bold truncate">
+                            {alteration?.customerName || 'Unknown Customer'}
+                          </CardTitle>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Badge variant="outline" className="text-xs">{alteration?.garmentType || 'N/A'}</Badge>
+                            <span>•</span>
+                            <span className="truncate">{alteration?.alterationType || 'N/A'}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col space-y-1 items-end">
+                          <Badge 
+                            variant={
+                              alteration?.status === 'delivered' ? 'default' : 
+                              alteration?.status === 'completed' ? 'secondary' : 
+                              alteration?.status === 'in-progress' ? 'outline' : 'outline'
+                            }
+                            className="text-xs"
+                          >
+                            {alteration?.status || 'Unknown'}
+                          </Badge>
+                          {(alteration?.urgency === 'rush' || alteration?.urgency === 'urgent') && (
+                            <Badge 
+                              variant={alteration?.urgency === 'rush' ? 'destructive' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {alteration?.urgency === 'rush' ? 'Rush' : 'Urgent'}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-3">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg p-3 space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Due Date:</span>
+                          <span className="font-medium">{alteration?.dueDate ? format(new Date(alteration.dueDate), 'PPP') : 'No date'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Cost:</span>
+                          <span className="font-bold text-primary">₹{(alteration?.estimatedCost || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      
+                      {alteration?.description && (
+                        <div className="border rounded-lg p-3">
+                          <p className="text-sm text-muted-foreground">{alteration.description}</p>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center pt-2">
+                        <ContactActions 
+                          phone={alteration?.customerPhone}
+                          message={`Hi ${alteration?.customerName}, your ${alteration?.garmentType} alteration is ${alteration?.status}. Due date: ${alteration?.dueDate ? format(new Date(alteration.dueDate), 'PPP') : 'TBD'}.`}
+                        />
+                        <div className="flex gap-2">
+                          <Select 
+                            value={alteration?.status} 
+                            onValueChange={(value) => updateStatus(alteration?.id, value)}
+                          >
+                            <SelectTrigger className="w-32 h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="received">Received</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="delivered">Delivered</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(alteration)} className="h-8 w-8 p-0">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDelete(alteration?.id)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              // List View
+              <div className="space-y-4">
+                {filteredAlterations.map((alteration) => (
                 <div key={alteration?.id} className="mobile-item-card">
                   {/* Desktop Layout */}
                   <div className="hidden md:flex items-center justify-between">
@@ -644,8 +764,9 @@ const Alterations = () => {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           ) : (
             <div className="text-center py-12">
               <Scissors className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />

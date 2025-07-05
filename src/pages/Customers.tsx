@@ -6,13 +6,15 @@ import { Input } from '@/components/ui/input';
 import { deleteDoc, doc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Search, MessageSquare } from 'lucide-react';
+import { Plus, Search, MessageSquare, Grid, List } from 'lucide-react';
 import CustomerFilters from '@/components/CustomerFilters';
 import CustomerProfilePanel from '@/components/CustomerProfilePanel';
 import BulkWhatsAppModal from '@/components/BulkWhatsAppModal';
+import CustomerWhatsAppModal from '@/components/CustomerWhatsAppModal';
 import CustomersStats from '@/components/CustomersStats';
 import CustomerForm from '@/components/CustomerForm';
 import CustomersTable from '@/components/CustomersTable';
+import CustomersGridView from '@/components/CustomersGridView';
 
 interface Customer {
   id: string;
@@ -43,6 +45,10 @@ const Customers = () => {
   const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [isBulkWhatsAppOpen, setIsBulkWhatsAppOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppCustomer, setWhatsAppCustomer] = useState<Customer | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid view
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string | null>(null);
 
   useEffect(() => {
     // Set up real-time listener for customers
@@ -75,14 +81,38 @@ const Customers = () => {
 
   useEffect(() => {
     // Apply search filter
-    const filtered = customers.filter(customer =>
-      (customer.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.phone || '').includes(searchTerm) ||
-      (customer.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.city || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    let filtered = customers;
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(customer =>
+        (customer.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.phone || '').includes(searchTerm) ||
+        (customer.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.city || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply payment status filter (based on outstanding balance)
+    if (paymentStatusFilter) {
+      filtered = filtered.filter(customer => {
+        const totalSpent = customer.totalSpent || 0;
+        // This is a simplified logic - in a real app, you'd fetch actual bill data
+        switch (paymentStatusFilter) {
+          case 'outstanding':
+            return totalSpent > 0 && (customer.totalOrders || 0) > 0;
+          case 'paid':
+            return totalSpent > 0;
+          case 'partial':
+            return totalSpent > 0 && (customer.totalOrders || 0) > 0;
+          default:
+            return true;
+        }
+      });
+    }
+    
     setFilteredCustomers(filtered);
-  }, [customers, searchTerm]);
+  }, [customers, searchTerm, paymentStatusFilter]);
 
   const handleDateFilter = (startDate: Date | null, endDate: Date | null) => {
     if (!startDate || !endDate) {
@@ -106,6 +136,14 @@ const Customers = () => {
 
     const filtered = customers.filter(customer => customer.customerType === type);
     setFilteredCustomers(filtered);
+  };
+
+  const handlePaymentStatusFilter = (status: string | null) => {
+    setPaymentStatusFilter(status);
+  };
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
   };
 
   const handleEdit = (customer: Customer) => {
@@ -176,6 +214,11 @@ const Customers = () => {
     setIsBulkWhatsAppOpen(true);
   };
 
+  const handleWhatsAppCustomer = (customer: Customer) => {
+    setWhatsAppCustomer(customer);
+    setIsWhatsAppModalOpen(true);
+  };
+
   const handleAddCustomer = () => {
     setEditingCustomer(null);
     setIsDialogOpen(true);
@@ -218,6 +261,28 @@ const Customers = () => {
             <p className="responsive-text-base text-muted-dark-fix">Manage customer information and relationships</p>
           </div>
         <div className="responsive-actions">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="h-8 px-2 sm:px-3"
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1 sm:ml-2">List</span>
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="h-8 px-2 sm:px-3"
+            >
+              <Grid className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1 sm:ml-2">Grid</span>
+            </Button>
+          </div>
+          
           {selectedCustomers.size > 0 && (
             <Button
               onClick={handleBulkWhatsApp}
@@ -225,7 +290,8 @@ const Customers = () => {
               className="btn-responsive bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800"
             >
               <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
-              Bulk WhatsApp ({selectedCustomers.size})
+              <span className="hidden sm:inline ml-1 sm:ml-2">Bulk WhatsApp ({selectedCustomers.size})</span>
+              <span className="sm:hidden">({selectedCustomers.size})</span>
             </Button>
           )}
           <Button 
@@ -233,7 +299,7 @@ const Customers = () => {
             onClick={handleAddCustomer}
           >
             <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-            Add Customer
+            <span className="hidden sm:inline ml-1 sm:ml-2">Add Customer</span>
           </Button>
         </div>
       </div>
@@ -245,35 +311,40 @@ const Customers = () => {
       <CustomerFilters
         onDateFilter={handleDateFilter}
         onTypeFilter={handleTypeFilter}
+        onPaymentStatusFilter={handlePaymentStatusFilter}
+        onSearch={handleSearch}
+        searchTerm={searchTerm}
         loading={loading}
       />
 
-      {/* Search */}
-      <div className="search-filter-container">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
-          <Input
-            placeholder="Search customers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 sm:pl-10 responsive-text-sm h-8 sm:h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-          />
-        </div>
-      </div>
-
-      {/* Customers Table */}
-      <CustomersTable
-        customers={filteredCustomers}
-        selectedCustomers={selectedCustomers}
-        isSelectAll={isSelectAll}
-        searchTerm={searchTerm}
-        onSelectCustomer={handleSelectCustomer}
-        onSelectAll={handleSelectAll}
-        onCustomerClick={handleCustomerClick}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAddCustomer={handleAddCustomer}
-      />
+      {/* Customers Display - Dynamic based on view mode */}
+      {viewMode === 'grid' ? (
+        <CustomersGridView
+          customers={filteredCustomers}
+          selectedCustomers={selectedCustomers}
+          searchTerm={searchTerm}
+          onSelectCustomer={handleSelectCustomer}
+          onCustomerClick={handleCustomerClick}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onWhatsApp={handleWhatsAppCustomer}
+          onAddCustomer={handleAddCustomer}
+        />
+      ) : (
+        <CustomersTable
+          customers={filteredCustomers}
+          selectedCustomers={selectedCustomers}
+          isSelectAll={isSelectAll}
+          searchTerm={searchTerm}
+          onSelectCustomer={handleSelectCustomer}
+          onSelectAll={handleSelectAll}
+          onCustomerClick={handleCustomerClick}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onWhatsApp={handleWhatsAppCustomer}
+          onAddCustomer={handleAddCustomer}
+        />
+      )}
 
       {/* Customer Form */}
       <CustomerForm
@@ -295,6 +366,18 @@ const Customers = () => {
         onClose={() => setIsBulkWhatsAppOpen(false)}
         phoneNumbers={selectedPhoneNumbers}
       />
+
+      {/* Individual Customer WhatsApp Modal */}
+      {whatsAppCustomer && (
+        <CustomerWhatsAppModal
+          customer={whatsAppCustomer}
+          isOpen={isWhatsAppModalOpen}
+          onClose={() => {
+            setIsWhatsAppModalOpen(false);
+            setWhatsAppCustomer(null);
+          }}
+        />
+      )}
       </div>
     </div>
   );
