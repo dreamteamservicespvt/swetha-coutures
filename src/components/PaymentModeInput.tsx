@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/billingUtils';
@@ -186,40 +187,43 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
                 <>
                   <div>
                     <Label htmlFor="cashAmount">Cash Amount</Label>
-                    <Input
+                    <NumberInput
                       id="cashAmount"
-                      type="number"
                       value={newCashAmount}
-                      onChange={(e) => setNewCashAmount(e.target.value)}
+                      onValueChange={(value) => setNewCashAmount(value)}
                       placeholder="0.00"
-                      min="0"
-                      step="0.01"
+                      min={0}
+                      step={0.01}
+                      allowEmpty={true}
+                      emptyValue={null}
                     />
                   </div>
                   <div>
                     <Label htmlFor="onlineAmount">Online Amount</Label>
-                    <Input
+                    <NumberInput
                       id="onlineAmount"
-                      type="number"
                       value={newOnlineAmount}
-                      onChange={(e) => setNewOnlineAmount(e.target.value)}
+                      onValueChange={(value) => setNewOnlineAmount(value)}
                       placeholder="0.00"
-                      min="0"
-                      step="0.01"
+                      min={0}
+                      step={0.01}
+                      allowEmpty={true}
+                      emptyValue={null}
                     />
                   </div>
                 </>
               ) : (
                 <div className="md:col-span-2">
                   <Label htmlFor="paymentAmount">Amount</Label>
-                  <Input
+                  <NumberInput
                     id="paymentAmount"
-                    type="number"
                     value={newPaymentAmount}
-                    onChange={(e) => setNewPaymentAmount(e.target.value)}
+                    onValueChange={(value) => setNewPaymentAmount(value)}
                     placeholder="0.00"
-                    min="0"
-                    step="0.01"
+                    min={0}
+                    step={0.01}
+                    allowEmpty={true}
+                    emptyValue={null}
                   />
                 </div>
               )}

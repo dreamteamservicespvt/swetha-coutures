@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+import { NumberInput } from '@/components/ui/number-input';
 import { Plus, ChevronDown, Star, Clock } from 'lucide-react';
 import { WorkDescription, getWorkDescriptions, addWorkDescription, updateWorkDescriptionUsage, getMostUsedWorkDescriptions } from '@/utils/workDescriptions';
 import { toast } from '@/hooks/use-toast';
@@ -281,11 +282,15 @@ const WorkDescriptionInput: React.FC<WorkDescriptionInputProps> = ({
                             </div>
                             <div>
                               <Label className="text-xs">Default Rate (₹)</Label>
-                              <Input
-                                type="number"
+                              <NumberInput
                                 value={newRate}
-                                onChange={(e) => setNewRate(e.target.value === '' ? '' : Number(e.target.value))}
-                                placeholder="0"
+                                onChange={(value) => setNewRate(value || 0)}
+                                min={0}
+                                step={0.01}
+                                decimals={2}
+                                allowEmpty={false}
+                                emptyValue={0}
+                                placeholder="0.00"
                                 className="text-sm mt-1"
                               />
                             </div>

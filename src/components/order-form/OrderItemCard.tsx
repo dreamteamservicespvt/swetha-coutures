@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -450,12 +451,14 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
               </div>
               <div>
                 <Label htmlFor={`quantity-${index}`}>Quantity</Label>
-                <Input
+                <NumberInput
                   id={`quantity-${index}`}
-                  type="number"
-                  min="1"
                   value={item.quantity}
-                  onChange={(e) => onUpdate(index, 'quantity', parseInt(e.target.value) || 1)}
+                  onChange={(value) => onUpdate(index, 'quantity', value || 1)}
+                  min={1}
+                  allowEmpty={false}
+                  emptyValue={1}
+                  placeholder="1"
                 />
               </div>
               <div>

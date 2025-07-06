@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, AlertTriangle, Edit3 } from 'lucide-react';
@@ -207,7 +208,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
   // UPI and QR code generation
   const generateUpiLinkAndQrCode = useCallback(async () => {
     if (upiId && customerName && qrAmount && billIdState) {
-      const newUpiLink = generateUPILink(upiId, customerName, qrAmount, billIdState);
+      const newUpiLink = await generateUPILink(upiId, customerName, qrAmount, billIdState);
       setUpiLink(newUpiLink);
       try {
         const qrCodeDataURL = await generateQRCodeDataURL(newUpiLink);
@@ -239,7 +240,9 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
       quantity: 1,
       rate: 0,
       amount: 0,
-      chargeType: ''
+      chargeType: '',
+      type: 'service',
+      cost: 0
     }]);
   };
 
@@ -504,30 +507,33 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
                     
                     <div>
                       <Label className="text-sm">Qty</Label>
-                      <Input
-                        type="number"
+                      <NumberInput
                         value={item.quantity}
-                        onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                        min="1"
+                        onChange={(value) => updateItem(item.id, 'quantity', value?.toString() || '1')}
+                        min={1}
+                        allowEmpty={false}
+                        emptyValue={1}
+                        placeholder="1"
                       />
                     </div>
                     
                     <div>
                       <Label className="text-sm">Rate</Label>
-                      <Input
-                        type="number"
+                      <NumberInput
                         value={item.rate}
-                        onChange={(e) => updateItem(item.id, 'rate', e.target.value)}
-                        min="0"
-                        step="0.01"
+                        onChange={(value) => updateItem(item.id, 'rate', value?.toString() || '0')}
+                        min={0}
+                        step={0.01}
+                        allowEmpty={false}
+                        emptyValue={0}
+                        placeholder="0.00"
                       />
                     </div>
                     
                     <div className="flex items-end gap-2">
                       <div className="flex-1">
                         <Label className="text-sm">Amount</Label>
-                        <Input
-                          type="number"
+                        <NumberInput
                           value={item.amount}
                           readOnly
                           className="bg-white font-medium text-purple-600"
@@ -560,13 +566,15 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm">GST (%)</Label>
-                <Input
-                  type="number"
+                <NumberInput
                   value={gstPercent}
-                  onChange={(e) => setGstPercent(Number(e.target.value))}
-                  min="0"
-                  max="100"
-                  step="0.01"
+                  onChange={(value) => setGstPercent(value || 0)}
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  allowEmpty={false}
+                  emptyValue={0}
+                  placeholder="0.00"
                 />
               </div>
               <div className="space-y-2">
@@ -583,22 +591,26 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
               </div>
               <div className="space-y-2">
                 <Label className="text-sm">Discount {discountType === 'percentage' ? '(%)' : '(₹)'}</Label>
-                <Input
-                  type="number"
+                <NumberInput
                   value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
+                  onChange={(value) => setDiscount(value || 0)}
+                  min={0}
+                  step={0.01}
+                  allowEmpty={false}
+                  emptyValue={0}
+                  placeholder="0.00"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm">Paid Amount</Label>
-                <Input
-                  type="number"
+                <NumberInput
                   value={paidAmount}
-                  onChange={(e) => setPaidAmount(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
+                  onChange={(value) => setPaidAmount(value || 0)}
+                  min={0}
+                  step={0.01}
+                  allowEmpty={false}
+                  emptyValue={0}
+                  placeholder="0.00"
                   className={validationErrors.paidAmount ? 'border-red-500' : ''}
                 />
                 {validationErrors.paidAmount && (
@@ -644,12 +656,14 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
             <div className="space-y-3">
               <Label className="text-sm">QR Amount (for payment)</Label>
               <div className="flex gap-2">
-                <Input
-                  type="number"
+                <NumberInput
                   value={qrAmount}
-                  onChange={(e) => setQrAmount(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
+                  onChange={(value) => setQrAmount(value || 0)}
+                  min={0}
+                  step={0.01}
+                  allowEmpty={false}
+                  emptyValue={0}
+                  placeholder="0.00"
                   className="flex-1"
                 />
                 <Button
@@ -751,11 +765,13 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
             </div>
             <div className="space-y-2">
               <Label>Initial Stock</Label>
-              <Input
-                type="number"
+              <NumberInput
                 value={newItemStock}
-                onChange={(e) => setNewItemStock(Number(e.target.value))}
-                min="0"
+                onChange={(value) => setNewItemStock(value || 0)}
+                min={0}
+                allowEmpty={false}
+                emptyValue={0}
+                placeholder="Enter initial stock"
               />
             </div>
             <div className="flex justify-end gap-3">

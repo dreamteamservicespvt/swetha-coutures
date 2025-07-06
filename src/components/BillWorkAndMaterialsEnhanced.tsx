@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -371,12 +372,13 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
             <Label htmlFor={`item-qty-${item.id}`} className="text-sm font-medium text-gray-700">
               Quantity *
             </Label>
-            <Input
+            <NumberInput
               id={`item-qty-${item.id}`}
-              type="number"
               value={item.quantity}
-              onChange={(e) => updateBillItem(item.id, 'quantity', Number(e.target.value))}
-              min="1"
+              onChange={(value) => updateBillItem(item.id, 'quantity', value || 1)}
+              min={1}
+              allowEmpty={false}
+              emptyValue={1}
               className="mt-1 bg-white"
               required
             />
@@ -387,13 +389,15 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
             <Label htmlFor={`item-rate-${item.id}`} className="text-sm font-medium text-gray-700">
               Rate (₹) *
             </Label>
-            <Input
+            <NumberInput
               id={`item-rate-${item.id}`}
-              type="number"
               value={item.rate === 0 ? '' : item.rate}
-              onChange={(e) => updateBillItem(item.id, 'rate', e.target.value === '' ? 0 : Number(e.target.value))}
-              min="0"
-              step="0.01"
+              onChange={(value) => updateBillItem(item.id, 'rate', value || 0)}
+              min={0}
+              step={0.01}
+              decimals={2}
+              allowEmpty={false}
+              emptyValue={0}
               className="mt-1 bg-white"
               placeholder="Enter rate"
               required

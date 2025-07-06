@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -570,13 +571,14 @@ const EditableItemSelector: React.FC<EditableItemSelectorProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="itemQuantity">Quantity *</Label>
-                    <Input
+                    <NumberInput
                       id="itemQuantity"
-                      type="number"
                       value={newItemDetails.quantity}
-                      onChange={(e) => setNewItemDetails(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                      onChange={(value) => setNewItemDetails(prev => ({ ...prev, quantity: value || 0 }))}
                       placeholder="Initial stock"
-                      min="0"
+                      min={0}
+                      allowEmpty={false}
+                      emptyValue={0}
                     />
                   </div>
                   <div>
@@ -593,26 +595,30 @@ const EditableItemSelector: React.FC<EditableItemSelectorProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="itemCost">Unit Cost (₹) *</Label>
-                    <Input
+                    <NumberInput
                       id="itemCost"
-                      type="number"
                       value={newItemDetails.cost}
-                      onChange={(e) => setNewItemDetails(prev => ({ ...prev, cost: Number(e.target.value) }))}
+                      onChange={(value) => setNewItemDetails(prev => ({ ...prev, cost: value || 0 }))}
                       placeholder="Cost per unit"
-                      min="0"
-                      step="0.01"
+                      min={0}
+                      step={0.01}
+                      decimals={2}
+                      allowEmpty={false}
+                      emptyValue={0}
                     />
                   </div>
                   <div>
                     <Label htmlFor="itemRate">Selling Price (₹)</Label>
-                    <Input
+                    <NumberInput
                       id="itemRate"
-                      type="number"
                       value={newItemDetails.rate}
-                      onChange={(e) => setNewItemDetails(prev => ({ ...prev, rate: Number(e.target.value) }))}
+                      onChange={(value) => setNewItemDetails(prev => ({ ...prev, rate: value || 0 }))}
                       placeholder="Auto-calculated if empty"
-                      min="0"
-                      step="0.01"
+                      min={0}
+                      step={0.01}
+                      decimals={2}
+                      allowEmpty={true}
+                      emptyValue={0}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       Leave empty for 25% markup on cost

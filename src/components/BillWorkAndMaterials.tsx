@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -427,29 +428,17 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                 <Label htmlFor={`item-qty-mobile-${item.id}`} className="text-sm font-medium text-gray-700">
                   Quantity *
                 </Label>
-                <Input
+                <NumberInput
                   id={`item-qty-mobile-${item.id}`}
-                  type="number"
-                  value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity.toString()}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '') {
-                      // Don't update on empty string to prevent NaN
-                      return;
-                    }
-                    const numValue = parseInt(value);
-                    if (!isNaN(numValue) && numValue > 0) {
-                      updateBillItem(item.id, 'quantity', numValue);
+                  value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity}
+                  onChange={(value) => {
+                    if (value !== null && value > 0) {
+                      updateBillItem(item.id, 'quantity', value);
                     }
                   }}
-                  onBlur={(e) => {
-                    // Ensure we have a valid value on blur
-                    const value = e.target.value;
-                    if (value === '' || isNaN(parseInt(value)) || parseInt(value) <= 0) {
-                      updateBillItem(item.id, 'quantity', 1);
-                    }
-                  }}
-                  min="1"
+                  min={1}
+                  allowEmpty={false}
+                  emptyValue={1}
                   className={getValidationClasses(item, 'quantity')}
                   required
                 />
@@ -458,32 +447,20 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                 <Label htmlFor={`item-rate-mobile-${item.id}`} className="text-sm font-medium text-gray-700">
                   Rate (₹) *
                 </Label>
-                <Input
+                <NumberInput
                   id={`item-rate-mobile-${item.id}`}
-                  type="number"
-                  value={item.rate == null || item.rate === 0 || isNaN(item.rate) ? '' : item.rate.toString()}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '') {
-                      // Don't update on empty string to prevent NaN
-                      return;
-                    }
-                    const numValue = parseFloat(value);
-                    if (!isNaN(numValue) && numValue >= 0) {
-                      updateBillItem(item.id, 'rate', numValue);
+                  value={item.rate == null || item.rate === 0 || isNaN(item.rate) ? '' : item.rate}
+                  onChange={(value) => {
+                    if (value !== null && value > 0) {
+                      updateBillItem(item.id, 'rate', value);
                     }
                   }}
-                  onBlur={(e) => {
-                    // Ensure we have a valid value on blur
-                    const value = e.target.value;
-                    if (value === '' || isNaN(parseFloat(value))) {
-                      updateBillItem(item.id, 'rate', 0);
-                    }
-                  }}
-                  min="0"
-                  step="0.01"
+                  min={0.01}
+                  step={0.01}
+                  decimals={2}
+                  allowEmpty={false}
+                  emptyValue={0.01}
                   className={getValidationClasses(item, 'rate')}
-                  placeholder="Enter rate"
                   required
                 />
               </div>
@@ -624,29 +601,17 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               <Label htmlFor={`item-qty-${item.id}`} className="text-sm font-medium text-gray-700">
                 Quantity *
               </Label>
-              <Input
+              <NumberInput
                 id={`item-qty-${item.id}`}
-                type="number"
-                value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity.toString()}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '') {
-                    // Don't update on empty string to prevent NaN
-                    return;
-                  }
-                  const numValue = parseInt(value);
-                  if (!isNaN(numValue) && numValue > 0) {
-                    updateBillItem(item.id, 'quantity', numValue);
+                value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity}
+                onChange={(value) => {
+                  if (value !== null && value > 0) {
+                    updateBillItem(item.id, 'quantity', value);
                   }
                 }}
-                onBlur={(e) => {
-                  // Ensure we have a valid value on blur
-                  const value = e.target.value;
-                  if (value === '' || isNaN(parseInt(value)) || parseInt(value) <= 0) {
-                    updateBillItem(item.id, 'quantity', 1);
-                  }
-                }}
-                min="1"
+                min={1}
+                allowEmpty={false}
+                emptyValue={1}
                 className={`mt-1 ${getValidationClasses(item, 'quantity')}`}
                 required
               />
@@ -657,30 +622,19 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               <Label htmlFor={`item-rate-${item.id}`} className="text-sm font-medium text-gray-700">
                 Rate (₹) *
               </Label>
-              <Input
+              <NumberInput
                 id={`item-rate-${item.id}`}
-                type="number"
-                value={item.rate == null || item.rate === 0 || isNaN(item.rate) ? '' : item.rate.toString()}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '') {
-                    // Don't update on empty string to prevent NaN
-                    return;
-                  }
-                  const numValue = parseFloat(value);
-                  if (!isNaN(numValue) && numValue >= 0) {
-                    updateBillItem(item.id, 'rate', numValue);
+                value={item.rate == null || item.rate === 0 || isNaN(item.rate) ? '' : item.rate}
+                onChange={(value) => {
+                  if (value !== null && value >= 0) {
+                    updateBillItem(item.id, 'rate', value);
                   }
                 }}
-                onBlur={(e) => {
-                  // Ensure we have a valid value on blur
-                  const value = e.target.value;
-                  if (value === '' || isNaN(parseFloat(value))) {
-                    updateBillItem(item.id, 'rate', 0);
-                  }
-                }}
-                min="0"
-                step="0.01"
+                min={0}
+                step={0.01}
+                decimals={2}
+                allowEmpty={false}
+                emptyValue={0}
                 className={`mt-1 ${getValidationClasses(item, 'rate')}`}
                 placeholder="Enter rate"
                 required

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1044,26 +1045,29 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>GST % (Optional)</Label>
-                  <Input
-                    type="number"
-                    value={formData.gstPercent === 0 ? '' : formData.gstPercent}
-                    onChange={(e) => setFormData(prev => ({ ...prev, gstPercent: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                    min="0"
-                    max="30"
-                    step="0.1"
+                  <NumberInput
+                    value={formData.gstPercent === 0 ? null : formData.gstPercent}
+                    onChange={(value) => setFormData(prev => ({ ...prev, gstPercent: value || 0 }))}
+                    min={0}
+                    max={30}
+                    step={0.1}
+                    allowEmpty={true}
+                    emptyValue={0}
                     placeholder="Enter GST %"
                   />
-                </div>              <div>
-                <Label>Discount (₹)</Label>
-                <Input
-                  type="number"
-                  value={formData.discount === 0 ? '' : formData.discount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, discount: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                  min="0"
-                  step="0.01"
-                  placeholder="Enter discount amount"
-                />
-              </div>
+                </div>
+                <div>
+                  <Label>Discount (₹)</Label>
+                  <NumberInput
+                    value={formData.discount === 0 ? null : formData.discount}
+                    onChange={(value) => setFormData(prev => ({ ...prev, discount: value || 0 }))}
+                    min={0}
+                    step={0.01}
+                    allowEmpty={true}
+                    emptyValue={0}
+                    placeholder="Enter discount amount"
+                  />
+                </div>
             </div>
           </CardContent>
         </Card>
@@ -1093,12 +1097,13 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
             <div>
               <Label>QR Code Amount (₹)</Label>
               <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={formData.qrAmount === 0 ? '' : formData.qrAmount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, qrAmount: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                  min="0"
-                  step="0.01"
+                <NumberInput
+                  value={formData.qrAmount === 0 ? null : formData.qrAmount}
+                  onChange={(value) => setFormData(prev => ({ ...prev, qrAmount: value || 0 }))}
+                  min={0}
+                  step={0.01}
+                  allowEmpty={true}
+                  emptyValue={0}
                   placeholder={`Auto-set to balance (₹${formData.balance || 0})`}
                   className="flex-1"
                 />

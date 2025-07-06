@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -728,13 +729,15 @@ const Inventory = () => {
                 <div className="form-grid-responsive-3">
                   <div>
                     <Label htmlFor="quantity">Quantity</Label>
-                    <Input
+                    <NumberInput
                       id="quantity"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                      value={formData.quantity ? Number(formData.quantity) : ''}
+                      onChange={(value) => setFormData({...formData, quantity: value?.toString() || ''})}
+                      min={0}
+                      step={0.01}
+                      decimals={2}
+                      allowEmpty={false}
+                      emptyValue={0}
                       placeholder="Enter quantity"
                       required
                     />
@@ -754,13 +757,15 @@ const Inventory = () => {
                   </div>
                   <div>
                     <Label htmlFor="reorderLevel">Reorder Level</Label>
-                    <Input
+                    <NumberInput
                       id="reorderLevel"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.reorderLevel}
-                      onChange={(e) => setFormData({...formData, reorderLevel: e.target.value})}
+                      value={formData.reorderLevel ? Number(formData.reorderLevel) : ''}
+                      onChange={(value) => setFormData({...formData, reorderLevel: value?.toString() || ''})}
+                      min={0}
+                      step={0.01}
+                      decimals={2}
+                      allowEmpty={false}
+                      emptyValue={0}
                       placeholder="Enter reorder level"
                       required
                     />
@@ -769,13 +774,15 @@ const Inventory = () => {
 
                 <div>
                   <Label htmlFor="costPerUnit">Cost per Unit (₹)</Label>
-                  <Input
+                  <NumberInput
                     id="costPerUnit"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.costPerUnit}
-                    onChange={(e) => setFormData({...formData, costPerUnit: e.target.value})}
+                    value={formData.costPerUnit ? Number(formData.costPerUnit) : ''}
+                    onChange={(value) => setFormData({...formData, costPerUnit: value?.toString() || ''})}
+                    min={0}
+                    step={0.01}
+                    decimals={2}
+                    allowEmpty={false}
+                    emptyValue={0}
                     placeholder="Enter unit cost"
                     required
                   />

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { NumberInput } from '@/components/ui/number-input';
 import { Trash2, Plus, Package } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -193,22 +194,26 @@ const MultipleItemsSection: React.FC<MultipleItemsSectionProps> = ({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label>Price (₹) *</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                          <NumberInput
                             value={item.price}
-                            onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)}
-                            placeholder="0"
+                            onChange={(value) => updateItem(index, 'price', value || 0)}
+                            min={0}
+                            step={0.01}
+                            decimals={2}
+                            allowEmpty={false}
+                            emptyValue={0}
+                            placeholder="0.00"
                           />
                         </div>
                         <div>
                           <Label>Quantity *</Label>
-                          <Input
-                            type="number"
-                            min="1"
+                          <NumberInput
                             value={item.quantity}
-                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                            onChange={(value) => updateItem(index, 'quantity', value || 1)}
+                            min={1}
+                            allowEmpty={false}
+                            emptyValue={1}
+                            placeholder="1"
                           />
                         </div>
                       </div>

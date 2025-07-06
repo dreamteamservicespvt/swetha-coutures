@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -319,13 +320,15 @@ const Expenses = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="amount">Amount (₹)</Label>
-                  <Input
+                  <NumberInput
                     id="amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
                     value={formData.amount}
-                    onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
+                    onChange={(value) => setFormData({...formData, amount: value || 0})}
+                    min={0}
+                    step={0.01}
+                    decimals={2}
+                    allowEmpty={false}
+                    emptyValue={0}
                     placeholder="0.00"
                     required
                   />

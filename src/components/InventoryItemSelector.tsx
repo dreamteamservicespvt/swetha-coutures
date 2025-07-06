@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -181,22 +182,27 @@ const InventoryItemSelector = ({
             </div>
             <div className="space-y-2">
               <Label>Price per Unit (₹)</Label>
-              <Input
-                type="number"
+              <NumberInput
                 value={newItemPrice}
-                onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                min="0"
+                onChange={(value) => setNewItemPrice(value || 0)}
+                min={0}
+                step={0.01}
+                decimals={2}
+                allowEmpty={false}
+                emptyValue={0}
                 placeholder="Enter price per unit"
               />
             </div>
             <div className="space-y-2">
               <Label>Initial Stock *</Label>
-              <Input
-                type="number"
+              <NumberInput
                 value={newItemStock}
-                onChange={(e) => setNewItemStock(Number(e.target.value))}
-                min="0"
+                onChange={(value) => setNewItemStock(value || 0)}
+                min={0}
+                allowEmpty={false}
+                emptyValue={0}
                 placeholder="Enter initial stock quantity"
+                required
               />
             </div>
             <div className="flex justify-end gap-3">

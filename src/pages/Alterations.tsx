@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -376,13 +377,15 @@ const Alterations = () => {
                 </div>
                 <div>
                   <Label htmlFor="estimatedCost">Estimated Cost (₹)</Label>
-                  <Input
+                  <NumberInput
                     id="estimatedCost"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.estimatedCost}
-                    onChange={(e) => setFormData({...formData, estimatedCost: e.target.value})}
+                    value={formData.estimatedCost ? Number(formData.estimatedCost) : ''}
+                    onChange={(value) => setFormData({...formData, estimatedCost: value?.toString() || ''})}
+                    min={0}
+                    step={0.01}
+                    decimals={2}
+                    allowEmpty={false}
+                    emptyValue={0}
                     placeholder="Enter cost"
                     required
                   />

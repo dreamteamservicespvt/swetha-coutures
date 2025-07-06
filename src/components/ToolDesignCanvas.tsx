@@ -190,6 +190,58 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
         }
       });
 
+      // Make objects interactive and selectable
+      canvas.on('object:added', (e) => {
+        try {
+          const obj = e.target;
+          if (obj && !(obj as any).isGrid) {
+            obj.set({
+              selectable: true,
+              evented: true,
+              hasControls: true,
+              hasBorders: true,
+              borderColor: '#3b82f6',
+              cornerColor: '#3b82f6',
+              cornerSize: 8,
+              transparentCorners: false,
+              borderScaleFactor: 2,
+              cornerStyle: 'circle',
+              padding: 5
+            });
+            
+            // Enhanced hover effects
+            obj.on('mouseover', () => {
+              if (activeTool === 'select' && !canvas.isDrawingMode) {
+                obj.set({
+                  borderColor: '#1d4ed8',
+                  cornerColor: '#1d4ed8'
+                });
+                canvas.renderAll();
+              }
+            });
+            
+            obj.on('mouseout', () => {
+              if (activeTool === 'select' && !canvas.isDrawingMode) {
+                obj.set({
+                  borderColor: '#3b82f6',
+                  cornerColor: '#3b82f6'
+                });
+                canvas.renderAll();
+              }
+            });
+            
+            // Enhanced double-click behavior
+            obj.on('mousedblclick', () => {
+              if (obj.type === 'textbox') {
+                (obj as Textbox).enterEditing();
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error in object:added:', error);
+        }
+      });
+
       // Save state after modifications
       canvas.on('object:modified', () => {
         try {
@@ -231,13 +283,19 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
             return;
           }
 
-          // Handle left-click for other drawing tools
-          if (activeTool === 'select') return;
+          // Handle selection tool
+          if (activeTool === 'select') {
+            // Let fabric.js handle selection naturally
+            return;
+          }
           
           const target = options.target;
           
-          // Don't start drawing if clicking on an existing object
-          if (target && !(target as any).isGrid) return;
+          // Don't start drawing if clicking on an existing object (unless it's a grid line)
+          if (target && !(target as any).isGrid) {
+            // If we're in a drawing tool and clicking on an object, don't start drawing
+            return;
+          }
 
           const pointer = canvas.getPointer(options.e);
           if (!pointer) return;
@@ -254,14 +312,14 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               shape = new Rect({
                 left: origX,
                 top: origY,
-                width: 0,
-                height: 0,
+                width: 1,
+                height: 1,
                 fill: fillColor,
                 stroke: strokeColor,
                 strokeWidth: strokeWidth,
                 opacity: opacity / 100,
-                rx: 5,
-                ry: 5
+                rx: 0,
+                ry: 0
               });
               canvas.add(shape);
               break;
@@ -275,8 +333,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
                 stroke: strokeColor,
                 strokeWidth: strokeWidth,
                 opacity: opacity / 100,
-                originX: 'left',
-                originY: 'top'
+                originX: 'center',
+                originY: 'center'
               });
               canvas.add(shape);
               break;
@@ -297,7 +355,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               break;
               
             case 'text':
-              const textShape = new Textbox('Double click to edit', {
+              const textShape = new Textbox('Click to edit text', {
                 left: origX,
                 top: origY,
                 fontFamily: fontFamily,
@@ -306,16 +364,21 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
                 fill: fillColor,
                 opacity: opacity / 100,
                 editable: true,
-                width: 200
+                width: 200,
+                splitByGrapheme: false,
+                textAlign: 'left'
               });
               canvas.add(textShape);
               canvas.setActiveObject(textShape);
-              // Start editing mode for text
+              
+              // Start editing mode for text immediately
               setTimeout(() => {
                 if (textShape && textShape.type === 'textbox') {
                   (textShape as Textbox).enterEditing();
+                  (textShape as Textbox).selectAll();
                 }
               }, 100);
+              
               isDown = false;
               setIsDrawing(false);
               saveCanvasState(canvas);
@@ -353,11 +416,18 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               
             case 'circle':
               const circle = shape as Circle;
-              const radius = Math.sqrt(Math.pow(currentX - origX, 2) + Math.pow(currentY - origY, 2)) / 2;
+              const deltaX = currentX - origX;
+              const deltaY = currentY - origY;
+              const radius = Math.sqrt(deltaX * deltaX + deltaY * deltaY) / 2;
+              
+              // Calculate center position for the circle
+              const centerX = (origX + currentX) / 2;
+              const centerY = (origY + currentY) / 2;
+              
               circle.set({
                 radius: Math.max(radius, 1),
-                left: origX - radius,
-                top: origY - radius
+                left: centerX,
+                top: centerY
               });
               break;
               
@@ -532,18 +602,36 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     try {
       if (!obj) return;
 
+      // Update fill color
       if (obj.fill && typeof obj.fill === 'string') {
         setFillColor(obj.fill);
       }
-      if (obj.stroke && typeof obj.stroke === 'string') {
+      
+      // Update stroke color - handle groups (arrows) specially
+      if (obj.type === 'group') {
+        const group = obj as Group;
+        const firstObject = group.getObjects()[0];
+        if (firstObject && firstObject.stroke && typeof firstObject.stroke === 'string') {
+          setStrokeColor(firstObject.stroke);
+        }
+        if (firstObject && firstObject.strokeWidth) {
+          setStrokeWidth(firstObject.strokeWidth);
+        }
+      } else if (obj.stroke && typeof obj.stroke === 'string') {
         setStrokeColor(obj.stroke);
       }
+      
+      // Update stroke width
       if (obj.strokeWidth) {
         setStrokeWidth(obj.strokeWidth);
       }
-      if (obj.opacity) {
+      
+      // Update opacity
+      if (obj.opacity !== undefined) {
         setOpacity(Math.round(obj.opacity * 100));
       }
+      
+      // Update text properties
       if (obj.type === 'textbox' || obj.type === 'text') {
         const textObj = obj as Textbox;
         if (textObj.fontSize) setFontSize(textObj.fontSize);
@@ -601,6 +689,12 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     
     loadCanvasState(fabricCanvas, prevState.state);
     setHistoryIndex(prevIndex);
+    
+    toast({
+      title: "Undo",
+      description: "Last action undone.",
+      duration: 1000,
+    });
   };
 
   // Redo functionality
@@ -612,6 +706,12 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     
     loadCanvasState(fabricCanvas, nextState.state);
     setHistoryIndex(nextIndex);
+    
+    toast({
+      title: "Redo",
+      description: "Action redone.",
+      duration: 1000,
+    });
   };
 
   // Delete selected objects
@@ -619,12 +719,21 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     if (!fabricCanvas) return;
     
     const activeObjects = fabricCanvas.getActiveObjects();
+    if (activeObjects.length === 0) return;
+    
+    const count = activeObjects.length;
     activeObjects.forEach(obj => {
       fabricCanvas.remove(obj);
     });
     fabricCanvas.discardActiveObject();
     fabricCanvas.renderAll();
     saveCanvasState(fabricCanvas);
+    
+    toast({
+      title: "Objects Deleted",
+      description: `${count} object(s) deleted successfully.`,
+      duration: 1500,
+    });
   };
 
   // Copy selected objects
@@ -634,38 +743,164 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     const activeObjects = fabricCanvas.getActiveObjects();
     if (activeObjects.length === 0) return;
 
-    const copies = activeObjects.map(obj => {
-      return new Promise((resolve) => {
+    const promises = activeObjects.map(obj => {
+      return new Promise<fabric.Object>((resolve) => {
         obj.clone().then((cloned: fabric.Object) => {
           cloned.set({
-            left: (cloned.left || 0) + 20,
-            top: (cloned.top || 0) + 20
+            left: (obj.left || 0) + 20,
+            top: (obj.top || 0) + 20
           });
           resolve(cloned);
         });
       });
     });
 
-    Promise.all(copies).then((clonedObjects) => {
+    Promise.all(promises).then((clonedObjects) => {
       clonedObjects.forEach(cloned => {
-        fabricCanvas.add(cloned as fabric.Object);
+        fabricCanvas.add(cloned);
       });
+      
+      // Select the new objects
+      if (clonedObjects.length === 1) {
+        fabricCanvas.setActiveObject(clonedObjects[0]);
+      } else {
+        const selection = new fabric.ActiveSelection(clonedObjects, {
+          canvas: fabricCanvas,
+        });
+        fabricCanvas.setActiveObject(selection);
+      }
+      
       fabricCanvas.renderAll();
       saveCanvasState(fabricCanvas);
+      
+      toast({
+        title: "Objects Copied",
+        description: `${clonedObjects.length} object(s) copied successfully.`,
+        duration: 1500,
+      });
     });
   };
 
-  // Arrange objects (bring to front, send to back, etc.)
+  // Professional canvas features
   const bringToFront = () => {
     if (!fabricCanvas || !selectedObject) return;
     fabricCanvas.bringObjectToFront(selectedObject);
     fabricCanvas.renderAll();
     saveCanvasState(fabricCanvas);
+    toast({
+      title: "Layer Changed",
+      description: "Object brought to front.",
+      duration: 1500,
+    });
   };
 
   const sendToBack = () => {
     if (!fabricCanvas || !selectedObject) return;
     fabricCanvas.sendObjectToBack(selectedObject);
+    fabricCanvas.renderAll();
+    saveCanvasState(fabricCanvas);
+    toast({
+      title: "Layer Changed",
+      description: "Object sent to back.",
+      duration: 1500,
+    });
+  };
+
+  const bringForward = () => {
+    if (!fabricCanvas || !selectedObject) return;
+    fabricCanvas.bringObjectForward(selectedObject);
+    fabricCanvas.renderAll();
+    saveCanvasState(fabricCanvas);
+    toast({
+      title: "Layer Changed",
+      description: "Object brought forward.",
+      duration: 1500,
+    });
+  };
+
+  const sendBackward = () => {
+    if (!fabricCanvas || !selectedObject) return;
+    fabricCanvas.sendObjectBackwards(selectedObject);
+    fabricCanvas.renderAll();
+    saveCanvasState(fabricCanvas);
+    toast({
+      title: "Layer Changed",
+      description: "Object sent backward.",
+      duration: 1500,
+    });
+  };
+
+  const duplicateSelected = () => {
+    if (!fabricCanvas) return;
+    
+    const activeObjects = fabricCanvas.getActiveObjects();
+    if (activeObjects.length === 0) return;
+
+    const promises = activeObjects.map(obj => {
+      return new Promise<fabric.Object>((resolve) => {
+        obj.clone().then((cloned: fabric.Object) => {
+          cloned.set({
+            left: (obj.left || 0) + 20,
+            top: (obj.top || 0) + 20,
+          });
+          resolve(cloned);
+        });
+      });
+    });
+
+    Promise.all(promises).then((clonedObjects) => {
+      clonedObjects.forEach(cloned => {
+        fabricCanvas.add(cloned);
+      });
+      
+      // Select the duplicated objects
+      if (clonedObjects.length === 1) {
+        fabricCanvas.setActiveObject(clonedObjects[0]);
+      } else {
+        const selection = new fabric.ActiveSelection(clonedObjects, {
+          canvas: fabricCanvas,
+        });
+        fabricCanvas.setActiveObject(selection);
+      }
+      
+      fabricCanvas.renderAll();
+      saveCanvasState(fabricCanvas);
+    });
+  };
+
+  const lockSelected = () => {
+    if (!fabricCanvas || !selectedObject) return;
+    
+    selectedObject.set({
+      selectable: false,
+      evented: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      lockRotation: true,
+      lockScalingX: true,
+      lockScalingY: true,
+    });
+    fabricCanvas.discardActiveObject();
+    fabricCanvas.renderAll();
+    saveCanvasState(fabricCanvas);
+  };
+
+  const unlockAll = () => {
+    if (!fabricCanvas) return;
+    
+    fabricCanvas.getObjects().forEach(obj => {
+      if (!(obj as any).isGrid) {
+        obj.set({
+          selectable: true,
+          evented: true,
+          lockMovementX: false,
+          lockMovementY: false,
+          lockRotation: false,
+          lockScalingX: false,
+          lockScalingY: false,
+        });
+      }
+    });
     fabricCanvas.renderAll();
     saveCanvasState(fabricCanvas);
   };
@@ -776,40 +1011,165 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     const file = e.target.files?.[0];
     if (!file || !fabricCanvas) return;
 
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select a valid image file (PNG, JPG, GIF, etc.).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Show loading toast
+    toast({
+      title: "Uploading Image",
+      description: "Processing your image...",
+      duration: 2000,
+    });
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const imgUrl = event.target?.result as string;
-      fabric.Image.fromURL(imgUrl, {
-        crossOrigin: 'anonymous'
-      }).then((img) => {
-        // Scale image to fit canvas
-        const maxWidth = 300;
-        const maxHeight = 300;
-        const scaleX = maxWidth / (img.width || 1);
-        const scaleY = maxHeight / (img.height || 1);
-        const scale = Math.min(scaleX, scaleY);
-        
-        img.set({
-          scaleX: scale,
-          scaleY: scale,
-          left: 50,
-          top: 50
+      
+      // Create image element for compression
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // Compress image if needed
+          let finalImgUrl = imgUrl;
+          if (img.width > 1024 || img.height > 1024) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate new dimensions
+            const maxSize = 1024;
+            const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+            canvas.width = img.width * ratio;
+            canvas.height = img.height * ratio;
+            
+            // Draw and compress
+            ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+            finalImgUrl = canvas.toDataURL('image/jpeg', 0.8);
+          }
+
+          // Add to fabric canvas
+          fabric.Image.fromURL(finalImgUrl, {
+            crossOrigin: 'anonymous'
+          }).then((fabricImg) => {
+            // Scale image to fit canvas reasonably
+            const canvasWidth = fabricCanvas.width || 800;
+            const canvasHeight = fabricCanvas.height || 600;
+            const maxWidth = Math.min(300, canvasWidth * 0.4);
+            const maxHeight = Math.min(300, canvasHeight * 0.4);
+            
+            const scaleX = maxWidth / (fabricImg.width || 1);
+            const scaleY = maxHeight / (fabricImg.height || 1);
+            const scale = Math.min(scaleX, scaleY);
+            
+            fabricImg.set({
+              scaleX: scale,
+              scaleY: scale,
+              left: 50,
+              top: 50
+            });
+            
+            fabricCanvas.add(fabricImg);
+            fabricCanvas.setActiveObject(fabricImg);
+            fabricCanvas.renderAll();
+            saveCanvasState(fabricCanvas);
+            
+            toast({
+              title: "Image Added",
+              description: "Image has been successfully added to the canvas.",
+              duration: 2000,
+            });
+          });
+        } catch (error) {
+          console.error('Error processing image:', error);
+          toast({
+            title: "Image Error",
+            description: "Failed to process image. Please try again.",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      img.onerror = () => {
+        toast({
+          title: "Image Error",
+          description: "Failed to load image. Please try a different file.",
+          variant: "destructive"
         });
-        
-        fabricCanvas.add(img);
-        fabricCanvas.setActiveObject(img);
-        fabricCanvas.renderAll();
-        saveCanvasState(fabricCanvas);
+      };
+      
+      img.src = imgUrl;
+    };
+    
+    reader.onerror = () => {
+      toast({
+        title: "File Error",
+        description: "Failed to read the selected file.",
+        variant: "destructive"
       });
     };
+    
     reader.readAsDataURL(file);
+    
+    // Reset input
+    e.target.value = '';
   };
 
   // Apply style changes to selected object
   const applyStyleToSelected = (property: string, value: any) => {
-    if (!fabricCanvas || !selectedObject) return;
+    if (!fabricCanvas) return;
 
-    selectedObject.set(property, value);
+    const activeObjects = fabricCanvas.getActiveObjects();
+    if (activeObjects.length === 0) return;
+
+    activeObjects.forEach(obj => {
+      // Handle special cases for different object types
+      if (property === 'fill' && (obj.type === 'line' || obj.type === 'group')) {
+        // Lines don't have fill, skip
+        if (obj.type === 'line') return;
+        // For groups (arrows), apply to stroke instead
+        if (obj.type === 'group') {
+          obj.set('stroke', value);
+          return;
+        }
+      }
+      
+      if (property === 'stroke' && obj.type === 'group') {
+        // For arrow groups, apply to all objects within
+        const group = obj as Group;
+        group.forEachObject((groupObj) => {
+          groupObj.set('stroke', value);
+        });
+        return;
+      }
+      
+      if (property === 'strokeWidth' && obj.type === 'group') {
+        // For arrow groups, apply to all objects within
+        const group = obj as Group;
+        group.forEachObject((groupObj) => {
+          groupObj.set('strokeWidth', value);
+        });
+        return;
+      }
+      
+      obj.set(property, value);
+    });
+    
     fabricCanvas.renderAll();
     saveCanvasState(fabricCanvas);
   };
@@ -818,54 +1178,87 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
   const exportAsPNG = () => {
     if (!fabricCanvas) return;
 
-    // Hide grid for export
-    const gridObjects = fabricCanvas.getObjects().filter(obj => (obj as any).isGrid);
-    gridObjects.forEach(obj => obj.set('visible', false));
-    fabricCanvas.renderAll();    const dataURL = fabricCanvas.toDataURL({
-      format: 'png',
-      quality: 1,
-      multiplier: 2 // High resolution
-    });
+    try {
+      // Hide grid for export
+      const gridObjects = fabricCanvas.getObjects().filter(obj => (obj as any).isGrid);
+      gridObjects.forEach(obj => obj.set('visible', false));
+      fabricCanvas.renderAll();
+      
+      const dataURL = fabricCanvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 2 // High resolution
+      });
 
-    // Restore grid
-    gridObjects.forEach(obj => obj.set('visible', true));
-    fabricCanvas.renderAll();
+      // Restore grid
+      gridObjects.forEach(obj => obj.set('visible', true));
+      fabricCanvas.renderAll();
 
-    const link = document.createElement('a');
-    link.download = `design_${Date.now()}.png`;
-    link.href = dataURL;
-    link.click();
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `design_${Date.now()}.png`;
+      link.href = dataURL;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export Successful",
+        description: "Design exported as PNG successfully.",
+      });
+    } catch (error) {
+      console.error('Error exporting PNG:', error);
+      toast({
+        title: "Export Error",
+        description: "Failed to export design as PNG. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const exportAsPDF = () => {
     if (!fabricCanvas) return;
 
-    // Hide grid for export
-    const gridObjects = fabricCanvas.getObjects().filter(obj => (obj as any).isGrid);
-    gridObjects.forEach(obj => obj.set('visible', false));
-    fabricCanvas.renderAll();
+    try {
+      // Hide grid for export
+      const gridObjects = fabricCanvas.getObjects().filter(obj => (obj as any).isGrid);
+      gridObjects.forEach(obj => obj.set('visible', false));
+      fabricCanvas.renderAll();
 
-    const dataURL = fabricCanvas.toDataURL({
-      format: 'png',
-      quality: 1,
-      multiplier: 3 // High resolution for print
-    });
+      const dataURL = fabricCanvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 3 // High resolution for print
+      });
 
-    // Restore grid
-    gridObjects.forEach(obj => obj.set('visible', true));
-    fabricCanvas.renderAll();
+      // Restore grid
+      gridObjects.forEach(obj => obj.set('visible', true));
+      fabricCanvas.renderAll();
 
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-    const imgWidth = 297; // A4 landscape width
-    const imgHeight = 210; // A4 landscape height
+      const imgWidth = 297; // A4 landscape width
+      const imgHeight = 210; // A4 landscape height
 
-    pdf.addImage(dataURL, 'PNG', 0, 0, imgWidth, imgHeight);
-    pdf.save(`design_${Date.now()}.pdf`);
+      pdf.addImage(dataURL, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`design_${Date.now()}.pdf`);
+
+      toast({
+        title: "Export Successful",
+        description: "Design exported as PDF successfully.",
+      });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast({
+        title: "Export Error",
+        description: "Failed to export design as PDF. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Save design to cloud
@@ -891,23 +1284,24 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
       gridObjects.forEach(obj => obj.set('visible', true));
       fabricCanvas.renderAll();
 
-      // Convert dataURL to File for Cloudinary upload
-      const response = await fetch(dataURL);
-      const blob = await response.blob();
-      const file = new File([blob], 'design.png', { type: 'image/png' });
+      let imageUrl = '';
+      
+      try {
+        // Convert dataURL to File for Cloudinary upload
+        const response = await fetch(dataURL);
+        const blob = await response.blob();
+        const file = new File([blob], 'design.png', { type: 'image/png' });
 
-      // Upload to Cloudinary
-      const imageUrl = await uploadToCloudinary(file);
-
-      // Save design data to localStorage if orderId is provided
-      if (orderId) {
-        const designKey = `design_${orderId}_${itemIndex}`;
-        localStorage.setItem(designKey, JSON.stringify({
-          canvasData: JSON.stringify(canvasData),
-          imageUrl,
-          timestamp: Date.now()
-        }));
+        // Upload to Cloudinary
+        imageUrl = await uploadToCloudinary(file);
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary upload failed, saving locally:', cloudinaryError);
+        // Use dataURL as fallback
+        imageUrl = dataURL;
       }
+
+      // Save design data to Firestore
+      await saveDesignToFirestore(JSON.stringify(canvasData), imageUrl);
 
       onSave(imageUrl);
       
@@ -927,9 +1321,81 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     }
   };
 
+  // Firestore integration for saving designs
+  const saveDesignToFirestore = async (designData: any, imageUrl: string) => {
+    if (!orderId) return;
+    
+    try {
+      // Dynamic import to avoid bundling Firebase if not needed
+      const { db } = await import('@/lib/firebase');
+      const { doc, setDoc } = await import('firebase/firestore');
+      
+      const designRef = doc(db, `orders/${orderId}/designs`, `item_${itemIndex}`);
+      await setDoc(designRef, {
+        canvasData: designData,
+        imageUrl,
+        timestamp: new Date(),
+        version: 1
+      });
+      
+      console.log('Design saved to Firestore successfully');
+    } catch (error) {
+      console.error('Error saving design to Firestore:', error);
+      // Fallback to localStorage if Firestore fails
+      const designKey = `design_${orderId}_${itemIndex}`;
+      localStorage.setItem(designKey, JSON.stringify({
+        canvasData: designData,
+        imageUrl,
+        timestamp: Date.now()
+      }));
+    }
+  };
+
+  const loadDesignFromFirestore = async () => {
+    if (!orderId) return null;
+    
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+      
+      const designRef = doc(db, `orders/${orderId}/designs`, `item_${itemIndex}`);
+      const designSnap = await getDoc(designRef);
+      
+      if (designSnap.exists()) {
+        return designSnap.data();
+      }
+      
+      // Fallback to localStorage
+      const designKey = `design_${orderId}_${itemIndex}`;
+      const localDesign = localStorage.getItem(designKey);
+      return localDesign ? JSON.parse(localDesign) : null;
+    } catch (error) {
+      console.error('Error loading design from Firestore:', error);
+      
+      // Fallback to localStorage
+      const designKey = `design_${orderId}_${itemIndex}`;
+      const localDesign = localStorage.getItem(designKey);
+      return localDesign ? JSON.parse(localDesign) : null;
+    }
+  };
+
   // Clear canvas
   const clearCanvas = () => {
     if (!fabricCanvas) return;
+    
+    const objectCount = fabricCanvas.getObjects().filter(obj => !(obj as any).isGrid).length;
+    if (objectCount === 0) {
+      toast({
+        title: "Canvas Empty",
+        description: "Canvas is already empty.",
+        duration: 1500,
+      });
+      return;
+    }
+    
+    // Show confirmation
+    const confirmed = window.confirm(`Are you sure you want to clear the canvas? This will remove all ${objectCount} objects and cannot be undone.`);
+    if (!confirmed) return;
     
     fabricCanvas.clear();
     fabricCanvas.backgroundColor = '#ffffff';
@@ -938,6 +1404,12 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
     }
     fabricCanvas.renderAll();
     saveCanvasState(fabricCanvas);
+    
+    toast({
+      title: "Canvas Cleared",
+      description: `${objectCount} objects removed from canvas.`,
+      duration: 2000,
+    });
   };
 
   // Initialize canvas when modal opens
@@ -964,13 +1436,58 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
       if (!fabricCanvas) return;
 
       // Prevent default browser actions for our shortcuts
-      if ((e.ctrlKey || e.metaKey) && ['z', 'y', 'c', 'v', 'a', 's'].includes(e.key.toLowerCase())) {
-        e.preventDefault();
+      const key = e.key.toLowerCase();
+      
+      // Tool shortcuts (only if not in text editing mode)
+      const activeObject = fabricCanvas.getActiveObject();
+      const isTextEditing = activeObject && activeObject.type === 'textbox' && (activeObject as any).isEditing;
+      
+      if (!isTextEditing) {
+        switch (key) {
+          case 'v':
+            setActiveTool('select');
+            e.preventDefault();
+            break;
+          case 'p':
+            setActiveTool('pencil');
+            e.preventDefault();
+            break;
+          case 'r':
+            setActiveTool('rectangle');
+            e.preventDefault();
+            break;
+          case 'c':
+            if (!e.ctrlKey && !e.metaKey) {
+              setActiveTool('circle');
+              e.preventDefault();
+            }
+            break;
+          case 'l':
+            setActiveTool('line');
+            e.preventDefault();
+            break;
+          case 'a':
+            if (!e.ctrlKey && !e.metaKey) {
+              setActiveTool('arrow');
+              e.preventDefault();
+            }
+            break;
+          case 't':
+            setActiveTool('text');
+            e.preventDefault();
+            break;
+          case 'i':
+            fileInputRef.current?.click();
+            e.preventDefault();
+            break;
+        }
       }
 
-      // Handle shortcuts
-      if ((e.ctrlKey || e.metaKey)) {
-        switch (e.key.toLowerCase()) {
+      // Ctrl/Cmd shortcuts
+      if ((e.ctrlKey || e.metaKey) && ['z', 'y', 'c', 'v', 'a', 's', 'd'].includes(key)) {
+        e.preventDefault();
+        
+        switch (key) {
           case 'z':
             if (e.shiftKey) {
               redo();
@@ -995,6 +1512,9 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
           case 's':
             saveDesign();
             break;
+          case 'd':
+            duplicateSelected();
+            break;
         }
       }
 
@@ -1002,12 +1522,16 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
       switch (e.key) {
         case 'Delete':
         case 'Backspace':
-          deleteSelected();
+          if (!isTextEditing) {
+            deleteSelected();
+            e.preventDefault();
+          }
           break;
         case 'Escape':
           fabricCanvas.discardActiveObject();
           fabricCanvas.renderAll();
           setActiveTool('select');
+          e.preventDefault();
           break;
       }
     };
@@ -1058,11 +1582,70 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
         case 'pencil':
           canvasElement.style.cursor = 'crosshair';
           break;
-        default:
+        case 'rectangle':
+        case 'circle':
+        case 'line':
+        case 'arrow':
           canvasElement.style.cursor = 'crosshair';
+          break;
+        case 'text':
+          canvasElement.style.cursor = 'text';
+          break;
+        case 'image':
+          canvasElement.style.cursor = 'copy';
+          break;
+        default:
+          canvasElement.style.cursor = 'default';
       }
     }
+
+    // Clear any active selection when switching to non-select tools
+    if (activeTool !== 'select') {
+      fabricCanvas.discardActiveObject();
+      fabricCanvas.renderAll();
+    }
+
+    // Show tool feedback with toast notification
+    const toolMessages = {
+      select: 'Selection Tool Active - Click objects to select, drag to move, use handles to resize',
+      pencil: 'Pencil Tool Active - Click and drag to draw freehand lines',
+      rectangle: 'Rectangle Tool Active - Click and drag to draw rectangles', 
+      circle: 'Circle Tool Active - Click and drag to draw circles',
+      line: 'Line Tool Active - Click and drag to draw straight lines',
+      arrow: 'Arrow Tool Active - Click and drag to draw arrows',
+      text: 'Text Tool Active - Click anywhere to add text',
+      image: 'Image Tool Active - Upload and place images on canvas'
+    };
+
+    // Show toast notification for tool change
+    toast({
+      title: `${activeTool.charAt(0).toUpperCase() + activeTool.slice(1)} Tool Selected`,
+      description: toolMessages[activeTool],
+      duration: 2000,
+    });
+
+    console.log(`Switched to ${toolMessages[activeTool] || activeTool}`);
   }, [activeTool, strokeColor, strokeWidth, fabricCanvas]);
+
+  // Update canvas when grid settings change
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    try {
+      // Remove existing grid lines
+      const gridObjects = fabricCanvas.getObjects().filter(obj => (obj as any).isGrid);
+      gridObjects.forEach(obj => fabricCanvas.remove(obj));
+
+      // Add new grid if enabled
+      if (showGrid) {
+        addGridToCanvas(fabricCanvas);
+      }
+
+      fabricCanvas.renderAll();
+    } catch (error) {
+      console.error('Error updating grid:', error);
+    }
+  }, [showGrid, gridSize, fabricCanvas]);
 
   if (!isOpen) return null;
 
@@ -1083,8 +1666,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'select' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('select')}
-              className="w-10 h-10 p-0"
-              title="Select Tool"
+              className={`w-10 h-10 p-0 ${activeTool === 'select' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Select Tool (V)"
             >
               <MousePointer2 className="h-4 w-4" />
             </Button>
@@ -1093,8 +1676,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'pencil' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('pencil')}
-              className="w-10 h-10 p-0"
-              title="Pencil Tool"
+              className={`w-10 h-10 p-0 ${activeTool === 'pencil' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Pencil Tool (P)"
             >
               <Pen className="h-4 w-4" />
             </Button>
@@ -1103,8 +1686,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'rectangle' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('rectangle')}
-              className="w-10 h-10 p-0"
-              title="Rectangle"
+              className={`w-10 h-10 p-0 ${activeTool === 'rectangle' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Rectangle Tool (R)"
             >
               <Square className="h-4 w-4" />
             </Button>
@@ -1113,8 +1696,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'circle' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('circle')}
-              className="w-10 h-10 p-0"
-              title="Circle"
+              className={`w-10 h-10 p-0 ${activeTool === 'circle' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Circle Tool (C)"
             >
               <CircleIcon className="h-4 w-4" />
             </Button>
@@ -1123,8 +1706,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'line' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('line')}
-              className="w-10 h-10 p-0"
-              title="Line"
+              className={`w-10 h-10 p-0 ${activeTool === 'line' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Line Tool (L)"
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -1133,8 +1716,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'arrow' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('arrow')}
-              className="w-10 h-10 p-0"
-              title="Arrow"
+              className={`w-10 h-10 p-0 ${activeTool === 'arrow' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Arrow Tool (A)"
             >
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -1143,8 +1726,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'text' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('text')}
-              className="w-10 h-10 p-0"
-              title="Text"
+              className={`w-10 h-10 p-0 ${activeTool === 'text' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Text Tool (T)"
             >
               <Type className="h-4 w-4" />
             </Button>
@@ -1152,9 +1735,12 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
             <Button
               variant={activeTool === 'image' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-10 h-10 p-0"
-              title="Upload Image"
+              onClick={() => {
+                setActiveTool('image');
+                fileInputRef.current?.click();
+              }}
+              className={`w-10 h-10 p-0 ${activeTool === 'image' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              title="Upload Image (I)"
             >
               <ImageIcon className="h-4 w-4" />
             </Button>
@@ -1166,8 +1752,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               size="sm"
               onClick={undo}
               disabled={historyIndex <= 0}
-              className="w-10 h-10 p-0"
-              title="Undo"
+              className="w-10 h-10 p-0 hover:bg-gray-200 disabled:opacity-50"
+              title="Undo (Ctrl+Z)"
             >
               <Undo2 className="h-4 w-4" />
             </Button>
@@ -1177,8 +1763,8 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               size="sm"
               onClick={redo}
               disabled={historyIndex >= history.length - 1}
-              className="w-10 h-10 p-0"
-              title="Redo"
+              className="w-10 h-10 p-0 hover:bg-gray-200 disabled:opacity-50"
+              title="Redo (Ctrl+Y)"
             >
               <Redo2 className="h-4 w-4" />
             </Button>
@@ -1398,11 +1984,114 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Status Bar */}
+            <div className="h-8 bg-gray-100 border-t flex items-center px-4 text-xs text-gray-600">
+              <div className="flex items-center gap-4">
+                <span>Tool: <strong className="capitalize">{activeTool}</strong></span>
+                {selectedObject && (
+                  <span>
+                    Selected: <strong>{selectedObject.type}</strong>
+                    {selectedObject.width && selectedObject.height && (
+                      <span className="ml-2">
+                        {Math.round(selectedObject.width)}×{Math.round(selectedObject.height)}
+                      </span>
+                    )}
+                  </span>
+                )}
+                <span className="ml-auto">
+                  Objects: {fabricCanvas ? fabricCanvas.getObjects().filter(obj => !(obj as any).isGrid).length : 0}
+                </span>
+                <span>Zoom: {Math.round(zoom)}%</span>
+              </div>
+            </div>
           </div>
 
           {/* Right Properties Panel */}
           <div className="w-72 bg-gray-50 border-l overflow-y-auto">
             <div className="p-4 space-y-6">
+              {/* Active Tool Info */}
+              <div className="bg-white rounded-lg p-3 border">
+                <div className="flex items-center gap-2 mb-2">
+                  {activeTool === 'select' && <MousePointer2 className="h-4 w-4 text-blue-600" />}
+                  {activeTool === 'pencil' && <Pen className="h-4 w-4 text-blue-600" />}
+                  {activeTool === 'rectangle' && <Square className="h-4 w-4 text-blue-600" />}
+                  {activeTool === 'circle' && <CircleIcon className="h-4 w-4 text-blue-600" />}
+                  {activeTool === 'line' && <Minus className="h-4 w-4 text-blue-600" />}
+                  {activeTool === 'arrow' && <ArrowRight className="h-4 w-4 text-blue-600" />}
+                  {activeTool === 'text' && <Type className="h-4 w-4 text-blue-600" />}
+                  {activeTool === 'image' && <ImageIcon className="h-4 w-4 text-blue-600" />}
+                  <span className="text-sm font-medium capitalize">{activeTool} Tool</span>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    {activeTool === 'select' && '(V)'}
+                    {activeTool === 'pencil' && '(P)'}
+                    {activeTool === 'rectangle' && '(R)'}
+                    {activeTool === 'circle' && '(C)'}
+                    {activeTool === 'line' && '(L)'}
+                    {activeTool === 'arrow' && '(A)'}
+                    {activeTool === 'text' && '(T)'}
+                    {activeTool === 'image' && '(I)'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600">
+                  {activeTool === 'select' && 'Click and drag to select objects. Use handles to resize.'}
+                  {activeTool === 'pencil' && 'Click and drag to draw freehand lines.'}
+                  {activeTool === 'rectangle' && 'Click and drag to draw rectangles.'}
+                  {activeTool === 'circle' && 'Click and drag to draw circles.'}
+                  {activeTool === 'line' && 'Click and drag to draw straight lines.'}
+                  {activeTool === 'arrow' && 'Click and drag to draw arrows.'}
+                  {activeTool === 'text' && 'Click anywhere to add text.'}
+                  {activeTool === 'image' && 'Click to upload and place images.'}
+                </p>
+              </div>
+              
+              {/* Quick Shortcuts */}
+              <div className="bg-gray-100 rounded-lg p-3 border">
+                <h4 className="text-sm font-medium mb-2">Quick Shortcuts</h4>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Undo</span>
+                    <span className="font-mono">Ctrl+Z</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Redo</span>
+                    <span className="font-mono">Ctrl+Y</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Copy</span>
+                    <span className="font-mono">Ctrl+C</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Duplicate</span>
+                    <span className="font-mono">Ctrl+D</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Delete</span>
+                    <span className="font-mono">Del</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Select All</span>
+                    <span className="font-mono">Ctrl+A</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selection Info */}
+              {selectedObject && (
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">Selected Object</h4>
+                  <div className="text-xs text-blue-800 space-y-1">
+                    <div>Type: <strong className="capitalize">{selectedObject.type}</strong></div>
+                    {selectedObject.width && selectedObject.height && (
+                      <div>Size: <strong>{Math.round(selectedObject.width)}×{Math.round(selectedObject.height)}</strong></div>
+                    )}
+                    {selectedObject.left !== undefined && selectedObject.top !== undefined && (
+                      <div>Position: <strong>{Math.round(selectedObject.left)}, {Math.round(selectedObject.top)}</strong></div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Fill Color */}
               <div>
                 <Label className="text-sm font-medium mb-2 block">Fill Color</Label>

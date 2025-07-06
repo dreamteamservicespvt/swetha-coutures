@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -559,11 +560,15 @@ const Staff = () => {
                 <div className="form-grid-responsive-3">
                   <div>
                     <Label htmlFor="salaryAmount">Salary Amount</Label>
-                    <Input
+                    <NumberInput
                       id="salaryAmount"
-                      type="number"
-                      value={formData.salaryAmount}
-                      onChange={(e) => setFormData({...formData, salaryAmount: e.target.value})}
+                      value={formData.salaryAmount ? Number(formData.salaryAmount) : ''}
+                      onChange={(value) => setFormData({...formData, salaryAmount: value?.toString() || ''})}
+                      min={0}
+                      step={0.01}
+                      decimals={2}
+                      allowEmpty={true}
+                      emptyValue={null}
                       placeholder="Enter salary amount"
                     />
                   </div>
