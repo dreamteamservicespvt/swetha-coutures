@@ -18,6 +18,7 @@ import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ContactActions from '@/components/ContactActions';
+import TimePicker from '@/components/ui/time-picker';
 
 interface Appointment {
   id: string;
@@ -129,14 +130,31 @@ const Appointments = () => {
         ...(editingAppointment ? {} : { createdAt: serverTimestamp() })
       };
 
+      let savedAppointment;
       if (editingAppointment) {
         await updateDoc(doc(db, 'appointments', editingAppointment.id), appointmentData);
+        savedAppointment = { ...editingAppointment, ...appointmentData };
         toast({
           title: "Success",
           description: "Appointment updated successfully",
         });
       } else {
-        await addDoc(collection(db, 'appointments'), appointmentData);
+        const docRef = await addDoc(collection(db, 'appointments'), appointmentData);
+        savedAppointment = { id: docRef.id, ...appointmentData };
+        
+        // Show WhatsApp option for new appointments
+        if (formData.customerPhone) {
+          const shouldSendWhatsApp = window.confirm(
+            `Appointment booked successfully!\n\nWould you like to send appointment details to ${formData.customerName} via WhatsApp?`
+          );
+          
+          if (shouldSendWhatsApp) {
+            setTimeout(() => {
+              sendWhatsAppMessage(savedAppointment as Appointment);
+            }, 500);
+          }
+        }
+        
         toast({
           title: "Success",
           description: "Appointment scheduled successfully",
@@ -228,6 +246,44 @@ const Appointments = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const sendWhatsAppMessage = (appointment: Appointment) => {
+    if (!appointment.customerPhone) {
+      toast({
+        title: "Error",
+        description: "Customer phone number not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const appointmentDate = appointment.appointmentDate?.toDate?.() || new Date(appointment.appointmentDate);
+    
+    let message = `Hi ${appointment.customerName || 'Customer'},\n\n`;
+    message += `Your appointment has been scheduled with Swetha Couture:\n\n`;
+    message += `📅 *Appointment Details:*\n`;
+    message += `• Date: ${format(appointmentDate, 'PPPP')}\n`;
+    message += `• Time: ${appointment.appointmentTime}\n`;
+    message += `• Duration: ${appointment.duration} minutes\n`;
+    message += `• Purpose: ${appointment.purpose}\n\n`;
+    
+    if (appointment.gmeetUrl) {
+      message += `🎥 *Google Meet Link:*\n${appointment.gmeetUrl}\n\n`;
+      message += `Please join the meeting at the scheduled time using the above link.\n\n`;
+    }
+    
+    if (appointment.notes) {
+      message += `📝 *Additional Notes:*\n${appointment.notes}\n\n`;
+    }
+    
+    message += `📍 *Our Address:*\nSwetha Couture\n[Your Address Here]\n\n`;
+    message += `📞 *Contact:* [Your Phone Number]\n\n`;
+    message += `We look forward to seeing you! Please arrive 5 minutes early.\n\n`;
+    message += `Best regards,\nTeam Swetha Couture`;
+
+    const whatsappUrl = `https://wa.me/${appointment.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const sendGmeetWhatsApp = (appointment: Appointment) => {
@@ -410,16 +466,11 @@ const Appointments = () => {
                 </div>
                 <div>
                   <Label htmlFor="appointmentTime">Time</Label>
-                  <Select value={formData.appointmentTime} onValueChange={(value) => setFormData({...formData, appointmentTime: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeSlots.map(time => (
-                        <SelectItem key={time} value={time}>{time}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <TimePicker
+                    value={formData.appointmentTime}
+                    onChange={(time) => setFormData({...formData, appointmentTime: time})}
+                    placeholder="Select appointment time"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="duration">Duration (minutes)</Label>
@@ -494,6 +545,18 @@ const Appointments = () => {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="btn-responsive">
                   Cancel
                 </Button>
+                {editingAppointment && formData.customerPhone && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => sendWhatsAppMessage(editingAppointment)}
+                    className="btn-responsive bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                    title="Send appointment details via WhatsApp"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-2">WhatsApp</span>
+                  </Button>
+                )}
                 <Button type="submit" className="btn-responsive bg-gradient-to-r from-blue-600 to-purple-600">
                   {editingAppointment ? 'Update Appointment' : 'Book Appointment'}
                 </Button>
@@ -657,11 +720,40 @@ const Appointments = () => {
 
                           <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
                             {/* Contact Actions */}
-                            <div className="mb-2">
+                            <div className="mb-3 space-y-2">
                               <ContactActions 
                                 phone={appointment?.customerPhone}
                                 message={`Hi ${appointment?.customerName}, this is regarding your appointment on ${format(appointmentDate, 'PPP')} at ${appointment?.appointmentTime}.`}
                               />
+                              
+                              {/* WhatsApp with appointment details */}
+                              <div className="grid grid-cols-2 gap-2">
+                                {appointment?.customerPhone && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => sendWhatsAppMessage(appointment)}
+                                    className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 h-9 text-xs"
+                                    title="Send appointment details via WhatsApp"
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                                    Details
+                                  </Button>
+                                )}
+                                
+                                {appointment?.gmeetUrl && appointment?.customerPhone && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => sendGmeetWhatsApp(appointment)}
+                                    className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 h-9 text-xs"
+                                    title="Send Google Meet link via WhatsApp"
+                                  >
+                                    <Video className="h-3.5 w-3.5 mr-1" />
+                                    Meet Link
+                                  </Button>
+                                )}
+                              </div>
                             </div>
 
                             {/* Actions Row */}
@@ -764,15 +856,27 @@ const Appointments = () => {
                             phone={appointment?.customerPhone}
                             message={`Hi ${appointment?.customerName}, this is regarding your appointment on ${format(appointmentDate, 'PPP')} at ${appointment?.appointmentTime}.`}
                           />
-                          {appointment?.gmeetUrl && (
+                          {appointment?.customerPhone && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => sendWhatsAppMessage(appointment)}
+                              className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                              title="Send appointment details via WhatsApp"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Send Details</span>
+                            </Button>
+                          )}
+                          {appointment?.gmeetUrl && appointment?.customerPhone && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => sendGmeetWhatsApp(appointment)}
-                              className="bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
-                              title="Send appointment details with Google Meet link"
+                              className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                              title="Send Google Meet link via WhatsApp"
                             >
-                              <MessageCircle className="h-4 w-4" />
+                              <Video className="h-4 w-4" />
                               <span className="hidden sm:inline ml-1">Meet Link</span>
                             </Button>
                           )}
