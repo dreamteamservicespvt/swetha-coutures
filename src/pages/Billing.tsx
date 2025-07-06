@@ -37,7 +37,8 @@ import {
   Users,
   RefreshCw,
   Printer,
-  X
+  X,
+  FileSpreadsheet
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, where, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -47,6 +48,8 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
 import BillingFilters from '@/components/BillingFilters';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const Billing = () => {
   const navigate = useNavigate();
@@ -214,14 +217,16 @@ const Billing = () => {
         case 'today':
           matchesDate = billDate >= startOfDay;
           break;
-        case 'week':
+        case 'week': {
           const weekAgo = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
           matchesDate = billDate >= weekAgo;
           break;
-        case 'month':
+        }
+        case 'month': {
           const monthAgo = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
           matchesDate = billDate >= monthAgo;
           break;
+        }
       }
     }
     
@@ -319,6 +324,84 @@ const Billing = () => {
     }
   };
 
+  const handleExportToExcel = () => {
+    try {
+      // Prepare data for export
+      const exportData = filteredBills.map(bill => {
+        const status = calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0);
+        const workItemsSummary = bill.items?.map(item => item.description).join(', ') || 'N/A';
+        
+        return {
+          'Bill ID': bill.billId || 'N/A',
+          'Customer Name': bill.customerName || 'N/A',
+          'Phone': bill.customerPhone || 'N/A',
+          'Bill Date': bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A',
+          'Total Amount': bill.totalAmount || 0,
+          'Paid Amount': bill.paidAmount || 0,
+          'Balance': bill.balance || 0,
+          'Payment Status': status === 'paid' ? 'Paid' : status === 'partial' ? 'Partial' : 'Unpaid',
+          'Work Items Summary': workItemsSummary
+        };
+      });
+
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      
+      // Set column widths for better readability
+      const colWidths = [
+        { wch: 12 }, // Bill ID
+        { wch: 20 }, // Customer Name
+        { wch: 15 }, // Phone
+        { wch: 12 }, // Bill Date
+        { wch: 12 }, // Total Amount
+        { wch: 12 }, // Paid Amount
+        { wch: 12 }, // Balance
+        { wch: 15 }, // Payment Status
+        { wch: 30 }  // Work Items Summary
+      ];
+      worksheet['!cols'] = colWidths;
+
+      // Style the header row
+      const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:I1');
+      for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+        const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (worksheet[cellRef]) {
+          worksheet[cellRef].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: 'E5E7EB' } },
+            alignment: { horizontal: 'center' }
+          };
+        }
+      }
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Bills');
+
+      // Generate filename with current date
+      const currentDate = new Date();
+      const dateString = currentDate.toLocaleDateString('en-IN').replace(/\//g, '-');
+      const filename = `bills_${dateString}.xlsx`;
+
+      // Export file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(data, filename);
+
+      toast({
+        title: "Export Successful",
+        description: `${filteredBills.length} bills exported to ${filename}`,
+      });
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export bills to Excel",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-fade-in p-4 sm:p-6">
@@ -409,9 +492,21 @@ const Billing = () => {
       {/* Filters - Compact Layout Matching Orders Page */}
       <Card className="border-0 shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3 sm:pb-4">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
-            <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
-            Filters & Search
+          <CardTitle className="flex items-center justify-between text-base sm:text-lg text-gray-900 dark:text-gray-100">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
+              Filters & Search
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportToExcel}
+              disabled={filteredBills.length === 0}
+              className="btn-responsive bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30"
+            >
+              <FileSpreadsheet className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              Export to Excel
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-4 sm:pb-6">
