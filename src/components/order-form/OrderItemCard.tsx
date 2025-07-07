@@ -61,10 +61,11 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
   // Local state for delivery date to ensure proper control
   const [localDeliveryDate, setLocalDeliveryDate] = useState(item.deliveryDate || '');
 
-  // Update local state when prop changes
+  // Update local state when prop changes - but only if it's different to avoid loops
   useEffect(() => {
-    console.log(`OrderItemCard ${index} received item.deliveryDate:`, item.deliveryDate);
-    setLocalDeliveryDate(item.deliveryDate || '');
+    if (item.deliveryDate && item.deliveryDate !== localDeliveryDate) {
+      setLocalDeliveryDate(item.deliveryDate);
+    }
   }, [item.deliveryDate, index]);
 
   const statusOptions = [
@@ -74,12 +75,15 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
     { value: 'delivered', label: 'Delivered' }
   ];
 
-  // Auto-fill "Made For" field when customer name changes - Fix for Item 1
+  // Auto-fill "Made For" field when customer name changes or when the item is first created
   useEffect(() => {
-    if (customerName && customerName.trim() && !item.madeFor) {
-      onUpdate(index, 'madeFor', customerName);
+    if (customerName && customerName.trim()) {
+      // Only auto-fill if the madeFor field is empty
+      if (!item.madeFor || !item.madeFor.trim()) {
+        onUpdate(index, 'madeFor', customerName);
+      }
     }
-  }, [customerName, index, item.madeFor, onUpdate]);
+  }, [customerName, index]);
 
   // Load custom item types from Firebase
   useEffect(() => {
@@ -171,8 +175,6 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
       setShowCustomTypeInput(true);
       return;
     }
-    
-    console.log(`Changing item type to: ${newType}`);
     
     // Update the items state with the new category value
     const updatedItem = {
@@ -288,8 +290,13 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
   };
 
   const selectMadeForSuggestion = (madeFor: string) => {
+    // Update the madeFor value
     onUpdate(index, 'madeFor', madeFor);
-    setShowMadeForSuggestions(false);
+    
+    // Hide suggestions after a small delay to allow the update to complete
+    setTimeout(() => {
+      setShowMadeForSuggestions(false);
+    }, 100);
   };
 
   const handleSaveDesign = (imageUrl: string) => {
@@ -353,20 +360,22 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                   value={item.madeFor}
                   onChange={(e) => {
                     onUpdate(index, 'madeFor', e.target.value);
+                    // Only show suggestions if we have value and suggestions exist
                     if (e.target.value.length > 0 && madeForSuggestions.length > 0) {
                       setShowMadeForSuggestions(true);
                     } else {
                       setShowMadeForSuggestions(false);
                     }
                   }}
-                  onFocus={() => {
+                  onFocus={(e) => {
+                    // Only show suggestions if we have focus and suggestions exist
                     if (madeForSuggestions.length > 0) {
                       setShowMadeForSuggestions(true);
                     }
                   }}
                   onBlur={() => {
-                    // Delay hiding to allow clicking on suggestions
-                    setTimeout(() => setShowMadeForSuggestions(false), 200);
+                    // Use a longer delay to ensure clicking on suggestions works
+                    setTimeout(() => setShowMadeForSuggestions(false), 300);
                   }}
                   placeholder="Customer name"
                 />
@@ -513,12 +522,16 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                   value={localDeliveryDate}
                   onChange={(e) => {
                     const newDate = e.target.value;
-                    console.log(`OrderItemCard ${index} onChange triggered with value:`, newDate);
-                    setLocalDeliveryDate(newDate);
-                    onUpdate(index, 'deliveryDate', newDate);
-                    // Auto-sync delivery date for subsequent items when Item 1 date is changed
-                    if (index === 0 && onDeliveryDateChange) {
-                      onDeliveryDateChange(index, newDate);
+                    
+                    // Only update if the value has changed to prevent loops
+                    if (newDate !== localDeliveryDate) {
+                      setLocalDeliveryDate(newDate);
+                      onUpdate(index, 'deliveryDate', newDate);
+                      
+                      // Auto-sync delivery date for subsequent items when Item 1 date is changed
+                      if (index === 0 && onDeliveryDateChange) {
+                        onDeliveryDateChange(index, newDate);
+                      }
                     }
                   }}
                   required

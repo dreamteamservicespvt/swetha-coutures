@@ -46,18 +46,23 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
       setShowCustomerSuggestions(false);
     }
   }, [customerNameValue]);
-
-  // Auto-populate "Made For" field when customer name changes
+ 
+  // Auto-update the first order item's "Made For" field when customer name changes
   useEffect(() => {
-    if (customerNameValue && customerNameValue.trim()) {
-      const updatedItems = orderItems.map((item, index) => ({
-        ...item,
-        madeFor: customerNameValue // Always update all items, including first item
-      }));
+        if (customerNameValue && customerNameValue.trim() && orderItems.length > 0) {
+      const updatedItems = orderItems.map((item, index) => {
+        if (index === 0) {
+          return { ...item, madeFor: customerNameValue };
+        }
+        return item;
+      });
       setOrderItems(updatedItems);
     }
   }, [customerNameValue]);
 
+      // Only auto-update for new orders, not when editing existing orders
+      // Update the first item's madeFor field when customer name changes
+      
   const populateEditForm = () => {
     if (!editingOrder) return;
 
@@ -105,14 +110,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
   // Customer selection handler for auto-fill
   const handleCustomerSelect = (customer: any) => {
     // Auto-fill basic customer info is already handled by CustomerInfoSection
-    // Here we could add additional logic for auto-filling sizes if needed
+    // Also update the first order item's "Made For" field immediately when a customer is selected
+  
     console.log('Customer selected:', customer.name);
   };
 
   const resetForm = () => {
     reset();
     const newItem: OrderItem = {
-      madeFor: customerNameValue || '',
+      madeFor: '', // Start with empty, will be filled by useEffect when customer name is entered
       category: '',
       description: '',
       quantity: 1,
@@ -189,7 +195,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
     // Validate each item
     for (let i = 0; i < orderItems.length; i++) {
       const item = orderItems[i];
-      if (!item.madeFor || !item.category || !item.deliveryDate) {
+      if (!item.madeFor?.trim() || !item.category?.trim() || !item.deliveryDate?.trim()) {
         toast({
           title: "Error",
           description: `Please complete all required fields for item ${i + 1}`,

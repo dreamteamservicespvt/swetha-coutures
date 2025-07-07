@@ -129,6 +129,9 @@ export const getMadeForSuggestions = async (customerName: string): Promise<MadeF
     const ordersSnapshot = await getDocs(ordersQuery);
     const madeForMap = new Map<string, { frequency: number; lastUsed: any }>();
 
+    // Always include the customer's name in the suggestions
+    madeForMap.set(customerName, { frequency: 1, lastUsed: new Date() });
+    
     ordersSnapshot.docs.forEach(doc => {
       const orderData = doc.data();
       const orderDate = orderData.createdAt || orderData.orderDate;
@@ -136,9 +139,11 @@ export const getMadeForSuggestions = async (customerName: string): Promise<MadeF
       // Process items in the order
       if (orderData.items && Array.isArray(orderData.items)) {
         orderData.items.forEach((item: any) => {
-          const madeFor = item.madeFor || orderData.customerName || customerName;
+          const madeFor = item.madeFor;
           
-          if (madeFor && madeFor.trim() !== customerName) {
+          // Include ALL madeFor entries, even if they match the customer name
+          // This ensures we track frequency correctly
+          if (madeFor && madeFor.trim()) {
             const existing = madeForMap.get(madeFor) || { frequency: 0, lastUsed: null };
             madeForMap.set(madeFor, {
               frequency: existing.frequency + 1,

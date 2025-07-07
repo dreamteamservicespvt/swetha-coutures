@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,13 +38,10 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
       notes: '',
       sizes: {}
     };
-    console.log('Adding new item with category:', newItem.category);
     setOrderItems([...orderItems, newItem]);
   };
 
   const updateOrderItem = (index: number, field: string, value: any) => {
-    console.log(`Updating item ${index}, field: ${field}, value:`, value);
-    
     const updatedItems = orderItems.map((item, i) => {
       if (i === index) {
         // Handle the case where we're replacing the entire item
@@ -65,14 +61,23 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
 
   // Handle delivery date sync from Item 1 to all subsequent items
   const handleDeliveryDateSync = (sourceIndex: number, date: string) => {
-    if (sourceIndex === 0) { // Only sync from Item 1
+    if (sourceIndex === 0 && date.trim() !== '') { // Only sync from Item 1 and only if there's a valid date
       const updatedItems = orderItems.map((item, i) => {
         if (i > 0) { // Apply to Item 2 and beyond
           return { ...item, deliveryDate: date };
         }
         return item;
       });
-      setOrderItems(updatedItems);
+      // Only update if there's an actual change to prevent unnecessary rerenders
+      const hasChanges = updatedItems.some(
+        (updatedItem, idx) => 
+          idx > 0 && 
+          updatedItem.deliveryDate !== orderItems[idx].deliveryDate
+      );
+      
+      if (hasChanges) {
+        setOrderItems(updatedItems);
+      }
     }
   };
 
@@ -104,7 +109,7 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
       <CardContent className="space-y-4">
         {orderItems.map((item, index) => (
           <OrderItemCard
-            key={`order-item-${index}-${item.deliveryDate}-${item.category}-${item.madeFor}`}
+            key={`order-item-${index}`}
             item={item}
             index={index}
             onUpdate={updateOrderItem}
