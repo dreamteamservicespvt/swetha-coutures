@@ -285,11 +285,12 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor={`description-${index}`}>Description</Label>
-                <Input
+                <Textarea
                   id={`description-${index}`}
                   value={item.description}
                   onChange={(e) => onUpdate(index, 'description', e.target.value)}
                   placeholder="Brief description"
+                  rows={2}
                 />
               </div>
               <div>

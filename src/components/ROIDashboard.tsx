@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { formatCurrency } from '@/utils/billingUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { CalendarIcon, TrendingUp, TrendingDown, Users, Package, DollarSign, BarChart3, Download, Filter, RefreshCw } from 'lucide-react';
+import { CalendarIcon, TrendingUp, TrendingDown, Users, Package, DollarSign, BarChart3, Download, Filter, RefreshCw, FileText } from 'lucide-react';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -70,6 +70,47 @@ interface InventoryROI {
   avgSellingPrice: number;
 }
 
+// New interface for Services ROI
+interface ServiceROI {
+  serviceName: string;
+  totalIncome: number;
+  timesUsed: number;
+  avgPrice: number;
+  relatedOrders: ServiceUsage[];
+  relatedBills: ServiceUsage[];
+}
+
+// New interface for Products ROI
+interface ProductROI {
+  productName: string;
+  totalIncome: number;
+  timesUsed: number;
+  avgPrice: number;
+  relatedOrders: ProductUsage[];
+  relatedBills: ProductUsage[];
+}
+
+interface ServiceUsage {
+  id: string;
+  orderId?: string;
+  billId?: string;
+  customerName: string;
+  date: any;
+  amount: number;
+  productName?: string;
+}
+
+interface ProductUsage {
+  id: string;
+  orderId?: string;
+  billId?: string;
+  customerName: string;
+  date: any;
+  amount: number;
+  description?: string;
+  productName?: string;
+}
+
 interface ROIMetrics {
   totalStaffROI: number;
   totalInventoryROI: number;
@@ -86,7 +127,7 @@ const ROIDashboard: React.FC = () => {
     start: startOfMonth(subMonths(new Date(), 1)),
     end: endOfMonth(new Date())
   });
-  const [selectedTab, setSelectedTab] = useState<'staff' | 'inventory' | 'overview'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'staff' | 'inventory' | 'services' | 'products' | 'overview'>('products');
   const [staffFilter, setStaffFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -94,6 +135,19 @@ const ROIDashboard: React.FC = () => {
   // Data states
   const [staffROI, setStaffROI] = useState<StaffROI[]>([]);
   const [inventoryROI, setInventoryROI] = useState<InventoryROI[]>([]);
+  const [servicesROI, setServicesROI] = useState<ServiceROI[]>([]);
+  const [productsROI, setProductsROI] = useState<ProductROI[]>([]);
+  const [selectedService, setSelectedService] = useState<ServiceROI | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductROI | null>(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  
+  // Pagination states for drill-down modals
+  const [serviceBillsPage, setServiceBillsPage] = useState(1);
+  const [serviceOrdersPage, setServiceOrdersPage] = useState(1);
+  const [productBillsPage, setProductBillsPage] = useState(1);
+  const [productOrdersPage, setProductOrdersPage] = useState(1);
+  const itemsPerPage = 50;
   const [metrics, setMetrics] = useState<ROIMetrics>({
     totalStaffROI: 0,
     totalInventoryROI: 0,
@@ -127,6 +181,8 @@ const ROIDashboard: React.FC = () => {
       await Promise.all([
         calculateStaffROI(),
         calculateInventoryROI(),
+        calculateServicesROI(),
+        calculateProductsROI(),
         fetchFiltersData()
       ]);
     } catch (error) {
@@ -255,6 +311,251 @@ const ROIDashboard: React.FC = () => {
       setInventoryROI(inventoryROIData);
     } catch (error) {
       console.error('Error calculating inventory ROI:', error);
+    }
+  };
+
+  const calculateServicesROI = async () => {
+    try {
+      // Fetch bills in date range
+      const billsQuery = query(
+        collection(db, 'bills'),
+        where('createdAt', '>=', dateRange.start),
+        where('createdAt', '<=', dateRange.end)
+      );
+      const billsSnapshot = await getDocs(billsQuery);
+      const bills = billsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+
+      // Fetch orders in date range
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('createdAt', '>=', dateRange.start),
+        where('createdAt', '<=', dateRange.end)
+      );
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+
+      const servicesMap = new Map<string, ServiceROI>();
+
+      // Process bills
+      bills.forEach((bill: any) => {
+        const processedServices = new Set<string>(); // Track services already processed for this bill
+        
+        // Process new product structure first (preferred format)
+        let hasNewStructure = false;
+        if (bill.products && Array.isArray(bill.products)) {
+          bill.products.forEach((product: any) => {
+            if (product.descriptions && Array.isArray(product.descriptions)) {
+              hasNewStructure = true;
+              product.descriptions.forEach((desc: any) => {
+                if (desc.description) {
+                  const serviceName = desc.description.trim();
+                  const serviceKey = `${bill.id}-${serviceName}`; // Unique key per bill
+                  
+                  if (!processedServices.has(serviceKey)) {
+                    processedServices.add(serviceKey);
+                    
+                    const existing = servicesMap.get(serviceName) || {
+                      serviceName,
+                      totalIncome: 0,
+                      timesUsed: 0,
+                      avgPrice: 0,
+                      relatedOrders: [],
+                      relatedBills: []
+                    };
+
+                    existing.totalIncome += desc.amount || 0;
+                    existing.timesUsed += 1;
+                    existing.relatedBills.push({
+                      id: bill.id,
+                      billId: bill.billId,
+                      customerName: bill.customerName,
+                      date: bill.date,
+                      amount: desc.amount || 0,
+                      productName: product.name
+                    });
+
+                    servicesMap.set(serviceName, existing);
+                  }
+                }
+              });
+            }
+          });
+        }
+
+        // Process legacy items structure only if new structure doesn't exist
+        if (!hasNewStructure && bill.items && Array.isArray(bill.items)) {
+          bill.items.forEach((item: any) => {
+            if (item.description) {
+              const serviceName = item.description.trim();
+              const serviceKey = `${bill.id}-${serviceName}`; // Unique key per bill
+              
+              if (!processedServices.has(serviceKey)) {
+                processedServices.add(serviceKey);
+                
+                const existing = servicesMap.get(serviceName) || {
+                  serviceName,
+                  totalIncome: 0,
+                  timesUsed: 0,
+                  avgPrice: 0,
+                  relatedOrders: [],
+                  relatedBills: []
+                };
+
+                existing.totalIncome += item.amount || 0;
+                existing.timesUsed += 1;
+                existing.relatedBills.push({
+                  id: bill.id,
+                  billId: bill.billId,
+                  customerName: bill.customerName,
+                  date: bill.date,
+                  amount: item.amount || 0
+                });
+
+                servicesMap.set(serviceName, existing);
+              }
+            }
+          });
+        }
+      });
+
+      // Process orders - Only for tracking, don't double count income
+      // Orders are processed to show related order data but don't contribute to totalIncome 
+      // to avoid double counting since bills are the final invoiced amounts
+      orders.forEach((order: any) => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            const serviceName = (item.description || item.category || item.type || 'Unknown Service').trim();
+            const existing = servicesMap.get(serviceName);
+            
+            // Only add to related orders if this service already exists from bills
+            // This prevents counting services that only exist in orders but not in bills
+            if (existing) {
+              existing.relatedOrders.push({
+                id: order.id,
+                orderId: order.orderId || order.id,
+                customerName: order.customerName,
+                date: order.date || order.createdAt,
+                amount: item.amount || 0
+              });
+              
+              servicesMap.set(serviceName, existing);
+            }
+          });
+        }
+      });
+
+      // Calculate average prices and sort by total income
+      const servicesROIData: ServiceROI[] = Array.from(servicesMap.values()).map(service => ({
+        ...service,
+        avgPrice: service.timesUsed > 0 ? service.totalIncome / service.timesUsed : 0
+      })).sort((a, b) => b.totalIncome - a.totalIncome);
+
+      setServicesROI(servicesROIData);
+    } catch (error) {
+      console.error('Error calculating services ROI:', error);
+    }
+  };
+
+  const calculateProductsROI = async () => {
+    try {
+      // Fetch bills data
+      const billsSnapshot = await getDocs(
+        query(
+          collection(db, 'bills'),
+          where('date', '>=', dateRange.start),
+          where('date', '<=', dateRange.end),
+          orderBy('date', 'desc')
+        )
+      );
+
+      // Fetch orders data
+      const ordersSnapshot = await getDocs(
+        query(
+          collection(db, 'orders'),
+          where('createdAt', '>=', dateRange.start),
+          where('createdAt', '<=', dateRange.end),
+          orderBy('createdAt', 'desc')
+        )
+      );
+
+      const productsMap = new Map<string, ProductROI>();
+
+      // Process bills data - Group by PRODUCT NAME only, not by descriptions
+      billsSnapshot.docs.forEach(doc => {
+        const bill = doc.data();
+        if (bill.products && Array.isArray(bill.products)) {
+          bill.products.forEach((product: any) => {
+            const productName = (product.name || 'Unknown Product').trim();
+            
+            const existing = productsMap.get(productName) || {
+              productName,
+              totalIncome: 0,
+              timesUsed: 0,
+              avgPrice: 0,
+              relatedOrders: [],
+              relatedBills: []
+            };
+
+            // Sum up all descriptions under this product
+            const productTotal = product.total || 0;
+            existing.totalIncome += productTotal;
+            existing.timesUsed += 1;
+
+            existing.relatedBills.push({
+              id: bill.id || doc.id,
+              billId: bill.billId || bill.id || doc.id,
+              customerName: bill.customerName,
+              date: bill.date || bill.createdAt,
+              amount: productTotal,
+              description: `${productName} (Total)`
+            });
+
+            productsMap.set(productName, existing);
+          });
+        }
+      });
+
+      // Process orders data - Group by PRODUCT NAME only, not by descriptions
+      ordersSnapshot.docs.forEach(doc => {
+        const order = doc.data();
+        if (order.products && Array.isArray(order.products)) {
+          order.products.forEach((product: any) => {
+            const productName = (product.name || 'Unknown Product').trim();
+            
+            const existing = productsMap.get(productName) || {
+              productName,
+              totalIncome: 0,
+              timesUsed: 0,
+              avgPrice: 0,
+              relatedOrders: [],
+              relatedBills: []
+            };
+
+            const productTotal = product.total || 0;
+
+            existing.relatedOrders.push({
+              id: order.id,
+              orderId: order.orderId || order.id,
+              customerName: order.customerName,
+              date: order.date || order.createdAt,
+              amount: productTotal,
+              description: `${productName} (Total)`
+            });
+
+            productsMap.set(productName, existing);
+          });
+        }
+      });
+
+      // Calculate average prices and sort by total income
+      const productsROIData: ProductROI[] = Array.from(productsMap.values()).map(product => ({
+        ...product,
+        avgPrice: product.timesUsed > 0 ? product.totalIncome / product.timesUsed : 0
+      })).sort((a, b) => b.totalIncome - a.totalIncome);
+
+      setProductsROI(productsROIData);
+    } catch (error) {
+      console.error('Error calculating products ROI:', error);
     }
   };
 
@@ -500,10 +801,12 @@ const ROIDashboard: React.FC = () => {
 
       {/* Detailed Analytics Tabs */}
       <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as any)} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="staff">Staff ROI ({filteredStaffROI.length})</TabsTrigger>
           <TabsTrigger value="inventory">Inventory ROI ({filteredInventoryROI.length})</TabsTrigger>
+          <TabsTrigger value="services">Services ({servicesROI.length})</TabsTrigger>
+          <TabsTrigger value="products">Products ({productsROI.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -715,7 +1018,604 @@ const ROIDashboard: React.FC = () => {
             </div>
           )}
         </TabsContent>
+        
+        <TabsContent value="services" className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {servicesROI.map((service) => (
+                <Card 
+                  key={service.serviceName} 
+                  className="hover:shadow-md transition-shadow cursor-pointer" 
+                  onClick={() => {
+                    setSelectedService(service);
+                    setServiceBillsPage(1);
+                    setServiceOrdersPage(1);
+                    setShowServiceModal(true);
+                  }}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{service.serviceName}</CardTitle>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Total Income: {formatCurrency(service.totalIncome)}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">
+                        {service.timesUsed} uses
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Avg Price</span>
+                        <div className="font-medium text-blue-600 dark:text-blue-400">
+                          {formatCurrency(service.avgPrice)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Orders</span>
+                        <div className="font-medium text-green-600 dark:text-green-400">
+                          {service.relatedOrders.length}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <span>Bills: {service.relatedBills.length}</span>
+                      <span>Click for details</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {servicesROI.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <FileText className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Services Data</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No services data available for the selected period.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="products" className="space-y-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {productsROI.map((product) => (
+                <Card 
+                  key={product.productName} 
+                  className="hover:shadow-md transition-shadow cursor-pointer" 
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setProductBillsPage(1);
+                    setProductOrdersPage(1);
+                    setShowProductModal(true);
+                  }}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{product.productName}</CardTitle>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Total Income: {formatCurrency(product.totalIncome)}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">
+                        {product.timesUsed} uses
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Avg Price</span>
+                        <div className="font-medium text-blue-600 dark:text-blue-400">
+                          {formatCurrency(product.avgPrice)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Orders</span>
+                        <div className="font-medium text-green-600 dark:text-green-400">
+                          {product.relatedOrders.length}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <span>Bills: {product.relatedBills.length}</span>
+                      <span>Click for details</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {productsROI.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <Package className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Products Data</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No products data available for the selected period.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+      
+      {/* Service Detail Modal */}
+      {selectedService && showServiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[80vh] overflow-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {selectedService.serviceName}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Service Performance Analysis
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowServiceModal(false)}
+                  className="flex items-center gap-2"
+                >
+                  Close
+                </Button>
+              </div>
+
+              {/* Service Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Total Income</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatCurrency(selectedService.totalIncome)}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Times Used</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {selectedService.timesUsed}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Average Price</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {formatCurrency(selectedService.avgPrice)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Bills and Orders Lists */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Related Bills */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Related Bills ({selectedService.relatedBills.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const totalBills = selectedService.relatedBills.length;
+                      const totalPages = Math.ceil(totalBills / itemsPerPage);
+                      const startIndex = (serviceBillsPage - 1) * itemsPerPage;
+                      const endIndex = Math.min(startIndex + itemsPerPage, totalBills);
+                      const currentBills = selectedService.relatedBills.slice(startIndex, endIndex);
+
+                      return (
+                        <>
+                          <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {currentBills.map((bill, index) => (
+                              <div key={`bill-${startIndex + index}`} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-medium">{bill.billId || bill.id}</div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {bill.customerName}
+                                    </div>
+                                    {bill.productName && (
+                                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                                        Product: {bill.productName}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-medium text-green-600">
+                                      {formatCurrency(bill.amount)}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {bill.date ? format(new Date(bill.date.toDate ? bill.date.toDate() : bill.date), 'MMM dd, yyyy') : 'No date'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {totalBills === 0 && (
+                              <p className="text-gray-500 text-center py-4">No bills found</p>
+                            )}
+                          </div>
+                          
+                          {/* Pagination for Bills */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                              <div className="text-sm text-gray-600">
+                                Showing {startIndex + 1}-{endIndex} of {totalBills} bills
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setServiceBillsPage(p => Math.max(1, p - 1))}
+                                  disabled={serviceBillsPage === 1}
+                                >
+                                  Previous
+                                </Button>
+                                <span className="text-sm">
+                                  Page {serviceBillsPage} of {totalPages}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setServiceBillsPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={serviceBillsPage === totalPages}
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Related Orders */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Related Orders ({selectedService.relatedOrders.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const totalOrders = selectedService.relatedOrders.length;
+                      const totalPages = Math.ceil(totalOrders / itemsPerPage);
+                      const startIndex = (serviceOrdersPage - 1) * itemsPerPage;
+                      const endIndex = Math.min(startIndex + itemsPerPage, totalOrders);
+                      const currentOrders = selectedService.relatedOrders.slice(startIndex, endIndex);
+
+                      return (
+                        <>
+                          <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {currentOrders.map((order, index) => (
+                              <div key={`order-${startIndex + index}`} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-medium">{order.orderId}</div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {order.customerName}
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-medium text-blue-600">
+                                      {formatCurrency(order.amount)}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {order.date ? format(new Date(order.date.toDate ? order.date.toDate() : order.date), 'MMM dd, yyyy') : 'No date'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {totalOrders === 0 && (
+                              <p className="text-gray-500 text-center py-4">No orders found</p>
+                            )}
+                          </div>
+                          
+                          {/* Pagination for Orders */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                              <div className="text-sm text-gray-600">
+                                Showing {startIndex + 1}-{endIndex} of {totalOrders} orders
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setServiceOrdersPage(p => Math.max(1, p - 1))}
+                                  disabled={serviceOrdersPage === 1}
+                                >
+                                  Previous
+                                </Button>
+                                <span className="text-sm">
+                                  Page {serviceOrdersPage} of {totalPages}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setServiceOrdersPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={serviceOrdersPage === totalPages}
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Detail Modal */}
+      {selectedProduct && showProductModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[80vh] overflow-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {selectedProduct.productName}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Product Performance Analysis
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowProductModal(false)}
+                  className="flex items-center gap-2"
+                >
+                  Close
+                </Button>
+              </div>
+
+              {/* Product Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Total Income</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatCurrency(selectedProduct.totalIncome)}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Times Used</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {selectedProduct.timesUsed}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Average Price</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {formatCurrency(selectedProduct.avgPrice)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Bills and Orders Lists */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Related Bills */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Related Bills ({selectedProduct.relatedBills.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const totalBills = selectedProduct.relatedBills.length;
+                      const totalPages = Math.ceil(totalBills / itemsPerPage);
+                      const startIndex = (productBillsPage - 1) * itemsPerPage;
+                      const endIndex = Math.min(startIndex + itemsPerPage, totalBills);
+                      const currentBills = selectedProduct.relatedBills.slice(startIndex, endIndex);
+
+                      return (
+                        <>
+                          <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {currentBills.map((bill, index) => (
+                              <div key={`bill-${startIndex + index}`} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-medium">{bill.billId || bill.id}</div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {bill.customerName}
+                                    </div>
+                                    {bill.description && (
+                                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                                        {bill.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-medium text-green-600">
+                                      {formatCurrency(bill.amount)}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {bill.date ? format(new Date(bill.date.toDate ? bill.date.toDate() : bill.date), 'MMM dd, yyyy') : 'No date'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {totalBills === 0 && (
+                              <p className="text-gray-500 text-center py-4">No bills found</p>
+                            )}
+                          </div>
+                          
+                          {/* Pagination for Bills */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                              <div className="text-sm text-gray-600">
+                                Showing {startIndex + 1}-{endIndex} of {totalBills} bills
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setProductBillsPage(p => Math.max(1, p - 1))}
+                                  disabled={productBillsPage === 1}
+                                >
+                                  Previous
+                                </Button>
+                                <span className="text-sm">
+                                  Page {productBillsPage} of {totalPages}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setProductBillsPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={productBillsPage === totalPages}
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Related Orders */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Related Orders ({selectedProduct.relatedOrders.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const totalOrders = selectedProduct.relatedOrders.length;
+                      const totalPages = Math.ceil(totalOrders / itemsPerPage);
+                      const startIndex = (productOrdersPage - 1) * itemsPerPage;
+                      const endIndex = Math.min(startIndex + itemsPerPage, totalOrders);
+                      const currentOrders = selectedProduct.relatedOrders.slice(startIndex, endIndex);
+
+                      return (
+                        <>
+                          <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {currentOrders.map((order, index) => (
+                              <div key={`order-${startIndex + index}`} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-medium">{order.orderId}</div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {order.customerName}
+                                    </div>
+                                    {order.description && (
+                                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                                        {order.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-medium text-blue-600">
+                                      {formatCurrency(order.amount)}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {order.date ? format(new Date(order.date.toDate ? order.date.toDate() : order.date), 'MMM dd, yyyy') : 'No date'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {totalOrders === 0 && (
+                              <p className="text-gray-500 text-center py-4">No orders found</p>
+                            )}
+                          </div>
+                          
+                          {/* Pagination for Orders */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                              <div className="text-sm text-gray-600">
+                                Showing {startIndex + 1}-{endIndex} of {totalOrders} orders
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setProductOrdersPage(p => Math.max(1, p - 1))}
+                                  disabled={productOrdersPage === 1}
+                                >
+                                  Previous
+                                </Button>
+                                <span className="text-sm">
+                                  Page {productOrdersPage} of {totalPages}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setProductOrdersPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={productOrdersPage === totalPages}
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

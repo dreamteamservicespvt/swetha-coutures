@@ -49,10 +49,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
 
   // Auto-populate "Made For" field when customer name changes
   useEffect(() => {
-    if (customerNameValue && orderItems.length > 0) {
-      const updatedItems = orderItems.map(item => ({
+    if (customerNameValue && customerNameValue.trim()) {
+      const updatedItems = orderItems.map((item, index) => ({
         ...item,
-        madeFor: item.madeFor || customerNameValue
+        madeFor: customerNameValue // Always update all items, including first item
       }));
       setOrderItems(updatedItems);
     }
@@ -111,7 +111,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
 
   const resetForm = () => {
     reset();
-    setOrderItems([{
+    const newItem: OrderItem = {
       madeFor: customerNameValue || '',
       category: '',
       description: '',
@@ -124,7 +124,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onClose, on
       designImages: [],
       notes: '',
       sizes: {}
-    }]);
+    };
+    setOrderItems([newItem]);
   };
 
   const fetchData = async () => {

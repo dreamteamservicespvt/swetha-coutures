@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { NumberInput } from '@/components/ui/number-input';
@@ -184,10 +185,11 @@ const MultipleItemsSection: React.FC<MultipleItemsSectionProps> = ({
                       
                       <div>
                         <Label>Description</Label>
-                        <Input
+                        <Textarea
                           value={item.description}
                           onChange={(e) => updateItem(index, 'description', e.target.value)}
                           placeholder="Item description"
+                          rows={2}
                         />
                       </div>
                       

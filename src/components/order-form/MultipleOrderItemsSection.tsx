@@ -32,7 +32,7 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
       quantity: 1,
       status: 'received',
       orderDate: new Date().toISOString().split('T')[0],
-      deliveryDate: '',
+      deliveryDate: orderItems.length > 0 ? orderItems[0].deliveryDate : '', // Auto-sync delivery date from Item 1
       assignedStaff: [],
       requiredMaterials: [],
       designImages: [],
@@ -44,21 +44,36 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
   };
 
   const updateOrderItem = (index: number, field: string, value: any) => {
+    console.log(`Updating item ${index}, field: ${field}, value:`, value);
+    
     const updatedItems = orderItems.map((item, i) => {
       if (i === index) {
-        console.log(`Updating item ${index}, field: ${field}, value:`, value);
-        
         // Handle the case where we're replacing the entire item
         if (field === 'completeItem') {
           return value;
         }
         
         // Handle normal field updates
-        return { ...item, [field]: value };
+        const updatedItem = { ...item, [field]: value };
+        return updatedItem;
       }
       return item;
     });
+    
     setOrderItems(updatedItems);
+  };
+
+  // Handle delivery date sync from Item 1 to all subsequent items
+  const handleDeliveryDateSync = (sourceIndex: number, date: string) => {
+    if (sourceIndex === 0) { // Only sync from Item 1
+      const updatedItems = orderItems.map((item, i) => {
+        if (i > 0) { // Apply to Item 2 and beyond
+          return { ...item, deliveryDate: date };
+        }
+        return item;
+      });
+      setOrderItems(updatedItems);
+    }
   };
 
   const removeOrderItem = (index: number) => {
@@ -89,7 +104,7 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
       <CardContent className="space-y-4">
         {orderItems.map((item, index) => (
           <OrderItemCard
-            key={index}
+            key={`order-item-${index}-${item.deliveryDate}-${item.category}-${item.madeFor}`}
             item={item}
             index={index}
             onUpdate={updateOrderItem}
@@ -99,6 +114,7 @@ const MultipleOrderItemsSection: React.FC<MultipleOrderItemsSectionProps> = ({
             materials={materials}
             customerName={customerName}
             orderId={orderId}
+            onDeliveryDateChange={handleDeliveryDateSync}
           />
         ))}
       </CardContent>

@@ -17,6 +17,7 @@ interface Customer {
   city?: string;
   pincode?: string;
   customerType: 'regular' | 'premium' | 'vip';
+  sizes?: Record<string, string>; // Add sizes field
 }
 
 interface Order {
@@ -227,6 +228,28 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
               )}
             </CardContent>
           </Card>
+
+          {/* Customer Sizes */}
+          {customer.sizes && Object.keys(customer.sizes).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Ruler className="h-5 w-5" />
+                  Size Measurements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(customer.sizes).map(([sizeKey, sizeValue]) => (
+                    <div key={sizeKey} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <span className="font-medium text-sm">{sizeKey}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{sizeValue}"</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Orders */}
           <Card>

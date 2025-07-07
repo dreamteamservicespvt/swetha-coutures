@@ -16,6 +16,23 @@ export interface BillItem {
   isSubItem?: boolean; // Flag to identify sub-items
 }
 
+// New interfaces for Product + Description grouping
+export interface ProductDescription {
+  id: string;
+  description: string;
+  qty: number;
+  rate: number;
+  amount: number;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  total: number;
+  descriptions: ProductDescription[];
+  expanded?: boolean; // UI state for collapse/expand
+}
+
 export interface BillBreakdown {
   fabric: number;
   stitching: number;
@@ -50,7 +67,8 @@ export interface Bill {
   customerEmail?: string;
   customerAddress?: string;
   orderId?: string;
-  items: BillItem[];
+  items: BillItem[]; // Legacy field - maintained for backward compatibility
+  products?: Product[]; // New field for Product + Description grouping
   breakdown: BillBreakdown;
   subtotal: number;
   gstPercent: number;
@@ -323,6 +341,71 @@ export const downloadPDF = async (bill: Bill) => {
   }
 };
 
+// Helper function to generate table rows for both products and legacy items structure
+const generateItemsTableRows = (bill: Bill): string => {
+  // If bill has products (new structure), use them
+  if (bill.products && bill.products.length > 0) {
+    return bill.products.map(product => {
+      // Product header row
+      const productHeader = `
+        <tr style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-left: 4px solid #6366f1;">
+          <td style="padding: 15px 25px; font-weight: 700; font-size: 15px; color: #1e293b;" colspan="4">
+            📦 ${product.name} - ${formatCurrency(product.total)}
+          </td>
+        </tr>
+      `;
+      
+      // Sub-item rows
+      const subItemRows = product.descriptions.map(desc => `
+        <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+          <td style="padding: 12px 25px 12px 45px; font-size: 14px; color: #374151; line-height: 1.5;">
+            <div style="font-weight: 500;">${desc.description}</div>
+          </td>
+          <td style="padding: 12px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${desc.qty}</td>
+          <td style="padding: 12px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(desc.rate)}</td>
+          <td style="padding: 12px 25px; text-align: right; font-size: 14px; font-weight: 600; color: #1e293b;">${formatCurrency(desc.amount)}</td>
+        </tr>
+      `).join('');
+      
+      return productHeader + subItemRows;
+    }).join('');
+  }
+  
+  // Fall back to legacy items structure
+  if (bill.items && bill.items.length > 0) {
+    return bill.items.map((item, index) => `
+      <tr style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
+        <td style="padding: 18px 25px; font-size: 14px; color: #1e293b; line-height: 1.5;">
+          <div style="font-weight: 600; margin-bottom: 2px;">${item.description}</div>
+          ${item.type === 'inventory' ? '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Material</span>' : 
+            item.type === 'staff' ? '<span style="background: #dcfce7; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Service</span>' : 
+            '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Custom</span>'}
+        </td>
+        <td style="padding: 18px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${item.quantity}</td>
+        <td style="padding: 18px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(item.rate)}</td>
+        <td style="padding: 18px 25px; text-align: right; font-size: 15px; font-weight: 700; color: #1e293b;">${formatCurrency(item.amount)}</td>
+      </tr>
+    `).join('');
+  }
+  
+  return '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #64748b;">No items found</td></tr>';
+};
+
+// Helper function to calculate total of all items (products or legacy items)
+const calculateItemsTotal = (bill: Bill): number => {
+  // If bill has products (new structure), use them
+  if (bill.products && bill.products.length > 0) {
+    return bill.products.reduce((sum, product) => sum + product.total, 0);
+  }
+  
+  // Fall back to legacy items structure
+  if (bill.items && bill.items.length > 0) {
+    return bill.items.reduce((sum, item) => sum + item.amount, 0);
+  }
+  
+  return 0;
+};
+
 const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
   // Get company information dynamically
   const { getCompanyInfo } = await import('@/utils/settingsUtils');
@@ -482,7 +565,7 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
           <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 20px 25px;">
             <h3 style="margin: 0; font-size: 18px; font-weight: 600; display: flex; align-items: center;">
               <span style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 8px; margin-right: 12px; font-size: 14px;">🛍️</span>
-              Service Details
+              ${bill.products && bill.products.length > 0 ? 'Products & Services' : 'Service Details'}
             </h3>
           </div>
           <table style="width: 100%; border-collapse: collapse;">
@@ -495,23 +578,11 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
               </tr>
             </thead>
             <tbody>
-              ${bill.items.map((item, index) => `
-                <tr style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
-                  <td style="padding: 18px 25px; font-size: 14px; color: #1e293b; line-height: 1.5;">
-                    <div style="font-weight: 600; margin-bottom: 2px;">${item.description}</div>
-                    ${item.type === 'inventory' ? '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Material</span>' : 
-                      item.type === 'staff' ? '<span style="background: #dcfce7; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Service</span>' : 
-                      '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Custom</span>'}
-                  </td>
-                  <td style="padding: 18px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${item.quantity}</td>
-                  <td style="padding: 18px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(item.rate)}</td>
-                  <td style="padding: 18px 25px; text-align: right; font-size: 15px; font-weight: 700; color: #1e293b;">${formatCurrency(item.amount)}</td>
-                </tr>
-              `).join('')}
+              ${generateItemsTableRows(bill)}
               <tr style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-top: 2px solid #3b82f6;">
                 <td colspan="3" style="padding: 18px 25px; font-weight: 700; font-size: 16px; color: #1e293b;">Items Subtotal</td>
                 <td style="padding: 18px 25px; text-align: right; font-weight: 700; font-size: 16px; color: #3b82f6;">
-                  ${formatCurrency(bill.items.reduce((sum, item) => sum + item.amount, 0))}
+                  ${formatCurrency(calculateItemsTotal(bill))}
                 </td>
               </tr>
             </tbody>
@@ -762,6 +833,65 @@ export const printBill = async (bill: Bill) => {
   };
 };
 
+// Helper function to generate Zylker-style table rows for both products and legacy items structure
+const generateZylkerItemsTableRows = (bill: Bill): string => {
+  let itemCounter = 0;
+  
+  // If bill has products (new structure), use them
+  if (bill.products && bill.products.length > 0) {
+    return bill.products.map(product => {
+      const productRows: string[] = [];
+      
+      // Add each description as a separate row
+      product.descriptions.forEach(desc => {
+        itemCounter++;
+        const bgColor = itemCounter % 2 === 0 ? '#f8f9fa' : '#ffffff';
+        
+        productRows.push(`
+          <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
+            <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
+            <td style="padding: 8pt 10pt; vertical-align: top;">
+              <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${desc.description}</div>
+              <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
+                Product: ${product.name}
+              </div>
+            </td>
+            <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${desc.qty}</td>
+            <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(desc.rate)}</td>
+            <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(desc.amount)}</td>
+          </tr>
+        `);
+      });
+      
+      return productRows.join('');
+    }).join('');
+  }
+  
+  // Fall back to legacy items structure
+  if (bill.items && bill.items.length > 0) {
+    return bill.items.map((item, index) => {
+      const bgColor = (index + 1) % 2 === 0 ? '#f8f9fa' : '#ffffff';
+      return `
+        <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
+          <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${index + 1}</td>
+          <td style="padding: 8pt 10pt; vertical-align: top;">
+            <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${item.description}</div>
+            <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
+              ${item.type === 'inventory' ? 'Material Item' : 
+                item.type === 'staff' ? 'Service Item' : 'Custom Work'}
+            </div>
+          </td>
+          <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${item.quantity}</td>
+          <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(item.rate)}</td>
+          <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(item.amount)}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+  
+  return '<tr><td colspan="5" style="padding: 20pt; text-align: center; color: #666;">No items found</td></tr>';
+};
+
 /**
  * Generate Zylker Electronics Hub style invoice HTML - A4 Portrait Optimized
  */
@@ -933,21 +1063,7 @@ const generateZylkerStyleBillHTML = async (bill: Bill): Promise<string> => {
               </tr>
             </thead>
             <tbody>
-              ${bill.items.map((item, index) => `
-                <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom: 0.5pt solid #e1e5e9;">
-                  <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${index + 1}</td>
-                  <td style="padding: 8pt 10pt; vertical-align: top;">
-                    <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${item.description}</div>
-                    <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
-                      ${item.type === 'inventory' ? 'Material Item' : 
-                        item.type === 'staff' ? 'Service Item' : 'Custom Work'}
-                    </div>
-                  </td>
-                  <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${item.quantity}</td>
-                  <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(item.rate)}</td>
-                  <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(item.amount)}</td>
-                </tr>
-              `).join('')}
+              ${generateZylkerItemsTableRows(bill)}
             </tbody>
           </table>
         </div>

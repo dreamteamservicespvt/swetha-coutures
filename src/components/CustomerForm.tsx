@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Plus, X } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -22,6 +23,7 @@ interface Customer {
   totalSpent?: number;
   lastOrderDate?: string;
   customerType: 'regular' | 'premium' | 'vip';
+  sizes?: Record<string, string>; // Add sizes field
 }
 
 interface CustomerFormProps {
@@ -36,11 +38,13 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
     phone: '',
     email: '',
     address: '',
-    city: '',
-    pincode: '',
     notes: '',
-    customerType: 'regular' as 'regular' | 'premium' | 'vip'
+    customerType: 'regular' as 'regular' | 'premium' | 'vip',
+    sizes: {} as Record<string, string>
   });
+
+  const [customSizeLabel, setCustomSizeLabel] = useState('');
+  const [customSizeValue, setCustomSizeValue] = useState('');
 
   React.useEffect(() => {
     if (editingCustomer) {
@@ -49,10 +53,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
         phone: editingCustomer.phone || '',
         email: editingCustomer.email || '',
         address: editingCustomer.address || '',
-        city: editingCustomer.city || '',
-        pincode: editingCustomer.pincode || '',
         notes: editingCustomer.notes || '',
-        customerType: editingCustomer.customerType || 'regular'
+        customerType: editingCustomer.customerType || 'regular',
+        sizes: editingCustomer.sizes || {}
       });
     } else {
       resetForm();
@@ -65,10 +68,36 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
       phone: '',
       email: '',
       address: '',
-      city: '',
-      pincode: '',
       notes: '',
-      customerType: 'regular'
+      customerType: 'regular',
+      sizes: {}
+    });
+  };
+
+  const handleSizeChange = (sizeKey: string, value: string) => {
+    setFormData({
+      ...formData,
+      sizes: { ...formData.sizes, [sizeKey]: value }
+    });
+  };
+
+  const handleAddCustomSize = () => {
+    if (customSizeLabel.trim() && customSizeValue.trim()) {
+      setFormData({
+        ...formData,
+        sizes: { ...formData.sizes, [customSizeLabel.trim()]: customSizeValue.trim() }
+      });
+      setCustomSizeLabel('');
+      setCustomSizeValue('');
+    }
+  };
+
+  const handleRemoveSize = (sizeKey: string) => {
+    const updatedSizes = { ...formData.sizes };
+    delete updatedSizes[sizeKey];
+    setFormData({
+      ...formData,
+      sizes: updatedSizes
     });
   };
 
@@ -184,25 +213,80 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ isOpen, onClose, editingCus
             />
           </div>
 
-          {/* City and Pincode - Responsive Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => setFormData({...formData, city: e.target.value})}
-                placeholder="City"
-              />
-            </div>
-            <div>
-              <Label htmlFor="pincode">Pincode</Label>
-              <Input
-                id="pincode"
-                value={formData.pincode}
-                onChange={(e) => setFormData({...formData, pincode: e.target.value})}
-                placeholder="Pincode"
-              />
+          {/* Size Measurements Section */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Size Measurements</Label>
+            
+            {/* Existing Size Inputs */}
+            {Object.keys(formData.sizes).length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(formData.sizes).map(([sizeKey, sizeValue]) => (
+                  <div key={sizeKey} className="flex items-center space-x-2">
+                    <div className="flex-1">
+                      <Label htmlFor={`size-${sizeKey}`} className="text-sm">
+                        {sizeKey}
+                      </Label>
+                      <Input
+                        id={`size-${sizeKey}`}
+                        value={sizeValue}
+                        onChange={(e) => handleSizeChange(sizeKey, e.target.value)}
+                        placeholder="inches"
+                        className="text-sm"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveSize(sizeKey)}
+                      className="text-red-600 hover:bg-red-50 mt-5"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Custom Size */}
+            <div className="border-t pt-4">
+              <div className="flex items-end space-x-2">
+                <div className="flex-1">
+                  <Label htmlFor="customSizeLabel" className="text-sm">
+                    Size Label
+                  </Label>
+                  <Input
+                    id="customSizeLabel"
+                    value={customSizeLabel}
+                    onChange={(e) => setCustomSizeLabel(e.target.value)}
+                    placeholder="e.g., Bust, Waist, Length"
+                    className="text-sm"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="customSizeValue" className="text-sm">
+                    Measurement
+                  </Label>
+                  <Input
+                    id="customSizeValue"
+                    value={customSizeValue}
+                    onChange={(e) => setCustomSizeValue(e.target.value)}
+                    placeholder="inches"
+                    className="text-sm"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddCustomSize}
+                  disabled={!customSizeLabel.trim() || !customSizeValue.trim()}
+                  className="flex items-center space-x-1"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Add Size</span>
+                </Button>
+              </div>
             </div>
           </div>
 

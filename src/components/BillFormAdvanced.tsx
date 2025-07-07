@@ -19,6 +19,8 @@ import {
   BillItem, 
   BillBreakdown, 
   BankDetails,
+  Product,
+  ProductDescription,
   generateBillId,
   generateUPILink,
   calculateBillTotals,
@@ -30,6 +32,7 @@ import { getPaymentSettings } from '@/utils/settingsUtils';
 import CustomerAutoSuggest from '@/components/CustomerAutoSuggest';
 import BillWorkAndMaterials, { WorkItem, MaterialItem } from '@/components/BillWorkAndMaterials';
 import PaymentModeInput, { PaymentRecord } from '@/components/PaymentModeInput';
+import ProductDescriptionManager from '@/components/ProductDescriptionManager';
 
 interface Customer {
   id: string;
@@ -81,6 +84,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     customerAddress: '',
     orderId: '',
     items: [],
+    products: [], // New field for Product + Description grouping
     breakdown: {
       fabric: 0,
       stitching: 0,
@@ -128,6 +132,9 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
   const [materialItems, setMaterialItems] = useState<MaterialItem[]>([]);
   // Enhanced bill items state
   const [enhancedBillItems, setEnhancedBillItems] = useState<BillItem[]>([]);
+  
+  // New Product + Description state
+  const [products, setProducts] = useState<Product[]>([]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -206,6 +213,27 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         setWorkItems(work);
         setMaterialItems([]);
       }
+      
+      // Initialize products from bill data (if exists) or convert from items
+      if (bill.products && bill.products.length > 0) {
+        setProducts(bill.products);
+      } else if (bill.items && bill.items.length > 0) {
+        // Convert existing items to the new product structure for backward compatibility
+        const defaultProduct: Product = {
+          id: uuidv4(),
+          name: 'Services',
+          total: bill.items.reduce((sum, item) => sum + item.amount, 0),
+          descriptions: bill.items.map(item => ({
+            id: item.id,
+            description: item.description,
+            qty: item.quantity,
+            rate: item.rate,
+            amount: item.amount
+          })),
+          expanded: true
+        };
+        setProducts([defaultProduct]);
+      }
     } else {
       // Ensure default initialization has proper breakdown
       setFormData(prev => ({
@@ -227,10 +255,10 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     }
   }, [bill]);
 
-  // Recalculate totals when enhanced bill items change
+  // Recalculate totals when enhanced bill items or products change
   useEffect(() => {
     // Use enhanced bill items if available, otherwise convert work items for backward compatibility
-    const allItems: BillItem[] = enhancedBillItems.length > 0 ? enhancedBillItems : [
+    let allItems: BillItem[] = enhancedBillItems.length > 0 ? enhancedBillItems : [
       ...workItems.map(item => ({
         id: item.id,
         type: 'service' as const,
@@ -242,6 +270,28 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         chargeType: 'Work'
       }))
     ];
+
+    // If using new product structure, convert products to items for calculation
+    if (products.length > 0) {
+      const productItems: BillItem[] = [];
+      products.forEach(product => {
+        product.descriptions.forEach(desc => {
+          productItems.push({
+            id: desc.id,
+            type: 'service',
+            description: desc.description,
+            quantity: desc.qty,
+            rate: desc.rate,
+            cost: 0,
+            amount: desc.amount
+          });
+        });
+      });
+      // Use product items if they exist, otherwise fall back to enhanced items
+      if (productItems.length > 0) {
+        allItems = productItems;
+      }
+    }
 
     const totals = calculateBillTotals(
       allItems,
@@ -262,10 +312,10 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
       totalAmount: totals.totalAmount,
       balance: Math.max(0, balance),
       status,
-      // Auto-set QR amount to balance if not manually set
-      qrAmount: prev.qrAmount === 0 ? Math.max(0, balance) : prev.qrAmount
+      // Auto-update QR amount to current balance unless manually overridden
+      qrAmount: prev.qrAmount === 0 || prev.qrAmount === prev.balance ? Math.max(0, balance) : prev.qrAmount
     }));
-  }, [enhancedBillItems, workItems, formData.gstPercent, formData.discount, formData.discountType, formData.paidAmount]);
+  }, [enhancedBillItems, workItems, products, formData.gstPercent, formData.discount, formData.discountType, formData.paidAmount]);
 
   // Load dynamic payment settings from business settings
   const loadPaymentSettings = async () => {
@@ -373,13 +423,13 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     const balance = Math.max(0, totalAmount - (formData.paidAmount || 0));
     const status = calculateBillStatus(totalAmount, formData.paidAmount || 0);
 
-    // Always default QR amount to balance unless user has explicitly changed it
-    // If qrAmount is undefined, null, 0, or equal to previous balance, update it
+    // Always update QR amount to current balance unless user has manually overridden it
+    // Check if qrAmount was manually set by comparing to previous balance
     const shouldUpdateQrAmount = 
       formData.qrAmount === undefined || 
       formData.qrAmount === null || 
       formData.qrAmount === 0 ||
-      formData.qrAmount === formData.balance;
+      formData.qrAmount === formData.balance; // If it matches old balance, update to new balance
 
     setFormData(prev => ({
       ...prev,
@@ -388,7 +438,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
       totalAmount,
       balance,
       status,
-      // Default QR amount to balance for easy payment
+      // Always auto-update QR amount to current balance for real-time payment
       qrAmount: shouldUpdateQrAmount ? balance : prev.qrAmount
     }));
   }, [
@@ -530,6 +580,32 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     }));
   };
 
+  // Reference to the save function from ProductDescriptionManager
+  const [productSaveFunction, setProductSaveFunction] = useState<(() => Promise<{newProductsArray: string[], newDescriptionsArray: string[]}>) | null>(null);
+
+  // Function to receive the save function from ProductDescriptionManager
+  const registerProductSaveFunction = (saveFunction: () => Promise<{newProductsArray: string[], newDescriptionsArray: string[]}>) => {
+    setProductSaveFunction(() => saveFunction);
+  };
+
+  // Function to save new products and descriptions to Firestore
+  const saveNewProductsAndDescriptions = async () => {
+    try {
+      if (productSaveFunction) {
+        const result = await productSaveFunction();
+        return result;
+      }
+    } catch (error) {
+      console.error('Error saving new products and descriptions:', error);
+      // Don't throw - this is not critical for bill saving
+      toast({
+        title: "Warning",
+        description: "Bill saved but some new products/descriptions couldn't be saved for future use",
+        variant: "default"
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -584,10 +660,10 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
       return;
     }
     
-    if (workItems.length === 0 && enhancedBillItems.length === 0) {
+    if (products.length === 0 && workItems.length === 0 && enhancedBillItems.length === 0) {
       toast({
         title: "Validation Error",
-        description: "At least one work item or material item is required",
+        description: "At least one product or work item is required",
         variant: "destructive"
       });
       return;
@@ -708,6 +784,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           
           return cleanItem;
         }).filter(item => item.description && item.quantity > 0), // Only include valid items
+        products: products.length > 0 ? products : undefined, // Include products if they exist
         breakdown: safeBreakdown,
         subtotal: formData.subtotal || 0,
         gstPercent: formData.gstPercent || 0,
@@ -869,6 +946,9 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
       
       await onSave(sanitizedBillData);
       
+      // Save new products and descriptions to Firestore
+      await saveNewProductsAndDescriptions();
+      
       if (onSuccess) {
         onSuccess();
       }
@@ -1024,15 +1104,24 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           </CardContent>
         </Card>
 
-        {/* Work Section (Materials section has been removed) */}
-        <BillWorkAndMaterials
-          workItems={workItems}
-          materialItems={materialItems}
-          onWorkItemsChange={setWorkItems}
-          onMaterialItemsChange={setMaterialItems}
-          onBillItemsChange={setEnhancedBillItems}
-          initialBillItems={enhancedBillItems}
+        {/* Products & Services Section */}
+        <ProductDescriptionManager
+          products={products}
+          onProductsChange={setProducts}
+          onSaveNewEntries={registerProductSaveFunction}
         />
+
+        {/* Legacy Work Section - Hidden when using products */}
+        {products.length === 0 && (
+          <BillWorkAndMaterials
+            workItems={workItems}
+            materialItems={materialItems}
+            onWorkItemsChange={setWorkItems}
+            onMaterialItemsChange={setMaterialItems}
+            onBillItemsChange={setEnhancedBillItems}
+            initialBillItems={enhancedBillItems}
+          />
+        )}
 
         {/* Payment Calculation */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1218,7 +1307,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
                       });
                     }
                   }}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white dark:from-green-700 dark:to-emerald-700 dark:hover:from-green-800 dark:hover:to-emerald-800"
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 dark:from-green-700 dark:to-emerald-700 dark:hover:from-green-800 dark:hover:to-emerald-800"
                   // Enable button if we have necessary info to generate UPI link
                   disabled={!formData.upiId || !formData.customerName || !formData.billId}
                 >
@@ -1246,7 +1335,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           </Button>
           <Button
             type="submit"
-            disabled={loading || !formData.customerName?.trim() || !formData.customerPhone?.trim() || workItems.length === 0}
+            disabled={loading || !formData.customerName?.trim() || !formData.customerPhone?.trim() || (products.length === 0 && workItems.length === 0)}
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
@@ -1261,7 +1350,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         </div>
         
         {/* Validation hints */}
-        {(!formData.customerName?.trim() || !formData.customerPhone?.trim() || workItems.length === 0) && (
+        {(!formData.customerName?.trim() || !formData.customerPhone?.trim() || (products.length === 0 && workItems.length === 0)) && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <h3 className="text-sm font-medium text-yellow-800 mb-2">
               {isFromOrder ? 'Please complete the bill details:' : 'Required fields missing:'}
@@ -1269,7 +1358,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
             <ul className="text-sm text-yellow-700 space-y-1">
               {!formData.customerName?.trim() && <li>• Customer name is required</li>}
               {!formData.customerPhone?.trim() && <li>• Customer phone is required</li>}
-              {workItems.length === 0 && <li>• {isFromOrder ? 'Add pricing to work items' : 'At least one work item is required'}</li>}
+              {(products.length === 0 && workItems.length === 0) && <li>• {isFromOrder ? 'Add pricing to work items' : 'At least one product or work item is required'}</li>}
             </ul>
           </div>
         )}

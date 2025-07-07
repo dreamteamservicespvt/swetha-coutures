@@ -30,6 +30,7 @@ interface Customer {
   lastOrderDate?: string;
   customerType: 'regular' | 'premium' | 'vip';
   createdAt: any;
+  sizes?: Record<string, string>; // Add sizes field
 }
 
 const Customers = () => {

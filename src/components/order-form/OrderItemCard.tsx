@@ -9,8 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, X, ChevronDown, ChevronRight, Palette, Upload } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import StaffAssignment from '@/components/StaffAssignment';
-import RequiredMaterials from '@/components/RequiredMaterials';
 import ToolDesignCanvas from '@/components/ToolDesignCanvas';
 import { OrderItem, Staff, Material } from '@/types/orderTypes';
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -29,6 +27,7 @@ interface OrderItemCardProps {
   materials: Material[];
   customerName?: string; // Add customer name for history lookup
   orderId?: string; // Optional orderId for design state persistence
+  onDeliveryDateChange?: (index: number, date: string) => void; // Add delivery date sync handler
 }
 
 const OrderItemCard: React.FC<OrderItemCardProps> = ({
@@ -40,7 +39,8 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
   staff,
   materials,
   customerName,
-  orderId
+  orderId,
+  onDeliveryDateChange
 }) => {
   const [customSizeLabel, setCustomSizeLabel] = useState('');
   const [customSizeValue, setCustomSizeValue] = useState('');
@@ -57,6 +57,15 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
   const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
   const [customTypeName, setCustomTypeName] = useState('');
   const [showDesignCanvas, setShowDesignCanvas] = useState(false);
+  
+  // Local state for delivery date to ensure proper control
+  const [localDeliveryDate, setLocalDeliveryDate] = useState(item.deliveryDate || '');
+
+  // Update local state when prop changes
+  useEffect(() => {
+    console.log(`OrderItemCard ${index} received item.deliveryDate:`, item.deliveryDate);
+    setLocalDeliveryDate(item.deliveryDate || '');
+  }, [item.deliveryDate, index]);
 
   const statusOptions = [
     { value: 'received', label: 'Received' },
@@ -64,6 +73,13 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
     { value: 'ready', label: 'Ready' },
     { value: 'delivered', label: 'Delivered' }
   ];
+
+  // Auto-fill "Made For" field when customer name changes - Fix for Item 1
+  useEffect(() => {
+    if (customerName && customerName.trim() && !item.madeFor) {
+      onUpdate(index, 'madeFor', customerName);
+    }
+  }, [customerName, index, item.madeFor, onUpdate]);
 
   // Load custom item types from Firebase
   useEffect(() => {
@@ -442,11 +458,12 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor={`description-${index}`}>Description</Label>
-                <Input
+                <Textarea
                   id={`description-${index}`}
                   value={item.description}
                   onChange={(e) => onUpdate(index, 'description', e.target.value)}
                   placeholder="Brief description"
+                  rows={2}
                 />
               </div>
               <div>
@@ -493,8 +510,17 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                 <Input
                   id={`deliveryDate-${index}`}
                   type="date"
-                  value={item.deliveryDate}
-                  onChange={(e) => onUpdate(index, 'deliveryDate', e.target.value)}
+                  value={localDeliveryDate}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    console.log(`OrderItemCard ${index} onChange triggered with value:`, newDate);
+                    setLocalDeliveryDate(newDate);
+                    onUpdate(index, 'deliveryDate', newDate);
+                    // Auto-sync delivery date for subsequent items when Item 1 date is changed
+                    if (index === 0 && onDeliveryDateChange) {
+                      onDeliveryDateChange(index, newDate);
+                    }
+                  }}
                   required
                 />
               </div>
@@ -622,24 +648,6 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                 </div>
               </div>
             )}
-
-            {/* Staff Assignment */}
-            <div>
-              <Label className="text-base font-medium mb-2 block">Assigned Staff</Label>
-              <StaffAssignment
-                selectedStaff={item.assignedStaff}
-                onChange={(staffIds) => onUpdate(index, 'assignedStaff', staffIds)}
-              />
-            </div>
-
-            {/* Required Materials */}
-            <div>
-              <Label className="text-base font-medium mb-2 block">Required Materials</Label>
-              <RequiredMaterials
-                selectedMaterials={item.requiredMaterials}
-                onChange={(materials) => onUpdate(index, 'requiredMaterials', materials)}
-              />
-            </div>
 
             {/* Design Images & Canvas */}
             <div>

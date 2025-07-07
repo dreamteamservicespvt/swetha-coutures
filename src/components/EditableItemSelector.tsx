@@ -148,11 +148,17 @@ const EditableItemSelector: React.FC<EditableItemSelectorProps> = ({
       });
     }
 
-    if (searchTerm) {
-      filtered = filtered.filter(item =>
+    // Only filter by search term if there's actual text AND we have items to filter
+    // Don't show empty results when backspacing - show all available items instead
+    if (searchTerm && searchTerm.trim() && workItems.length > 0) {
+      const searchFiltered = filtered.filter(item =>
         item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.category || 'uncategorized').toLowerCase().includes(searchTerm.toLowerCase())
       );
+      
+      // If search doesn't match anything, still show all available items
+      // to prevent empty dropdown that confuses users
+      filtered = searchFiltered.length > 0 ? searchFiltered : filtered;
     }
 
     // Sort by usage count (most used first) and then by description
@@ -448,15 +454,24 @@ const EditableItemSelector: React.FC<EditableItemSelectorProps> = ({
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="p-4 text-center text-muted-foreground">
-                  No items found matching your search.
+                  No items available. {searchTerm.trim() && "Try adjusting your search or create a custom item."}
                 </div>
               ) : (
                 <div className="p-2">
                   {filteredItems.map((item) => (
                     <div
                       key={`${item.type}-${item.id}`}
-                      onClick={() => handleSelect(item)}
-                      className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer rounded-lg transition-colors"
+                      onMouseDown={(e) => {
+                        // Use onMouseDown for better responsiveness to light taps
+                        e.preventDefault();
+                        handleSelect(item);
+                      }}
+                      onClick={(e) => {
+                        // Keep onClick as backup
+                        e.preventDefault();
+                        handleSelect(item);
+                      }}
+                      className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer rounded-lg transition-colors active:bg-muted"
                     >
                       {item.icon}
                       <div className="flex-1 min-w-0">
