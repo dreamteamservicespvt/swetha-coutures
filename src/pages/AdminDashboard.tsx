@@ -34,6 +34,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import AttendanceManagement from '@/components/AttendanceManagement';
 import RoleAnalytics from '@/components/RoleAnalytics';
 import ROIDashboard from '@/components/ROIDashboard';
+import IncomeExpensesCard from '@/components/admin/IncomeExpensesCard';
 
 interface ExtendedStats {
   totalOrders: number;
@@ -330,33 +331,34 @@ const AdminDashboard = () => {
       bgColor: 'bg-indigo-50',
       cardType: 'todaysAppointments'
     },
-    {
-      title: 'Employees Present',
-      value: extendedStats.employeesPresentToday,
-      icon: UserCheck,
-      description: 'Checked in today',
-      color: 'text-teal-600',
-      bgColor: 'bg-teal-50',
-      cardType: 'employeesPresent'
-    },
-    {
-      title: 'Employee ROI',
-      value: `${extendedStats.employeeROI.toFixed(1)}%`,
-      icon: TrendingUp,
-      description: 'Return on investment',
-      color: extendedStats.employeeROI >= 0 ? 'text-green-600' : 'text-red-600',
-      bgColor: extendedStats.employeeROI >= 0 ? 'bg-green-50' : 'bg-red-50',
-      cardType: 'employeeROI'
-    },
-    {
-      title: 'Inventory ROI',
-      value: `${extendedStats.inventoryROI.toFixed(1)}%`,
-      icon: Package,
-      description: 'Inventory efficiency',
-      color: extendedStats.inventoryROI >= 0 ? 'text-green-600' : 'text-red-600',
-      bgColor: extendedStats.inventoryROI >= 0 ? 'bg-green-50' : 'bg-red-50',
-      cardType: 'inventory'
-    }
+    // Custom component will be used instead of these three cards
+    // {
+    //   title: 'Employees Present',
+    //   value: extendedStats.employeesPresentToday,
+    //   icon: UserCheck,
+    //   description: 'Checked in today',
+    //   color: 'text-teal-600',
+    //   bgColor: 'bg-teal-50',
+    //   cardType: 'employeesPresent'
+    // },
+    // {
+    //   title: 'Employee ROI',
+    //   value: `${extendedStats.employeeROI.toFixed(1)}%`,
+    //   icon: TrendingUp,
+    //   description: 'Return on investment',
+    //   color: extendedStats.employeeROI >= 0 ? 'text-green-600' : 'text-red-600',
+    //   bgColor: extendedStats.employeeROI >= 0 ? 'bg-green-50' : 'bg-red-50',
+    //   cardType: 'employeeROI'
+    // },
+    // {
+    //   title: 'Inventory ROI',
+    //   value: `${extendedStats.inventoryROI.toFixed(1)}%`,
+    //   icon: Package,
+    //   description: 'Inventory efficiency',
+    //   color: extendedStats.inventoryROI >= 0 ? 'text-green-600' : 'text-red-600',
+    //   bgColor: extendedStats.inventoryROI >= 0 ? 'bg-green-50' : 'bg-red-50',
+    //   cardType: 'inventory'
+    // }
   ];
 
   return (
@@ -413,6 +415,7 @@ const AdminDashboard = () => {
 
       {/* Secondary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* First card is Today's Appointments */}
         {secondaryStatCards.map((stat, index) => (
           <Card 
             key={index} 
@@ -435,6 +438,11 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         ))}
+        
+        {/* Income & Expenses Card (replaces 3 cards) */}
+        <div className="md:col-span-3">
+          <IncomeExpensesCard onClick={() => navigate('/income-expenses')} />
+        </div>
       </div>
 
       {/* Quick Actions Panel */}

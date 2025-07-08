@@ -48,6 +48,7 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
 import BillingFilters from '@/components/BillingFilters';
+import BillingExportDialog from '@/components/BillingExportDialog';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -61,6 +62,7 @@ const Billing = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilterLoading, setDateFilterLoading] = useState(false);
   
@@ -325,81 +327,8 @@ const Billing = () => {
   };
 
   const handleExportToExcel = () => {
-    try {
-      // Prepare data for export
-      const exportData = filteredBills.map(bill => {
-        const status = calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0);
-        const workItemsSummary = bill.items?.map(item => item.description).join(', ') || 'N/A';
-        
-        return {
-          'Bill ID': bill.billId || 'N/A',
-          'Customer Name': bill.customerName || 'N/A',
-          'Phone': bill.customerPhone || 'N/A',
-          'Bill Date': bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A',
-          'Total Amount': bill.totalAmount || 0,
-          'Paid Amount': bill.paidAmount || 0,
-          'Balance': bill.balance || 0,
-          'Payment Status': status === 'paid' ? 'Paid' : status === 'partial' ? 'Partial' : 'Unpaid',
-          'Work Items Summary': workItemsSummary
-        };
-      });
-
-      // Create workbook and worksheet
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      
-      // Set column widths for better readability
-      const colWidths = [
-        { wch: 12 }, // Bill ID
-        { wch: 20 }, // Customer Name
-        { wch: 15 }, // Phone
-        { wch: 12 }, // Bill Date
-        { wch: 12 }, // Total Amount
-        { wch: 12 }, // Paid Amount
-        { wch: 12 }, // Balance
-        { wch: 15 }, // Payment Status
-        { wch: 30 }  // Work Items Summary
-      ];
-      worksheet['!cols'] = colWidths;
-
-      // Style the header row
-      const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:I1');
-      for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
-        const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
-        if (worksheet[cellRef]) {
-          worksheet[cellRef].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: 'E5E7EB' } },
-            alignment: { horizontal: 'center' }
-          };
-        }
-      }
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Bills');
-
-      // Generate filename with current date
-      const currentDate = new Date();
-      const dateString = currentDate.toLocaleDateString('en-IN').replace(/\//g, '-');
-      const filename = `bills_${dateString}.xlsx`;
-
-      // Export file
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(data, filename);
-
-      toast({
-        title: "Export Successful",
-        description: `${filteredBills.length} bills exported to ${filename}`,
-      });
-    } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      toast({
-        title: "Export Failed",
-        description: "Failed to export bills to Excel",
-        variant: "destructive",
-      });
-    }
+    // Open the export dialog instead of directly exporting
+    setShowExportDialog(true);
   };
 
   if (loading) {
@@ -1134,6 +1063,13 @@ const Billing = () => {
           upiLink={selectedBill.upiLink || ''}
         />
       )}
+      
+      {/* Export to Excel Dialog */}
+      <BillingExportDialog 
+        bills={filteredBills}
+        open={showExportDialog}
+        setOpen={setShowExportDialog}
+      />
       </div>
     </div>
   );
