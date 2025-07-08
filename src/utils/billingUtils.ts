@@ -346,46 +346,100 @@ const generateItemsTableRows = (bill: Bill): string => {
   // If bill has products (new structure), use them
   if (bill.products && bill.products.length > 0) {
     return bill.products.map(product => {
-      // Product header row
-      const productHeader = `
-        <tr style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-left: 4px solid #6366f1;">
-          <td style="padding: 15px 25px; font-weight: 700; font-size: 15px; color: #1e293b;" colspan="4">
-            📦 ${product.name} - ${formatCurrency(product.total)}
-          </td>
-        </tr>
-      `;
+      const descriptions = product.descriptions || [];
+      if (descriptions.length === 0) return '';
       
-      // Sub-item rows
-      const subItemRows = product.descriptions.map(desc => `
-        <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
-          <td style="padding: 12px 25px 12px 45px; font-size: 14px; color: #374151; line-height: 1.5;">
-            <div style="font-weight: 500;">${desc.description}</div>
-          </td>
-          <td style="padding: 12px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${desc.qty}</td>
-          <td style="padding: 12px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(desc.rate)}</td>
-          <td style="padding: 12px 25px; text-align: right; font-size: 14px; font-weight: 600; color: #1e293b;">${formatCurrency(desc.amount)}</td>
-        </tr>
-      `).join('');
-      
-      return productHeader + subItemRows;
+      return descriptions.map((desc, index) => {
+        if (index === 0) {
+          // First row includes product name with rowSpan
+          return `
+            <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+              <td style="padding: 12px 20px; font-size: 14px; color: #1e293b; font-weight: 700; border-right: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);" rowspan="${descriptions.length}">
+                ${product.name}
+              </td>
+              <td style="padding: 12px 25px; font-size: 14px; color: #374151; line-height: 1.5;">
+                <div style="font-weight: 500;">${desc.description}</div>
+              </td>
+              <td style="padding: 12px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${desc.qty}</td>
+              <td style="padding: 12px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(desc.rate)}</td>
+              <td style="padding: 12px 25px; text-align: right; font-size: 14px; font-weight: 600; color: #1e293b;">${formatCurrency(desc.amount)}</td>
+            </tr>
+          `;
+        } else {
+          // Subsequent rows don't include product name (covered by rowSpan)
+          return `
+            <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+              <td style="padding: 12px 25px; font-size: 14px; color: #374151; line-height: 1.5;">
+                <div style="font-weight: 500;">${desc.description}</div>
+              </td>
+              <td style="padding: 12px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${desc.qty}</td>
+              <td style="padding: 12px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(desc.rate)}</td>
+              <td style="padding: 12px 25px; text-align: right; font-size: 14px; font-weight: 600; color: #1e293b;">${formatCurrency(desc.amount)}</td>
+            </tr>
+          `;
+        }
+      }).join('');
     }).join('');
   }
   
   // Fall back to legacy items structure
   if (bill.items && bill.items.length > 0) {
-    return bill.items.map((item, index) => `
-      <tr style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
-        <td style="padding: 18px 25px; font-size: 14px; color: #1e293b; line-height: 1.5;">
-          <div style="font-weight: 600; margin-bottom: 2px;">${item.description}</div>
-          ${item.type === 'inventory' ? '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Material</span>' : 
-            item.type === 'staff' ? '<span style="background: #dcfce7; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Service</span>' : 
-            '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Custom</span>'}
-        </td>
-        <td style="padding: 18px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${item.quantity}</td>
-        <td style="padding: 18px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(item.rate)}</td>
-        <td style="padding: 18px 25px; text-align: right; font-size: 15px; font-weight: 700; color: #1e293b;">${formatCurrency(item.amount)}</td>
-      </tr>
-    `).join('');
+    // Group legacy items by a default product name or try to extract product info
+    const groupedItems: { [key: string]: typeof bill.items } = {};
+    
+    bill.items.forEach(item => {
+      // Try to extract product name from description or use item type as grouping
+      let productName = 'General Services';
+      if (item.type === 'inventory') {
+        productName = 'Materials & Supplies';
+      } else if (item.type === 'staff') {
+        productName = 'Professional Services';
+      }
+      
+      if (!groupedItems[productName]) {
+        groupedItems[productName] = [];
+      }
+      groupedItems[productName].push(item);
+    });
+    
+    return Object.entries(groupedItems).map(([productName, items]) => {
+      return items.map((item, index) => {
+        if (index === 0) {
+          // First row includes product name with rowSpan
+          return `
+            <tr style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
+              <td style="padding: 18px 20px; font-size: 14px; color: #1e293b; font-weight: 700; border-right: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);" rowspan="${items.length}">
+                ${productName}
+              </td>
+              <td style="padding: 18px 25px; font-size: 14px; color: #1e293b; line-height: 1.5;">
+                <div style="font-weight: 600; margin-bottom: 2px;">${item.description}</div>
+                ${item.type === 'inventory' ? '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Material</span>' : 
+                  item.type === 'staff' ? '<span style="background: #dcfce7; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Service</span>' : 
+                  '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Custom</span>'}
+              </td>
+              <td style="padding: 18px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${item.quantity}</td>
+              <td style="padding: 18px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(item.rate)}</td>
+              <td style="padding: 18px 25px; text-align: right; font-size: 15px; font-weight: 700; color: #1e293b;">${formatCurrency(item.amount)}</td>
+            </tr>
+          `;
+        } else {
+          // Subsequent rows don't include product name (covered by rowSpan)
+          return `
+            <tr style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
+              <td style="padding: 18px 25px; font-size: 14px; color: #1e293b; line-height: 1.5;">
+                <div style="font-weight: 600; margin-bottom: 2px;">${item.description}</div>
+                ${item.type === 'inventory' ? '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Material</span>' : 
+                  item.type === 'staff' ? '<span style="background: #dcfce7; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Service</span>' : 
+                  '<span style="background: #fef3c7; color: #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Custom</span>'}
+              </td>
+              <td style="padding: 18px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600;">${item.quantity}</td>
+              <td style="padding: 18px 15px; text-align: right; font-size: 14px; color: #475569; font-weight: 600;">${formatCurrency(item.rate)}</td>
+              <td style="padding: 18px 25px; text-align: right; font-size: 15px; font-weight: 700; color: #1e293b;">${formatCurrency(item.amount)}</td>
+            </tr>
+          `;
+        }
+      }).join('');
+    }).join('');
   }
   
   return '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #64748b;">No items found</td></tr>';
@@ -571,6 +625,7 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);">
+                <th style="padding: 18px 20px; text-align: left; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; width: 150px;">Product</th>
                 <th style="padding: 18px 25px; text-align: left; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
                 <th style="padding: 18px 15px; text-align: center; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; width: 80px;">Qty</th>
                 <th style="padding: 18px 15px; text-align: right; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Rate</th>
@@ -580,7 +635,7 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
             <tbody>
               ${generateItemsTableRows(bill)}
               <tr style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-top: 2px solid #3b82f6;">
-                <td colspan="3" style="padding: 18px 25px; font-weight: 700; font-size: 16px; color: #1e293b;">Items Subtotal</td>
+                <td colspan="4" style="padding: 18px 25px; font-weight: 700; font-size: 16px; color: #1e293b;">Items Subtotal</td>
                 <td style="padding: 18px 25px; text-align: right; font-weight: 700; font-size: 16px; color: #3b82f6;">
                   ${formatCurrency(calculateItemsTotal(bill))}
                 </td>
@@ -840,52 +895,111 @@ const generateZylkerItemsTableRows = (bill: Bill): string => {
   // If bill has products (new structure), use them
   if (bill.products && bill.products.length > 0) {
     return bill.products.map(product => {
-      const productRows: string[] = [];
+      const descriptions = product.descriptions || [];
+      if (descriptions.length === 0) return '';
       
-      // Add each description as a separate row
-      product.descriptions.forEach(desc => {
+      return descriptions.map((desc, index) => {
         itemCounter++;
         const bgColor = itemCounter % 2 === 0 ? '#f8f9fa' : '#ffffff';
         
-        productRows.push(`
-          <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
-            <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
-            <td style="padding: 8pt 10pt; vertical-align: top;">
-              <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${desc.description}</div>
-              <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
-                Product: ${product.name}
-              </div>
-            </td>
-            <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${desc.qty}</td>
-            <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(desc.rate)}</td>
-            <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(desc.amount)}</td>
-          </tr>
-        `);
-      });
-      
-      return productRows.join('');
+        if (index === 0) {
+          // First row includes product name with rowSpan
+          return `
+            <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
+              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
+              <td style="padding: 8pt 10pt; vertical-align: top; font-weight: bold; color: #2c3e50; border-right: 0.5pt solid #e1e5e9;" rowspan="${descriptions.length}">
+                ${product.name}
+              </td>
+              <td style="padding: 8pt 10pt; vertical-align: top;">
+                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${desc.description}</div>
+              </td>
+              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${desc.qty}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(desc.rate)}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(desc.amount)}</td>
+            </tr>
+          `;
+        } else {
+          // Subsequent rows don't include counter and product (covered by rowSpan)
+          return `
+            <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
+              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
+              <td style="padding: 8pt 10pt; vertical-align: top;">
+                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${desc.description}</div>
+              </td>
+              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${desc.qty}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(desc.rate)}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(desc.amount)}</td>
+            </tr>
+          `;
+        }
+      }).join('');
     }).join('');
   }
   
   // Fall back to legacy items structure
   if (bill.items && bill.items.length > 0) {
-    return bill.items.map((item, index) => {
-      const bgColor = (index + 1) % 2 === 0 ? '#f8f9fa' : '#ffffff';
-      return `
-        <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
-          <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${index + 1}</td>
-          <td style="padding: 8pt 10pt; vertical-align: top;">
-            <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${item.description}</div>
-            <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
-              ${item.type === 'inventory' ? 'Material Item' : 
-                item.type === 'staff' ? 'Service Item' : 'Custom Work'}
-            </div>
-          </td>
-          <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${item.quantity}</td>
-          <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(item.rate)}</td>
-          <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(item.amount)}</td>
-        </tr>
-      `;
+    // Group legacy items by a default product name or try to extract product info
+    const groupedItems: { [key: string]: typeof bill.items } = {};
+    
+    bill.items.forEach(item => {
+      // Try to extract product name from description or use item type as grouping
+      let productName = 'General Services';
+      if (item.type === 'inventory') {
+        productName = 'Materials & Supplies';
+      } else if (item.type === 'staff') {
+        productName = 'Professional Services';
+      }
+      
+      if (!groupedItems[productName]) {
+        groupedItems[productName] = [];
+      }
+      groupedItems[productName].push(item);
+    });
+    
+    return Object.entries(groupedItems).map(([productName, items]) => {
+      return items.map((item, index) => {
+        itemCounter++;
+        const bgColor = itemCounter % 2 === 0 ? '#f8f9fa' : '#ffffff';
+        
+        if (index === 0) {
+          // First row includes product name with rowSpan
+          return `
+            <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
+              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
+              <td style="padding: 8pt 10pt; vertical-align: top; font-weight: bold; color: #2c3e50; border-right: 0.5pt solid #e1e5e9;" rowspan="${items.length}">
+                ${productName}
+              </td>
+              <td style="padding: 8pt 10pt; vertical-align: top;">
+                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${item.description}</div>
+                <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
+                  ${item.type === 'inventory' ? 'Material Item' : 
+                    item.type === 'staff' ? 'Service Item' : 'Custom Work'}
+                </div>
+              </td>
+              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${item.quantity}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(item.rate)}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(item.amount)}</td>
+            </tr>
+          `;
+        } else {
+          // Subsequent rows don't include counter and product (covered by rowSpan)
+          return `
+            <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
+              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
+              <td style="padding: 8pt 10pt; vertical-align: top;">
+                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${item.description}</div>
+                <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
+                  ${item.type === 'inventory' ? 'Material Item' : 
+                    item.type === 'staff' ? 'Service Item' : 'Custom Work'}
+                </div>
+              </td>
+              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${item.quantity}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(item.rate)}</td>
+              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(item.amount)}</td>
+            </tr>
+          `;
+        }
+      }).join('');
     }).join('');
   }
   
@@ -1056,7 +1170,8 @@ const generateZylkerStyleBillHTML = async (bill: Bill): Promise<string> => {
             <thead>
               <tr style="background: #2c3e50; color: white;">
                 <th style="padding: 8pt 10pt; text-align: left; font-weight: bold; font-size: 12pt; width: 20mm;">#</th>
-                <th style="padding: 8pt 10pt; text-align: left; font-weight: bold; font-size: 12pt;">Item & Description</th>
+                <th style="padding: 8pt 10pt; text-align: left; font-weight: bold; font-size: 12pt; width: 35mm;">Product</th>
+                <th style="padding: 8pt 10pt; text-align: left; font-weight: bold; font-size: 12pt;">Description</th>
                 <th style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 12pt; width: 18mm;">Qty</th>
                 <th style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 12pt; width: 25mm;">Rate</th>
                 <th style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 12pt; width: 30mm;">Amount</th>

@@ -429,20 +429,49 @@ const BillDetails = () => {
           <CardContent>
             {/* Mobile Card View */}
             <div className="block sm:hidden space-y-3">
-              {bill.items.map((item, index) => (
-                <div key={index} className="border rounded-lg p-3 bg-gray-50">
-                  <div className="font-medium">{item.description}</div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    Qty: {item.quantity} × Rate: {formatCurrency(item.rate || 0)}
+              {/* Products Structure */}
+              {bill.products && bill.products.length > 0 ? (
+                bill.products.map((product, productIndex) => (
+                  <div key={productIndex} className="border rounded-lg bg-gray-50">
+                    <div className="font-semibold p-3 bg-purple-50 border-b">
+                      {product.name} - {formatCurrency(product.total)}
+                    </div>
+                    {product.descriptions.map((desc, descIndex) => (
+                      <div key={descIndex} className="p-3 border-b last:border-b-0">
+                        <div className="font-medium">{desc.description}</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Qty: {desc.qty} × Rate: {formatCurrency(desc.rate)}
+                        </div>
+                        <div className="text-right font-medium text-purple-600">
+                          {formatCurrency(desc.amount)}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-right font-medium text-purple-600">
-                    {formatCurrency(item.amount || 0)}
+                ))
+              ) : (
+                /* Legacy Items Structure */
+                bill.items.map((item, index) => (
+                  <div key={index} className="border rounded-lg p-3 bg-gray-50">
+                    <div className="font-medium">{item.description}</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Qty: {item.quantity} × Rate: {formatCurrency(item.rate || 0)}
+                    </div>
+                    <div className="text-right font-medium text-purple-600">
+                      {formatCurrency(item.amount || 0)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
               <div className="border-t pt-2 flex justify-between font-semibold">
                 <span>Items Subtotal</span>
-                <span>{formatCurrency(bill.items.reduce((sum, item) => sum + (item.amount || 0), 0))}</span>
+                <span>
+                  {formatCurrency(
+                    bill.products && bill.products.length > 0
+                      ? bill.products.reduce((sum, product) => sum + product.total, 0)
+                      : bill.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+                  )}
+                </span>
               </div>
             </div>
 
@@ -451,6 +480,7 @@ const BillDetails = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Product</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Rate</TableHead>
@@ -458,18 +488,73 @@ const BillDetails = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bill.items.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.rate || 0)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.amount || 0)}</TableCell>
-                    </TableRow>
-                  ))}
+                  {/* Products Structure */}
+                  {bill.products && bill.products.length > 0 ? (
+                    bill.products.map((product, productIndex) => 
+                      product.descriptions.map((desc, descIndex) => (
+                        <TableRow key={`${productIndex}-${descIndex}`}>
+                          {descIndex === 0 && (
+                            <TableCell 
+                              rowSpan={product.descriptions.length} 
+                              className="font-semibold bg-purple-50 border-r"
+                            >
+                              {product.name}
+                            </TableCell>
+                          )}
+                          <TableCell>{desc.description}</TableCell>
+                          <TableCell className="text-right">{desc.qty}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(desc.rate)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(desc.amount)}</TableCell>
+                        </TableRow>
+                      ))
+                    )
+                  ) : (
+                    /* Legacy Items Structure - Group by item type */
+                    (() => {
+                      const groupedItems: { [key: string]: typeof bill.items } = {};
+                      
+                      bill.items.forEach(item => {
+                        let productName = 'General Services';
+                        if (item.type === 'inventory') {
+                          productName = 'Materials & Supplies';
+                        } else if (item.type === 'staff') {
+                          productName = 'Professional Services';
+                        }
+                        
+                        if (!groupedItems[productName]) {
+                          groupedItems[productName] = [];
+                        }
+                        groupedItems[productName].push(item);
+                      });
+                      
+                      return Object.entries(groupedItems).map(([productName, items]) =>
+                        items.map((item, itemIndex) => (
+                          <TableRow key={`${productName}-${itemIndex}`}>
+                            {itemIndex === 0 && (
+                              <TableCell 
+                                rowSpan={items.length} 
+                                className="font-semibold bg-purple-50 border-r"
+                              >
+                                {productName}
+                              </TableCell>
+                            )}
+                            <TableCell>{item.description}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.rate || 0)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.amount || 0)}</TableCell>
+                          </TableRow>
+                        ))
+                      );
+                    })()
+                  )}
                   <TableRow>
-                    <TableCell colSpan={3} className="font-semibold">Items Subtotal</TableCell>
+                    <TableCell colSpan={4} className="font-semibold">Items Subtotal</TableCell>
                     <TableCell className="font-semibold text-right">
-                      {formatCurrency(bill.items.reduce((sum, item) => sum + (item.amount || 0), 0))}
+                      {formatCurrency(
+                        bill.products && bill.products.length > 0
+                          ? bill.products.reduce((sum, product) => sum + product.total, 0)
+                          : bill.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+                      )}
                     </TableCell>
                   </TableRow>
                 </TableBody>

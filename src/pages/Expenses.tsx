@@ -14,6 +14,7 @@ import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import ImageViewer from '@/components/ImageViewer';
+import CategoryInput from '@/components/CategoryInput';
 
 interface Expense {
   id: string;
@@ -48,21 +49,6 @@ const Expenses = () => {
     date: '',
     notes: ''
   });
-
-  const expenseTypes = [
-    'Materials',
-    'Equipment',
-    'Utilities',
-    'Transportation',
-    'Marketing',
-    'Staff Wages',
-    'Rent',
-    'Insurance',
-    'Maintenance',
-    'Office Supplies',
-    'Food & Beverages',
-    'Other'
-  ];
 
   useEffect(() => {
     fetchExpenses();
@@ -359,18 +345,13 @@ const Expenses = () => {
               </div>
               <div>
                 <Label htmlFor="type">Type</Label>
-                <select
-                  id="type"
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                <CategoryInput
                   value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  onChange={(value) => setFormData({...formData, type: value})}
+                  type="expense"
+                  placeholder="Enter expense type..."
                   required
-                >
-                  <option value="">Select type</option>
-                  {expenseTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <Label htmlFor="notes">Notes (Optional)</Label>
