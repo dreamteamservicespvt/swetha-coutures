@@ -255,12 +255,14 @@ export const getWhatsAppTemplates = async (
 };
 
 export const downloadPDF = async (bill: Bill) => {
+  let element: HTMLDivElement | null = null;
+  
   try {
     const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
     
     // Create a temporary div with Zylker-style bill content
-    const element = document.createElement('div');
+    element = document.createElement('div');
     element.innerHTML = await generateZylkerStyleBillHTML(bill);
     element.style.position = 'absolute';
     element.style.left = '-9999px';
@@ -268,75 +270,88 @@ export const downloadPDF = async (bill: Bill) => {
     element.style.padding = '0';
     element.style.margin = '0';
     element.style.width = '680px'; // A4 width in pixels at 96 DPI (180mm ≈ 680px)
-    element.style.minHeight = '1009px'; // A4 height in pixels at 96 DPI (267mm ≈ 1009px)
+    // Removed the fixed height constraint to allow content to expand naturally
     element.style.fontFamily = 'Arial, Helvetica, sans-serif';
     element.style.fontSize = '11pt';
-    element.style.lineHeight = '1.2';
+    element.style.lineHeight = '1.4'; // Increased line height for better readability
     element.style.color = '#333333';
     element.style.boxSizing = 'border-box';
     
     document.body.appendChild(element);
     
     // Wait for fonts and images to load
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 500)); // Increased timeout for better loading
     
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#ffffff',
-      scale: 2, // Balance quality vs performance
-      useCORS: true,
-      allowTaint: false,
-      width: 680,
-      height: Math.max(1009, element.scrollHeight),
-      windowWidth: 680,
-      windowHeight: Math.max(1009, element.scrollHeight),
-      removeContainer: false,
-      logging: false,
-      onclone: (clonedDoc) => {
-        // Ensure proper rendering in cloned document
-        const clonedElement = clonedDoc.querySelector('div');
-        if (clonedElement) {
-          clonedElement.style.width = '680px';
-          clonedElement.style.fontFamily = 'Arial, Helvetica, sans-serif';
-        }
-      }
-    });
+    // Get the actual height of the content
+    const contentHeight = element.scrollHeight;
     
-    const imgData = canvas.toDataURL('image/png', 0.9); // Slight compression for smaller file size
-    
+    // Create PDF directly with proper dimensions
     const pdf = new jsPDF('p', 'mm', 'a4');
     
     // A4 dimensions: 210 x 297 mm
     // Content area with 15mm margins: 180 x 267 mm
-    const pdfWidth = 180;
-    const pdfHeight = 267;
-    const imgWidth = pdfWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 15; // 15mm margins
+    const contentAreaWidth = pageWidth - (margin * 2);
+    const contentAreaHeight = pageHeight - (margin * 2);
     
-    // Add image with 15mm margins on all sides
-    pdf.addImage(imgData, 'PNG', 15, 15, imgWidth, Math.min(imgHeight, pdfHeight));
+    // Calculate how many canvas sections we need based on content height
+    const pixelsPerMM = 680 / contentAreaWidth; // Conversion ratio
+    const sectionHeight = Math.floor(contentAreaHeight * pixelsPerMM);
+    const sectionsCount = Math.ceil(contentHeight / sectionHeight);
     
-    // If content is longer than one page, add additional pages
-    if (imgHeight > pdfHeight) {
-      let heightLeft = imgHeight - pdfHeight;
-      let position = -pdfHeight;
-      
-      while (heightLeft > 0) {
+    // For each section, create a canvas and add to PDF
+    for (let i = 0; i < sectionsCount; i++) {
+      // If not first page, add a new page
+      if (i > 0) {
         pdf.addPage();
-        // Add subsequent page content
-        pdf.addImage(imgData, 'PNG', 15, position + 15, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-        position -= pdfHeight;
       }
+      
+      // Calculate the portion of the element to render
+      const sectionTop = i * sectionHeight;
+      const sectionBottom = Math.min((i + 1) * sectionHeight, contentHeight);
+      const currentSectionHeight = sectionBottom - sectionTop;
+      
+      // Create a canvas for this section
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Better quality
+        useCORS: true,
+        allowTaint: false,
+        width: 680,
+        height: currentSectionHeight,
+        windowWidth: 680,
+        windowHeight: currentSectionHeight,
+        x: 0,
+        y: sectionTop,
+        scrollY: -sectionTop,
+        logging: false
+      });
+      
+      // Add this section to the PDF
+      const imgData = canvas.toDataURL('image/png', 1.0); // No compression for better quality
+      pdf.addImage(imgData, 'PNG', margin, margin, contentAreaWidth, (currentSectionHeight / pixelsPerMM));
     }
     
     // Save with descriptive filename
     const { getCompanyInfo } = await import('@/utils/settingsUtils');
     const companyInfo = await getCompanyInfo();
     const fileName = `${companyInfo.name.replace(/[^a-zA-Z0-9]/g, '-')}-Invoice-${bill.billId}-${new Date().toISOString().split('T')[0]}.pdf`;
+    
+    // Save the file
     pdf.save(fileName);
-    document.body.removeChild(element);
+    
+    // Clean up the temporary element
+    if (element && document.body.contains(element)) {
+      document.body.removeChild(element);
+    }
   } catch (error) {
     console.error('Error generating PDF:', error);
+    // Clean up element in case of error
+    if (element && document.body.contains(element)) {
+      document.body.removeChild(element);
+    }
     throw error;
   }
 };
@@ -890,7 +905,7 @@ export const printBill = async (bill: Bill) => {
 
 // Helper function to generate Zylker-style table rows for both products and legacy items structure
 const generateZylkerItemsTableRows = (bill: Bill): string => {
-  let itemCounter = 0;
+  let productCounter = 0;
   
   // If bill has products (new structure), use them
   if (bill.products && bill.products.length > 0) {
@@ -898,37 +913,38 @@ const generateZylkerItemsTableRows = (bill: Bill): string => {
       const descriptions = product.descriptions || [];
       if (descriptions.length === 0) return '';
       
+      // Increment product counter only once per product
+      productCounter++;
+      
       return descriptions.map((desc, index) => {
-        itemCounter++;
-        const bgColor = itemCounter % 2 === 0 ? '#f8f9fa' : '#ffffff';
+        const bgColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
         
         if (index === 0) {
-          // First row includes product name with rowSpan
+          // First row includes product name with rowSpan and the S.No
           return `
             <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
-              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
-              <td style="padding: 8pt 10pt; vertical-align: top; font-weight: bold; color: #2c3e50; border-right: 0.5pt solid #e1e5e9;" rowspan="${descriptions.length}">
+              <td style="padding: 6pt; text-align: center; font-weight: bold; color: #666; width: 5%;" rowspan="${descriptions.length}">${productCounter}</td>
+              <td style="padding: 6pt; vertical-align: top; font-weight: bold; color: #2c3e50; border-right: 0.5pt solid #e1e5e9; width: 20%;" rowspan="${descriptions.length}">
                 ${product.name}
               </td>
-              <td style="padding: 8pt 10pt; vertical-align: top;">
-                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${desc.description}</div>
+              <td style="padding: 6pt; vertical-align: top; width: 40%;">
+                <div style="font-weight: bold; color: #2c3e50; font-size: 10pt;">${desc.description}</div>
               </td>
-              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${desc.qty}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(desc.rate)}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(desc.amount)}</td>
+              <td style="padding: 6pt; text-align: center; font-weight: bold; font-size: 10pt; width: 10%;">${desc.qty}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; font-size: 10pt; width: 10%;">${formatCurrency(desc.rate)}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 10pt; width: 15%;">${formatCurrency(desc.amount)}</td>
             </tr>
           `;
         } else {
-          // Subsequent rows don't include counter and product (covered by rowSpan)
+          // Subsequent rows don't include S.No and product name (covered by rowSpan)
           return `
             <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
-              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
-              <td style="padding: 8pt 10pt; vertical-align: top;">
-                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${desc.description}</div>
+              <td style="padding: 6pt; vertical-align: top; width: 40%;">
+                <div style="font-weight: bold; color: #2c3e50; font-size: 10pt;">${desc.description}</div>
               </td>
-              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${desc.qty}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(desc.rate)}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(desc.amount)}</td>
+              <td style="padding: 6pt; text-align: center; font-weight: bold; font-size: 10pt; width: 10%;">${desc.qty}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; font-size: 10pt; width: 10%;">${formatCurrency(desc.rate)}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 10pt; width: 15%;">${formatCurrency(desc.amount)}</td>
             </tr>
           `;
         }
@@ -956,46 +972,47 @@ const generateZylkerItemsTableRows = (bill: Bill): string => {
       groupedItems[productName].push(item);
     });
     
-    return Object.entries(groupedItems).map(([productName, items]) => {
+    return Object.entries(groupedItems).map(([productName, items], groupIndex) => {
+      // Increment product counter for each group
+      productCounter++;
+      
       return items.map((item, index) => {
-        itemCounter++;
-        const bgColor = itemCounter % 2 === 0 ? '#f8f9fa' : '#ffffff';
+        const bgColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
         
         if (index === 0) {
-          // First row includes product name with rowSpan
+          // First row includes product name with rowSpan and the S.No
           return `
             <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
-              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
-              <td style="padding: 8pt 10pt; vertical-align: top; font-weight: bold; color: #2c3e50; border-right: 0.5pt solid #e1e5e9;" rowspan="${items.length}">
+              <td style="padding: 6pt; text-align: center; font-weight: bold; color: #666; width: 5%;" rowspan="${items.length}">${productCounter}</td>
+              <td style="padding: 6pt; vertical-align: top; font-weight: bold; color: #2c3e50; border-right: 0.5pt solid #e1e5e9; width: 20%;" rowspan="${items.length}">
                 ${productName}
               </td>
-              <td style="padding: 8pt 10pt; vertical-align: top;">
-                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${item.description}</div>
+              <td style="padding: 6pt; vertical-align: top; width: 40%;">
+                <div style="font-weight: bold; color: #2c3e50; font-size: 10pt;">${item.description}</div>
                 <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
                   ${item.type === 'inventory' ? 'Material Item' : 
                     item.type === 'staff' ? 'Service Item' : 'Custom Work'}
                 </div>
               </td>
-              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${item.quantity}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(item.rate)}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(item.amount)}</td>
+              <td style="padding: 6pt; text-align: center; font-weight: bold; font-size: 10pt; width: 10%;">${item.quantity}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; font-size: 10pt; width: 10%;">${formatCurrency(item.rate)}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 10pt; width: 15%;">${formatCurrency(item.amount)}</td>
             </tr>
           `;
         } else {
-          // Subsequent rows don't include counter and product (covered by rowSpan)
+          // Subsequent rows don't include S.No and product name (covered by rowSpan)
           return `
             <tr style="background: ${bgColor}; border-bottom: 0.5pt solid #e1e5e9;">
-              <td style="padding: 8pt 10pt; font-weight: bold; color: #666;">${itemCounter}</td>
-              <td style="padding: 8pt 10pt; vertical-align: top;">
-                <div style="font-weight: bold; color: #2c3e50; margin-bottom: 2pt; font-size: 11pt;">${item.description}</div>
+              <td style="padding: 6pt; vertical-align: top; width: 40%;">
+                <div style="font-weight: bold; color: #2c3e50; font-size: 10pt;">${item.description}</div>
                 <div style="font-size: 9pt; color: #888; font-weight: normal; line-height: 1.2;">
                   ${item.type === 'inventory' ? 'Material Item' : 
                     item.type === 'staff' ? 'Service Item' : 'Custom Work'}
                 </div>
               </td>
-              <td style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 11pt;">${item.quantity}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 11pt;">${formatCurrency(item.rate)}</td>
-              <td style="padding: 8pt 10pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 11pt;">${formatCurrency(item.amount)}</td>
+              <td style="padding: 6pt; text-align: center; font-weight: bold; font-size: 10pt; width: 10%;">${item.quantity}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; font-size: 10pt; width: 10%;">${formatCurrency(item.rate)}</td>
+              <td style="padding: 6pt; text-align: right; font-weight: bold; color: #2c3e50; font-size: 10pt; width: 15%;">${formatCurrency(item.amount)}</td>
             </tr>
           `;
         }
@@ -1086,10 +1103,10 @@ const generateZylkerStyleBillHTML = async (bill: Bill): Promise<string> => {
   }
 
   return `
-    <div style="width: 180mm; min-height: 267mm; margin: 0 auto; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.2; color: #333; background: white; box-sizing: border-box;">
+    <div style="width: 180mm; margin: 0 auto; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.4; color: #333; background: white; box-sizing: border-box;">
       
       <!-- Outer Border Frame -->
-      <div style="border: 0.5pt solid #000; min-height: 267mm; position: relative; margin: 0; padding: 0;">
+      <div style="border: 0.5pt solid #000; position: relative; margin: 0; padding: 0;">
         
         <!-- Header Section -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 15mm 15mm 10mm 15mm; border-bottom: 0.5pt solid #ddd;">
@@ -1169,12 +1186,12 @@ const generateZylkerStyleBillHTML = async (bill: Bill): Promise<string> => {
           <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
             <thead>
               <tr style="background: #2c3e50; color: white;">
-                <th style="padding: 8pt 10pt; text-align: left; font-weight: bold; font-size: 12pt; width: 20mm;">#</th>
-                <th style="padding: 8pt 10pt; text-align: left; font-weight: bold; font-size: 12pt; width: 35mm;">Product</th>
-                <th style="padding: 8pt 10pt; text-align: left; font-weight: bold; font-size: 12pt;">Description</th>
-                <th style="padding: 8pt 10pt; text-align: center; font-weight: bold; font-size: 12pt; width: 18mm;">Qty</th>
-                <th style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 12pt; width: 25mm;">Rate</th>
-                <th style="padding: 8pt 10pt; text-align: right; font-weight: bold; font-size: 12pt; width: 30mm;">Amount</th>
+                <th style="padding: 6pt; text-align: center; font-weight: bold; font-size: 11pt; width: 5%;">#</th>
+                <th style="padding: 6pt; text-align: left; font-weight: bold; font-size: 11pt; width: 20%;">Product</th>
+                <th style="padding: 6pt; text-align: left; font-weight: bold; font-size: 11pt; width: 40%;">Description</th>
+                <th style="padding: 6pt; text-align: center; font-weight: bold; font-size: 11pt; width: 10%;">Qty</th>
+                <th style="padding: 6pt; text-align: right; font-weight: bold; font-size: 11pt; width: 10%;">Rate</th>
+                <th style="padding: 6pt; text-align: right; font-weight: bold; font-size: 11pt; width: 15%;">Amount</th>
               </tr>
             </thead>
             <tbody>

@@ -37,6 +37,9 @@ interface StaffMember {
   ifsc?: string;
   salaryAmount?: number;
   salaryMode?: 'monthly' | 'hourly' | 'daily';
+  // New salary fields
+  paidSalary?: number;
+  bonus?: number;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -86,6 +89,9 @@ const Staff = () => {
     ifsc: '',
     salaryAmount: '',
     salaryMode: 'monthly' as 'monthly' | 'hourly' | 'daily',
+    // New salary fields
+    paidSalary: '',
+    bonus: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
     emergencyContactRelation: ''
@@ -93,6 +99,24 @@ const Staff = () => {
 
   const defaultRoles = ['Tailor', 'Cutter', 'Designer', 'Finisher', 'Assistant', 'Manager'];
   const defaultDepartments = ['Production', 'Design', 'Finishing', 'Quality Control', 'Administration'];
+
+  // Helper function to calculate monthly salary based on new logic
+  const calculateMonthlySalary = (staff: StaffMember) => {
+    const paidSalary = staff.paidSalary || 0;
+    const bonus = staff.bonus || 0;
+    const actualSalary = staff.salaryAmount || staff.salary || 0;
+    
+    // If both paid salary and bonus are entered, use their sum
+    if (paidSalary > 0 && bonus > 0) {
+      return paidSalary + bonus;
+    }
+    // If only paid salary is entered, use it
+    if (paidSalary > 0) {
+      return paidSalary;
+    }
+    // Otherwise, use actual salary
+    return actualSalary;
+  };
 
   useEffect(() => {
     if (!userData) {
@@ -216,6 +240,9 @@ const Staff = () => {
         salary: formData.salary ? parseFloat(formData.salary) : 0,
         salaryAmount: formData.salaryAmount ? parseFloat(formData.salaryAmount) : 0,
         salaryMode: formData.salaryMode || 'monthly',
+        // New salary fields
+        paidSalary: formData.paidSalary ? parseFloat(formData.paidSalary) : 0,
+        bonus: formData.bonus ? parseFloat(formData.bonus) : 0,
         status: 'active' as const,
         ...(editingStaff ? {} : { 
           joinDate: serverTimestamp(),
@@ -292,6 +319,9 @@ const Staff = () => {
       ifsc: '',
       salaryAmount: '',
       salaryMode: 'monthly',
+      // New salary fields
+      paidSalary: '',
+      bonus: '',
       emergencyContactName: '',
       emergencyContactPhone: '',
       emergencyContactRelation: ''
@@ -316,6 +346,9 @@ const Staff = () => {
       ifsc: member.ifsc || '',
       salaryAmount: member.salaryAmount?.toString() || '',
       salaryMode: member.salaryMode || 'monthly',
+      // New salary fields
+      paidSalary: member.paidSalary?.toString() || '',
+      bonus: member.bonus?.toString() || '',
       emergencyContactName: member.emergencyContact?.name || '',
       emergencyContactPhone: member.emergencyContact?.phone || '',
       emergencyContactRelation: member.emergencyContact?.relation || ''
@@ -557,9 +590,9 @@ const Staff = () => {
               {/* Financial Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Financial Information</h3>
-                <div className="form-grid-responsive-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="salaryAmount">Salary Amount</Label>
+                    <Label htmlFor="salaryAmount">Actual Salary</Label>
                     <NumberInput
                       id="salaryAmount"
                       value={formData.salaryAmount ? Number(formData.salaryAmount) : ''}
@@ -569,9 +602,39 @@ const Staff = () => {
                       decimals={2}
                       allowEmpty={true}
                       emptyValue={null}
-                      placeholder="Enter salary amount"
+                      placeholder="Enter actual salary"
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="paidSalary">Paid Salary</Label>
+                    <NumberInput
+                      id="paidSalary"
+                      value={formData.paidSalary ? Number(formData.paidSalary) : ''}
+                      onChange={(value) => setFormData({...formData, paidSalary: value?.toString() || ''})}
+                      min={0}
+                      step={0.01}
+                      decimals={2}
+                      allowEmpty={true}
+                      emptyValue={null}
+                      placeholder="Enter paid salary (optional)"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bonus">Bonus</Label>
+                    <NumberInput
+                      id="bonus"
+                      value={formData.bonus ? Number(formData.bonus) : ''}
+                      onChange={(value) => setFormData({...formData, bonus: value?.toString() || ''})}
+                      min={0}
+                      step={0.01}
+                      decimals={2}
+                      allowEmpty={true}
+                      emptyValue={null}
+                      placeholder="Enter bonus (optional)"
+                    />
+                  </div>
+                </div>
+                <div className="form-grid-responsive-3">
                   <div>
                     <Label htmlFor="salaryMode">Salary Mode</Label>
                     <Select value={formData.salaryMode} onValueChange={(value: 'monthly' | 'hourly' | 'daily') => setFormData({...formData, salaryMode: value})}>
@@ -593,6 +656,17 @@ const Staff = () => {
                       onChange={(e) => setFormData({...formData, upiId: e.target.value})}
                       placeholder="Enter UPI ID"
                     />
+                  </div>
+                  <div>
+                    <Label>Monthly Salary</Label>
+                    <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded border text-sm text-gray-600 dark:text-gray-400">
+                      {formData.paidSalary && formData.bonus ? 
+                        `₹${(parseFloat(formData.paidSalary) + parseFloat(formData.bonus)).toLocaleString()} (Paid + Bonus)` :
+                        formData.salaryAmount ? 
+                          `₹${parseFloat(formData.salaryAmount).toLocaleString()} (Actual Salary)` :
+                          'Enter salary details'
+                      }
+                    </div>
                   </div>
                 </div>
                 <div className="form-grid-responsive-3">
@@ -821,9 +895,14 @@ const Staff = () => {
                           {member.password && (
                             <p className="text-xs text-green-600 dark:text-green-400">Password: {member.password}</p>
                           )}
-                          {member.salaryAmount && (
+                          {(calculateMonthlySalary(member) > 0) && (
                             <p className="text-xs text-gray-500 dark:text-gray-500">
-                              Salary: ₹{member.salaryAmount.toLocaleString()}/{member.salaryMode}
+                              Monthly Salary: ₹{calculateMonthlySalary(member).toLocaleString()}/{member.salaryMode}
+                              {member.paidSalary && member.bonus && (
+                                <span className="text-green-600 dark:text-green-400 ml-1">
+                                  (₹{member.paidSalary.toLocaleString()} + ₹{member.bonus.toLocaleString()})
+                                </span>
+                              )}
                             </p>
                           )}
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -921,9 +1000,14 @@ const Staff = () => {
                       <p className="text-xs text-green-600 dark:text-green-400">Password: {member.password}</p>
                     )}
                     
-                    {member.salaryAmount && (
+                    {(calculateMonthlySalary(member) > 0) && (
                       <p className="text-xs text-gray-500 dark:text-gray-500">
-                        Salary: ₹{member.salaryAmount.toLocaleString()}/{member.salaryMode}
+                        Monthly Salary: ₹{calculateMonthlySalary(member).toLocaleString()}/{member.salaryMode}
+                        {member.paidSalary && member.bonus && (
+                          <span className="text-green-600 dark:text-green-400 ml-1">
+                            (₹{member.paidSalary.toLocaleString()} + ₹{member.bonus.toLocaleString()})
+                          </span>
+                        )}
                       </p>
                     )}
 

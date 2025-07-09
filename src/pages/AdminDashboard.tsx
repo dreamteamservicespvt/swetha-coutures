@@ -36,6 +36,13 @@ import RoleAnalytics from '@/components/RoleAnalytics';
 import ROIDashboard from '@/components/ROIDashboard';
 import IncomeExpensesCard from '@/components/admin/IncomeExpensesCard';
 
+interface Bill {
+  id: string;
+  balance?: number;
+  totalAmount?: number;
+  [key: string]: any;
+}
+
 interface ExtendedStats {
   totalOrders: number;
   totalRevenue: number;
@@ -49,6 +56,8 @@ interface ExtendedStats {
   pendingOrders: number;
   completedOrders: number;
   lowStockItems: number;
+  dueBills: number;
+  dueBillsAmount: number;
 }
 
 interface StaffMember {
@@ -57,6 +66,9 @@ interface StaffMember {
   role: string;
   status: 'active' | 'inactive';
   salaryAmount?: number;
+  // New salary fields
+  paidSalary?: number;
+  bonus?: number;
 }
 
 interface AttendanceRecord {
@@ -84,9 +96,29 @@ const AdminDashboard = () => {
     pendingOrders: 0,
     completedOrders: 0,
     lowStockItems: 0,
+    dueBills: 0,
+    dueBillsAmount: 0,
   });
   const [staffData, setStaffData] = useState<StaffMember[]>([]);
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+
+  // Helper function to calculate monthly salary based on new logic
+  const calculateMonthlySalary = (staff: StaffMember) => {
+    const paidSalary = staff.paidSalary || 0;
+    const bonus = staff.bonus || 0;
+    const actualSalary = staff.salaryAmount || 0;
+    
+    // If both paid salary and bonus are entered, use their sum
+    if (paidSalary > 0 && bonus > 0) {
+      return paidSalary + bonus;
+    }
+    // If only paid salary is entered, use it
+    if (paidSalary > 0) {
+      return paidSalary;
+    }
+    // Otherwise, use actual salary
+    return actualSalary;
+  };
 
   // Redirect staff to staff dashboard
   useEffect(() => {
@@ -126,6 +158,15 @@ const AdminDashboard = () => {
       })) as AttendanceRecord[];
       setAttendanceData(attendance);
 
+      // Fetch bills with outstanding balance
+      const billsSnapshot = await getDocs(collection(db, 'bills'));
+      const dueBillsList = billsSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Bill))
+        .filter(bill => (bill.balance || 0) > 0);
+      
+      const dueBillsCount = dueBillsList.length;
+      const dueBillsTotal = dueBillsList.reduce((sum, bill) => sum + (bill.balance || 0), 0);
+
       // Calculate extended stats
       const readyOrders = rawData.orders?.filter(order => order.status === 'ready').length || 0;
       const employeesPresentToday = attendance.filter(record => 
@@ -133,7 +174,7 @@ const AdminDashboard = () => {
       ).length;
 
       // Calculate Employee ROI
-      const totalSalaries = staff.reduce((sum, member) => sum + (member.salaryAmount || 0), 0);
+      const totalSalaries = staff.reduce((sum, member) => sum + calculateMonthlySalary(member), 0);
       const totalRevenue = rawData.orders?.reduce((sum, order) => {
         return order.status === 'delivered' ? sum + (order.totalAmount || 0) : sum;
       }, 0) || 0;
@@ -158,6 +199,8 @@ const AdminDashboard = () => {
         pendingOrders: stats.pendingOrders,
         completedOrders: stats.completedOrders,
         lowStockItems: stats.lowStockItems,
+        dueBills: dueBillsCount,
+        dueBillsAmount: dueBillsTotal
       });
 
     } catch (error) {
@@ -209,6 +252,9 @@ const AdminDashboard = () => {
         break;
       case 'todaysAppointments':
         navigate('/appointments');
+        break;
+      case 'dueBills':
+        navigate('/billing', { state: { filterStatus: 'unpaid' } });
         break;
       case 'employeesPresent':
         navigate('/staff');
@@ -331,6 +377,15 @@ const AdminDashboard = () => {
       bgColor: 'bg-indigo-50',
       cardType: 'todaysAppointments'
     },
+    {
+      title: "Due Bills",
+      value: extendedStats.dueBills,
+      icon: DollarSign,
+      description: `Total ₹${extendedStats.dueBillsAmount.toLocaleString()}`,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      cardType: 'dueBills'
+    },
     // Custom component will be used instead of these three cards
     // {
     //   title: 'Employees Present',
@@ -439,8 +494,8 @@ const AdminDashboard = () => {
           </Card>
         ))}
         
-        {/* Income & Expenses Card (replaces 3 cards) */}
-        <div className="md:col-span-3">
+        {/* Income & Expenses Card (replaces 2 cards) */}
+        <div className="md:col-span-2">
           <IncomeExpensesCard onClick={() => navigate('/income-expenses')} />
         </div>
       </div>

@@ -54,6 +54,10 @@ interface StaffMember {
   salary: number;
   salaryAmount: number;
   salaryMode: 'monthly' | 'hourly' | 'daily';
+  // New salary fields
+  paidSalary?: number;
+  bonus?: number;
+  actualSalary?: number; // This will be calculated as paidSalary + bonus when both are provided
 }
 
 interface EarningsSummary {
@@ -62,6 +66,11 @@ interface EarningsSummary {
   totalEarnings: number;
   workingDays: number;
   baseRate: number;
+  // New earning fields
+  actualSalary: number;
+  paidSalary: number;
+  bonus: number;
+  totalMonthlySalary: number; // paidSalary + bonus
 }
 
 const StaffDashboard = () => {
@@ -77,7 +86,11 @@ const StaffDashboard = () => {
     ratePerTask: 0,
     totalEarnings: 0,
     workingDays: 0,
-    baseRate: 0
+    baseRate: 0,
+    actualSalary: 0,
+    paidSalary: 0,
+    bonus: 0,
+    totalMonthlySalary: 0
   });
   const [assignedOrders, setAssignedOrders] = useState<any[]>([]);
 
@@ -169,12 +182,22 @@ const StaffDashboard = () => {
       const attendanceSnapshot = await getDocs(attendanceQuery);
       const workingDays = attendanceSnapshot.size;
 
+      // Calculate salary information
+      const actualSalary = staffData?.salaryAmount || 0;
+      const paidSalary = staffData?.paidSalary || 0;
+      const bonus = staffData?.bonus || 0;
+      const totalMonthlySalary = (paidSalary > 0 || bonus > 0) ? (paidSalary + bonus) : actualSalary;
+
       setEarningsSummary({
         completedTasks: totalCompleted,
         ratePerTask: ratePerTask,
         totalEarnings: totalCompleted * ratePerTask + (workingDays * (baseRate / 30)),
         workingDays,
-        baseRate
+        baseRate,
+        actualSalary,
+        paidSalary,
+        bonus,
+        totalMonthlySalary
       });
 
       // Fetch today's attendance
@@ -411,16 +434,33 @@ const StaffDashboard = () => {
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Rate Per Task:</span>
-                <span className="font-medium">₹{earningsSummary.ratePerTask.toFixed(0)}</span>
+                <span className="text-sm text-gray-600">Actual Salary:</span>
+                <span className="font-medium">₹{earningsSummary.actualSalary.toLocaleString()}</span>
               </div>
+              {(earningsSummary.paidSalary > 0 || earningsSummary.bonus > 0) && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Paid Salary:</span>
+                    <span className="font-medium text-blue-600">₹{earningsSummary.paidSalary.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Bonus:</span>
+                    <span className="font-medium text-green-600">₹{earningsSummary.bonus.toLocaleString()}</span>
+                  </div>
+                </>
+              )}
               <div className="border-t pt-2">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">Total Earnings:</span>
+                  <span className="font-medium">Monthly Salary:</span>
                   <span className="text-lg font-bold text-green-600">
-                    ₹{earningsSummary.totalEarnings.toFixed(0)}
+                    ₹{earningsSummary.totalMonthlySalary.toLocaleString()}
                   </span>
                 </div>
+                {(earningsSummary.paidSalary > 0 || earningsSummary.bonus > 0) && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Based on Paid Salary + Bonus
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>

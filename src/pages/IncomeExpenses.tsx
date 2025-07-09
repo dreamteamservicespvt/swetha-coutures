@@ -17,8 +17,11 @@ import CategoryBreakdown from '@/components/income-expenses/CategoryBreakdown';
 interface StaffMember {
   id: string;
   name: string;
-  salaryAmount: number;
+  salaryAmount?: number;
   salaryMode: 'monthly' | 'daily' | 'hourly';
+  // New salary fields
+  paidSalary?: number;
+  bonus?: number;
   [key: string]: any;
 }
 
@@ -35,6 +38,24 @@ const IncomeExpenses = () => {
     incomeData: [],
     expenseData: []
   });
+
+  // Helper function to calculate monthly salary based on new logic
+  const calculateMonthlySalary = (staff: StaffMember) => {
+    const paidSalary = staff.paidSalary || 0;
+    const bonus = staff.bonus || 0;
+    const actualSalary = staff.salaryAmount || 0;
+    
+    // If both paid salary and bonus are entered, use their sum
+    if (paidSalary > 0 && bonus > 0) {
+      return paidSalary + bonus;
+    }
+    // If only paid salary is entered, use it
+    if (paidSalary > 0) {
+      return paidSalary;
+    }
+    // Otherwise, use actual salary
+    return actualSalary;
+  };
 
   const clearFilters = () => {
     setSingleDate(undefined);
@@ -167,7 +188,8 @@ const IncomeExpenses = () => {
         })) as StaffMember[];
 
         for (const staff of staffMembers) {
-          if (!staff.salaryAmount || staff.salaryAmount <= 0) continue;
+          const monthlySalaryAmount = calculateMonthlySalary(staff);
+          if (!monthlySalaryAmount || monthlySalaryAmount <= 0) continue;
 
           let salaryAmount = 0;
 
@@ -181,10 +203,10 @@ const IncomeExpenses = () => {
                 monthsInRange.add(monthKey);
                 currentDate.setMonth(currentDate.getMonth() + 1);
               }
-              salaryAmount = staff.salaryAmount * monthsInRange.size;
+              salaryAmount = monthlySalaryAmount * monthsInRange.size;
             } else {
               // If no date range, use current month
-              salaryAmount = staff.salaryAmount;
+              salaryAmount = monthlySalaryAmount;
             }
           } else {
             // For daily/hourly, calculate based on attendance
@@ -215,8 +237,8 @@ const IncomeExpenses = () => {
                 (dateRange ? 0 : 1); // Default to 1 day if no date range and no records
               
               if (workingDays > 0) {
-                salaryAmount = staff.salaryAmount * workingDays;
-                console.log(`Daily salary calculation for ${staff.name}: ${workingDays} days × ₹${staff.salaryAmount} = ₹${salaryAmount}`);
+                salaryAmount = monthlySalaryAmount * workingDays;
+                console.log(`Daily salary calculation for ${staff.name}: ${workingDays} days × ₹${monthlySalaryAmount} = ₹${salaryAmount}`);
               }
             } else if (staff.salaryMode === 'hourly') {
               let totalHours = 0;
@@ -233,8 +255,8 @@ const IncomeExpenses = () => {
               }
               
               if (totalHours > 0) {
-                salaryAmount = staff.salaryAmount * totalHours;
-                console.log(`Hourly salary calculation for ${staff.name}: ${totalHours} hours × ₹${staff.salaryAmount} = ₹${salaryAmount}`);
+                salaryAmount = monthlySalaryAmount * totalHours;
+                console.log(`Hourly salary calculation for ${staff.name}: ${totalHours} hours × ₹${monthlySalaryAmount} = ₹${salaryAmount}`);
               }
             }
           }
@@ -301,7 +323,7 @@ const IncomeExpenses = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total Income</CardTitle>
@@ -319,17 +341,10 @@ const IncomeExpenses = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">₹{financialData.totalExpenses.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Net Profit</CardTitle>
-            <DollarSign className={`h-5 w-5 ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ₹{financialData.netProfit.toLocaleString()}
+            <div className="text-sm text-gray-500 mt-2">
+              Net Profit: <span className={`font-medium ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ₹{financialData.netProfit.toLocaleString()}
+              </span>
             </div>
           </CardContent>
         </Card>

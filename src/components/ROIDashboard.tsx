@@ -36,6 +36,9 @@ interface StaffMember {
   ifsc?: string;
   salaryAmount?: number;
   salaryMode?: 'monthly' | 'hourly' | 'daily';
+  // New salary fields
+  paidSalary?: number;
+  bonus?: number;
   billingRate?: number;
   emergencyContact?: {
     name: string;
@@ -156,6 +159,25 @@ const ROIDashboard: React.FC = () => {
     netProfit: 0,
     profitMargin: 0
   });
+
+  // Helper function to calculate monthly salary based on new logic
+  const calculateMonthlySalary = (staff: StaffMember) => {
+    const paidSalary = staff.paidSalary || 0;
+    const bonus = staff.bonus || 0;
+    const actualSalary = staff.salaryAmount || staff.salary || 0;
+    
+    // If both paid salary and bonus are entered, use their sum
+    if (paidSalary > 0 && bonus > 0) {
+      return paidSalary + bonus;
+    }
+    // If only paid salary is entered, use it
+    if (paidSalary > 0) {
+      return paidSalary;
+    }
+    // Otherwise, use actual salary
+    return actualSalary;
+  };
+
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -233,7 +255,7 @@ const ROIDashboard: React.FC = () => {
           }
         });
 
-        const salaryAmount = staffMember.salaryAmount || 0;
+        const salaryAmount = calculateMonthlySalary(staffMember);
         const netROI = totalBilled - salaryAmount;
         const roiPercentage = salaryAmount > 0 ? (netROI / salaryAmount) * 100 : 0;
 

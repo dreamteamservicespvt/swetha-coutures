@@ -38,8 +38,11 @@ interface ExpenseEntry {
 interface StaffMember {
   id: string;
   name: string;
-  salaryAmount: number;
+  salaryAmount?: number;
   salaryMode: 'monthly' | 'daily' | 'hourly';
+  // New salary fields
+  paidSalary?: number;
+  bonus?: number;
   [key: string]: any;
 }
 
@@ -56,6 +59,24 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
     date: new Date(),
     notes: ''
   });
+
+  // Helper function to calculate monthly salary based on new logic
+  const calculateMonthlySalary = (staff: StaffMember) => {
+    const paidSalary = staff.paidSalary || 0;
+    const bonus = staff.bonus || 0;
+    const actualSalary = staff.salaryAmount || 0;
+    
+    // If both paid salary and bonus are entered, use their sum
+    if (paidSalary > 0 && bonus > 0) {
+      return paidSalary + bonus;
+    }
+    // If only paid salary is entered, use it
+    if (paidSalary > 0) {
+      return paidSalary;
+    }
+    // Otherwise, use actual salary
+    return actualSalary;
+  };
 
   const fetchExpenseData = async () => {
     try {
@@ -103,7 +124,8 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
 
         // Calculate salary for each staff member in the date range
         for (const staff of staffMembers) {
-          if (!staff.salaryAmount || staff.salaryAmount <= 0) continue;
+          const monthlySalaryAmount = calculateMonthlySalary(staff);
+          if (!monthlySalaryAmount || monthlySalaryAmount <= 0) continue;
 
           let salaryAmount = 0;
           let salaryDate = dateRange?.end || Timestamp.now();
@@ -125,10 +147,10 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
                 currentDate.setMonth(currentDate.getMonth() + 1);
               }
               
-              salaryAmount = staff.salaryAmount * monthsInRange.size;
+              salaryAmount = monthlySalaryAmount * monthsInRange.size;
             } else {
               // If no date range, use current month
-              salaryAmount = staff.salaryAmount;
+              salaryAmount = monthlySalaryAmount;
             }
           } else {
             // For daily/hourly, calculate based on attendance
@@ -159,8 +181,8 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
                 (dateRange ? 0 : 1); // Default to 1 day if no date range and no records
               
               if (workingDays > 0) {
-                salaryAmount = staff.salaryAmount * workingDays;
-                console.log(`Daily salary calculation for ${staff.name}: ${workingDays} days × ₹${staff.salaryAmount} = ₹${salaryAmount}`);
+                salaryAmount = monthlySalaryAmount * workingDays;
+                console.log(`Daily salary calculation for ${staff.name}: ${workingDays} days × ₹${monthlySalaryAmount} = ₹${salaryAmount}`);
               }
             } else if (staff.salaryMode === 'hourly') {
               let totalHours = 0;
@@ -177,8 +199,8 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
               }
               
               if (totalHours > 0) {
-                salaryAmount = staff.salaryAmount * totalHours;
-                console.log(`Hourly salary calculation for ${staff.name}: ${totalHours} hours × ₹${staff.salaryAmount} = ₹${salaryAmount}`);
+                salaryAmount = monthlySalaryAmount * totalHours;
+                console.log(`Hourly salary calculation for ${staff.name}: ${totalHours} hours × ₹${monthlySalaryAmount} = ₹${salaryAmount}`);
               }
             }
           }

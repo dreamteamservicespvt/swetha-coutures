@@ -51,8 +51,8 @@ export const getCompanyInfo = async () => {
     // Parse address into components
     const addressParts = settings.businessAddress ? settings.businessAddress.split('\n') : [];
     const streetAddress = addressParts[0] || 'Premium Tailoring & Fashion Excellence';
-    const cityAddress = addressParts.slice(1).join(', ') || 'Bangalore, Karnataka';
-    
+    const cityAddress = addressParts.slice(1).join(', ') || 'Kakinada, Andhra Pradesh';
+
     return {
       name: settings.businessName || 'Swetha\'s Couture',
       address: streetAddress,
@@ -60,18 +60,18 @@ export const getCompanyInfo = async () => {
       phone: settings.businessPhone || '+91 98765 43210',
       email: settings.businessEmail || 'contact@swethascouture.com',
       taxNumber: settings.taxNumber || '',
-      fullAddress: settings.businessAddress || 'Premium Tailoring & Fashion Excellence\nBangalore, Karnataka'
+      fullAddress: settings.businessAddress || 'Premium Tailoring & Fashion Excellence\nKakinada, Andhra Pradesh'
     };
   } catch (error) {
     console.warn('Could not load company info, using defaults:', error);
     return {
       name: 'Swetha\'s Couture',
       address: 'Premium Tailoring & Fashion Excellence',
-      city: 'Bangalore, Karnataka',
+      city: 'Kakinada, Andhra Pradesh',
       phone: '+91 98765 43210',
       email: 'contact@swethascouture.com',
       taxNumber: '',
-      fullAddress: 'Premium Tailoring & Fashion Excellence\nBangalore, Karnataka'
+      fullAddress: 'Premium Tailoring & Fashion Excellence\nKakinada, Andhra Pradesh'
     };
   }
 };

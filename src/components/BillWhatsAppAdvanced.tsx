@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MessageSquare, Send, Copy, Edit } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/billingUtils';
+import { getPaymentSettings } from '@/utils/settingsUtils';
 
 interface BillWhatsAppAdvancedProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ const BillWhatsAppAdvanced: React.FC<BillWhatsAppAdvancedProps> = ({
   billId,
   totalAmount,
   balance,
-  upiLink,
+  upiLink, // We'll keep this prop but not use it directly
   customMessage
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState('bill-delivery');
@@ -42,13 +43,14 @@ const BillWhatsAppAdvanced: React.FC<BillWhatsAppAdvancedProps> = ({
   });
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [tempTemplateValue, setTempTemplateValue] = useState('');
+  const [upiId, setUpiId] = useState<string>('');
 
   const defaultTemplates = {
     'bill-delivery': `Hello ${customerName}! 🪡✨
 
 Your bill ${billId} for ${formatCurrency(totalAmount)} is ready from Swetha's Couture.
 
-${upiLink ? `💳 Pay instantly via UPI: ${upiLink}` : ''}
+${upiId ? `💳 Pay via UPI: ${upiId}` : ''}
 
 Thank you for choosing us! 💜
 
@@ -61,7 +63,7 @@ This is a gentle reminder about your pending payment for bill ${billId}.
 
 Outstanding amount: ${formatCurrency(balance)}
 
-${upiLink ? `💳 Quick payment link: ${upiLink}` : ''}
+${upiId ? `💳 Pay via UPI: ${upiId}` : ''}
 
 Please complete your payment at your earliest convenience.
 
@@ -82,13 +84,31 @@ Warm regards,
 Swetha's Couture Team`
   };
 
+  // Load UPI ID from settings
+  useEffect(() => {
+    const loadUpiId = async () => {
+      try {
+        const paymentSettings = await getPaymentSettings();
+        if (paymentSettings.upiId) {
+          setUpiId(paymentSettings.upiId);
+        }
+      } catch (error) {
+        console.error('Error loading UPI ID from settings:', error);
+      }
+    };
+    
+    if (isOpen) {
+      loadUpiId();
+    }
+  }, [isOpen]);
+
   React.useEffect(() => {
     if (customMessage) {
       setMessage(customMessage);
     } else {
       updateMessageFromTemplate();
     }
-  }, [selectedTemplate, customerName, billId, totalAmount, balance, upiLink, customMessage]);
+  }, [selectedTemplate, customerName, billId, totalAmount, balance, upiId, customMessage]);
 
   const updateMessageFromTemplate = () => {
     if (selectedTemplate.startsWith('custom-') && customTemplates[selectedTemplate]) {
@@ -132,7 +152,7 @@ Swetha's Couture Team`
     }
 
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${customerPhone.replace(/[^\d]/g, '')}?text=${encodedMessage}`;
+    const whatsappUrl = `https://wa.me/91${customerPhone.replace(/[^\d]/g, '')}?text=${encodedMessage}`;
     
     window.open(whatsappUrl, '_blank');
     
