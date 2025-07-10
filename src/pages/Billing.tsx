@@ -426,7 +426,7 @@ const Billing = () => {
         title: "Invalid Amount",
         description: "Please enter a valid payment amount",
         variant: "destructive",
-      });
+      }); 
       return;
     }
 
