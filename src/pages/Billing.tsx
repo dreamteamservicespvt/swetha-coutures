@@ -5,6 +5,20 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -38,7 +52,12 @@ import {
   RefreshCw,
   Printer,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CreditCard,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  ChevronDown
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, where, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -65,6 +84,12 @@ const Billing = () => {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilterLoading, setDateFilterLoading] = useState(false);
+  
+  // Status update states
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [statusUpdateBill, setStatusUpdateBill] = useState<Bill | null>(null);
+  const [partialPaymentAmount, setPartialPaymentAmount] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   
   // Mobile date filter states
   const [mobileSingleDate, setMobileSingleDate] = useState<Date | undefined>();
@@ -329,6 +354,92 @@ const Billing = () => {
   const handleExportToExcel = () => {
     // Open the export dialog instead of directly exporting
     setShowExportDialog(true);
+  };
+
+  // Status update functions
+  const handleStatusUpdate = (bill: Bill, newStatus: 'paid' | 'partial' | 'unpaid', event: React.MouseEvent) => {
+    event.stopPropagation();
+    setStatusUpdateBill(bill);
+    
+    if (newStatus === 'partial') {
+      const remainingBalance = (bill.totalAmount || 0) - (bill.paidAmount || 0);
+      setPartialPaymentAmount(remainingBalance.toString());
+      setShowStatusDialog(true);
+    } else {
+      updateBillStatus(bill, newStatus);
+    }
+  };
+
+  const updateBillStatus = async (bill: Bill, newStatus: 'paid' | 'partial' | 'unpaid', partialAmount?: number) => {
+    setUpdatingStatus(true);
+    
+    try {
+      let newPaidAmount = bill.paidAmount || 0;
+      
+      switch (newStatus) {
+        case 'paid':
+          newPaidAmount = bill.totalAmount || 0;
+          break;
+        case 'unpaid':
+          newPaidAmount = 0;
+          break;
+        case 'partial':
+          newPaidAmount = partialAmount || (bill.paidAmount || 0);
+          break;
+      }
+
+      const newBalance = (bill.totalAmount || 0) - newPaidAmount;
+      
+      await updateDoc(doc(db, 'bills', bill.id), {
+        paidAmount: newPaidAmount,
+        balance: newBalance,
+        status: newStatus,
+        updatedAt: Timestamp.now()
+      });
+
+      toast({
+        title: "Status Updated",
+        description: `Bill ${bill.billId} marked as ${newStatus}`,
+      });
+
+    } catch (error) {
+      console.error('Error updating bill status:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update bill status",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStatus(false);
+      setShowStatusDialog(false);
+      setStatusUpdateBill(null);
+      setPartialPaymentAmount('');
+    }
+  };
+
+  const handlePartialPaymentSubmit = () => {
+    if (!statusUpdateBill) return;
+    
+    const amount = parseFloat(partialPaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid payment amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (amount > (statusUpdateBill.totalAmount || 0)) {
+      toast({
+        title: "Invalid Amount",
+        description: "Payment amount cannot exceed total bill amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateBillStatus(statusUpdateBill, 'partial', amount);
   };
 
   if (loading) {
@@ -638,9 +749,41 @@ const Billing = () => {
                             <div className="space-y-1 flex-1 min-w-0">
                               <div className="flex items-center space-x-2">
                                 <span className="font-bold text-lg">#{bill.billId?.slice(-4) || 'N/A'}</span>
-                                <Badge className={`${getBillStatusColor(status)} font-medium`} variant="outline">
-                                  {status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' : '❌ Unpaid'}
-                                </Badge>
+                                
+                                {/* Status Update Dropdown */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <button className={`${getBillStatusColor(status)} font-medium px-2 py-1 rounded-md text-xs border hover:bg-opacity-80 transition-colors flex items-center gap-1`}>
+                                      {status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' : '❌ Unpaid'}
+                                      <ChevronDown className="h-3 w-3" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => handleStatusUpdate(bill, 'paid', e)}
+                                      disabled={status === 'paid'}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <CheckCircle className="h-4 w-4 text-green-600" />
+                                      Mark as Paid
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => handleStatusUpdate(bill, 'partial', e)}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                      Partial Payment
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => handleStatusUpdate(bill, 'unpaid', e)}
+                                      disabled={status === 'unpaid'}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <XCircle className="h-4 w-4 text-red-600" />
+                                      Mark as Unpaid
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                               <div className="text-xl font-semibold text-gray-900 truncate">{bill.customerName || 'N/A'}</div>
                             </div>
@@ -778,9 +921,41 @@ const Billing = () => {
                                 {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
                               </p>
                             </div>
-                            <Badge className={`${getBillStatusColor(status)} text-xs flex-shrink-0`}>
-                              {status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' : '❌ Unpaid'}
-                            </Badge>
+                            
+                            {/* Status Update Dropdown - Mobile */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <button className={`${getBillStatusColor(status)} text-xs flex-shrink-0 px-2 py-1 rounded-md border hover:bg-opacity-80 transition-colors flex items-center gap-1`}>
+                                  {status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' : '❌ Unpaid'}
+                                  <ChevronDown className="h-3 w-3" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem 
+                                  onClick={(e) => handleStatusUpdate(bill, 'paid', e)}
+                                  disabled={status === 'paid'}
+                                  className="flex items-center gap-2"
+                                >
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  Mark as Paid
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={(e) => handleStatusUpdate(bill, 'partial', e)}
+                                  className="flex items-center gap-2"
+                                >
+                                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                  Partial Payment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={(e) => handleStatusUpdate(bill, 'unpaid', e)}
+                                  disabled={status === 'unpaid'}
+                                  className="flex items-center gap-2"
+                                >
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                  Mark as Unpaid
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
 
                           {/* Customer Info */}
@@ -1070,6 +1245,87 @@ const Billing = () => {
         open={showExportDialog}
         setOpen={setShowExportDialog}
       />
+
+      {/* Status Update Dialog */}
+      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Update Payment Status
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+              {statusUpdateBill && `Update payment for Bill ${statusUpdateBill.billId} - ${statusUpdateBill.customerName}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {statusUpdateBill && (
+            <div className="space-y-4 py-4">
+              {/* Bill Summary */}
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
+                  <span className="font-medium">{formatCurrency(statusUpdateBill.totalAmount || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Paid Amount:</span>
+                  <span className="font-medium text-green-600">{formatCurrency(statusUpdateBill.paidAmount || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Balance:</span>
+                  <span className="font-medium text-red-600">{formatCurrency(statusUpdateBill.balance || 0)}</span>
+                </div>
+              </div>
+
+              {/* Partial Payment Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  Payment Amount
+                </label>
+                <Input
+                  type="number"
+                  placeholder="Enter payment amount"
+                  value={partialPaymentAmount}
+                  onChange={(e) => setPartialPaymentAmount(e.target.value)}
+                  max={statusUpdateBill.totalAmount || 0}
+                  className="responsive-text-sm h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Maximum: {formatCurrency(statusUpdateBill.totalAmount || 0)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setShowStatusDialog(false);
+                setStatusUpdateBill(null);
+                setPartialPaymentAmount('');
+              }}
+              disabled={updatingStatus}
+              className="text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handlePartialPaymentSubmit}
+              disabled={updatingStatus || !partialPaymentAmount}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {updatingStatus ? (
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CreditCard className="h-4 w-4 mr-2" />
+              )}
+              Update Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );
