@@ -90,8 +90,18 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
     setUserHasInteracted(true);
     setSearchValue(newValue);
     
-    // Immediately call onValueChange to persist the typed value
-    onValueChange(newValue);
+    // Only call onValueChange if the new value exactly matches one of the saved options
+    // This prevents showing partial typed values in the dropdown
+    const exactMatch = options.find(option => 
+      option.toLowerCase() === newValue.toLowerCase()
+    );
+    
+    if (exactMatch) {
+      onValueChange(exactMatch);
+    } else {
+      // Don't persist partial typed values - only persist when user explicitly selects or adds
+      // This fixes the issue where typing "gova" would show "gova", "gov", "go", "g" in suggestions
+    }
     
     if (!open) {
       setOpen(true);
@@ -110,10 +120,20 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
       if (!dropdownRef.current?.contains(document.activeElement)) {
         // Only close if user clicked outside the dropdown
         setOpen(false);
-        // Ensure the final value is persisted
-        if (userHasInteracted && searchValue !== value) {
-          onValueChange(searchValue);
+        
+        // Only persist value if it's an exact match with existing options
+        // This prevents saving partial typed values that don't match saved options
+        const exactMatch = options.find(option => 
+          option.toLowerCase() === searchValue.toLowerCase()
+        );
+        
+        if (exactMatch) {
+          onValueChange(exactMatch);
+        } else {
+          // Reset to original value if no exact match
+          setSearchValue(value);
         }
+        
         setUserHasInteracted(false);
       }
     }, 150);
@@ -128,6 +148,7 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
       setSearchValue(trimmedValue);
       
       // Call the onAddNew callback to add to the dropdown options
+      // This ensures new items are tracked properly for saving
       if (onAddNew) {
         onAddNew(trimmedValue);
       }
@@ -143,6 +164,9 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
       handleAddNew();
     } else if (e.key === 'Enter' && exactMatch) {
       e.preventDefault();
+      handleSelect(exactMatch);
+    } else if (e.key === 'Tab' && exactMatch) {
+      // Auto-select exact match on tab
       handleSelect(exactMatch);
     } else if (e.key === 'Escape') {
       e.preventDefault();

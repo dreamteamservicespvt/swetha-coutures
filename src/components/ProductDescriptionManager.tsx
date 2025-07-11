@@ -347,57 +347,87 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   }, [products.map(p => p.total).join(','), products.length]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      {/* Sticky Action Bar */}
+      <div className="sticky top-4 z-40 bg-white border-2 border-purple-200 rounded-lg p-4 shadow-lg">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-purple-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Products & Services</h2>
+            <span className="text-sm text-gray-500">({products.length} products)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              onClick={addProduct}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Product
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                // Navigate back to billing page
+                const currentPath = window.location.pathname;
+                if (currentPath.includes('/billing/')) {
+                  // If we're in a billing route, go back to billing dashboard
+                  window.location.href = '/billing';
+                } else {
+                  // Otherwise, use browser back
+                  window.history.back();
+                }
+              }}
+              size="sm"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Back to Billing
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Products & Services
+            Product Details
           </CardTitle>
-          <Button
-            type="button"
-            onClick={addProduct}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Product
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {products.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Package className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <p>No products added yet. Click "Add Product +" to get started.</p>
-          </div>
-        ) : (
-          products.map(product => (
-            <div key={product.id} className="border-2 border-purple-200 rounded-lg bg-white shadow-sm">
-              {/* Header Panel - Main Product */}
-              <div className="p-4 bg-purple-50 border-b border-purple-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-center">
-                  {/* Chevron Toggle */}
-                  <div className="sm:col-span-1 lg:col-span-1 flex justify-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleProductExpansion(product.id)}
-                      className="p-2 hover:bg-purple-100"
-                    >
-                      {product.expanded ? (
-                        <ChevronDown className="h-4 w-4 text-purple-600" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-purple-600" />
-                      )}
-                    </Button>
-                  </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {products.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Package className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+              <p>No products added yet. Click "Add Product" in the action bar above to get started.</p>
+            </div>
+          ) : (
+            products.map(product => (
+              <div key={product.id} className="border-2 border-purple-200 rounded-lg bg-white shadow-sm">
+                {/* Header Panel - Main Product */}
+                <div className="p-4 bg-purple-50 border-b border-purple-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-center">
+                      {/* Chevron Toggle */}
+                      <div className="sm:col-span-1 lg:col-span-1 flex justify-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleProductExpansion(product.id)}
+                          className="p-2 hover:bg-purple-100"
+                        >
+                          {product.expanded ? (
+                            <ChevronDown className="h-4 w-4 text-purple-600" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-purple-600" />
+                          )}
+                        </Button>
+                      </div>
 
-                  {/* Product Name */}
-                  <div className="sm:col-span-2 lg:col-span-6">
-                    <Label className="text-sm font-medium text-gray-700">Product Name *</Label>
+                      {/* Product Name */}
+                      <div className="sm:col-span-2 lg:col-span-6">
+                        <Label className="text-sm font-medium text-gray-700">Product Name *</Label>
                     <EditableCombobox
                       value={product.name}
                       onValueChange={(value) => handleProductNameSelect(product.id, value)}
@@ -569,8 +599,9 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
               )}
             </div>
           ))
-        )}
-      </CardContent>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
@@ -628,7 +659,21 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+
+      {/* Floating Add Product Button - Shows when scrolled down */}
+      {products.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            type="button"
+            onClick={addProduct}
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-full w-14 h-14 p-0"
+            title="Add Another Product"
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
+    </div>
   );
 };
 

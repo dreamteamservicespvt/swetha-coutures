@@ -54,7 +54,7 @@ export interface PaymentRecord {
   type: 'cash' | 'online' | 'split';
   cashAmount?: number;
   onlineAmount?: number;
-  paymentDate: any;
+  paymentDate: Date | any; // Allow both Date and Firebase Timestamp
   notes?: string;
 }
 

@@ -15,7 +15,7 @@ export interface PaymentRecord {
   type: 'cash' | 'online' | 'split';
   cashAmount?: number;
   onlineAmount?: number;
-  paymentDate: Date;
+  paymentDate: Date | any; // Allow both Date and Firebase Timestamp
   notes?: string;
 }
 
@@ -45,6 +45,39 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
   const [newCashAmount, setNewCashAmount] = useState('');
   const [newOnlineAmount, setNewOnlineAmount] = useState('');
   const [newPaymentNotes, setNewPaymentNotes] = useState('');
+
+  // Initialize payment records when initialPaymentRecords changes (for edit mode)
+  useEffect(() => {
+    if (initialPaymentRecords.length > 0) {
+      // Convert any Firebase timestamps to dates properly
+      const processedRecords = initialPaymentRecords.map(record => {
+        let processedDate: Date;
+        
+        try {
+          if (record.paymentDate instanceof Date) {
+            processedDate = record.paymentDate;
+          } else if (record.paymentDate && typeof record.paymentDate === 'object' && 'toDate' in record.paymentDate) {
+            // Firebase Timestamp
+            processedDate = record.paymentDate.toDate();
+          } else if (record.paymentDate) {
+            // String or other format
+            processedDate = new Date(record.paymentDate);
+          } else {
+            processedDate = new Date();
+          }
+        } catch (error) {
+          console.error('Error processing payment date:', error);
+          processedDate = new Date();
+        }
+        
+        return {
+          ...record,
+          paymentDate: processedDate
+        };
+      });
+      setPaymentRecords(processedRecords);
+    }
+  }, [JSON.stringify(initialPaymentRecords)]); // Use JSON.stringify for deep comparison
 
   // Calculate totals
   const totalPaid = paymentRecords.reduce((sum, record) => sum + record.amount, 0);
@@ -239,7 +272,7 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
               />
             </div>
 
-            <Button onClick={addPayment} className="w-full">
+            <Button type="button" onClick={addPayment} className="w-full">
               <Plus className="h-4 w-4 mr-2" />
               Add Payment
             </Button>
@@ -278,6 +311,7 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
                   </div>
                   {!disabled && (
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removePayment(record.id)}

@@ -162,7 +162,50 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           accountNumber: '',
           ifsc: '',
           bankName: ''
-        }
+        },
+        // Ensure payment records are properly initialized
+        paymentRecords: bill.paymentRecords ? bill.paymentRecords.map(record => {
+          let processedDate: Date;
+          
+          try {
+            if (record.paymentDate instanceof Date) {
+              processedDate = record.paymentDate;
+            } else if (record.paymentDate && typeof record.paymentDate === 'object' && 'toDate' in record.paymentDate) {
+              // Firebase Timestamp
+              processedDate = record.paymentDate.toDate();
+            } else if (record.paymentDate) {
+              // String or other format
+              processedDate = new Date(record.paymentDate);
+            } else {
+              processedDate = new Date();
+            }
+          } catch (error) {
+            console.error('Error processing payment date:', error);
+            processedDate = new Date();
+          }
+          
+          return {
+            ...record,
+            paymentDate: processedDate
+          };
+        }) : [],
+        // Ensure cash/online totals are properly calculated from payment records
+        totalCashReceived: bill.totalCashReceived || (bill.paymentRecords ? bill.paymentRecords.reduce((sum, record) => {
+          if (record.type === 'cash') return sum + record.amount;
+          if (record.type === 'split') return sum + (record.cashAmount || 0);
+          return sum;
+        }, 0) : 0),
+        totalOnlineReceived: bill.totalOnlineReceived || (bill.paymentRecords ? bill.paymentRecords.reduce((sum, record) => {
+          if (record.type === 'online') return sum + record.amount;
+          if (record.type === 'split') return sum + (record.onlineAmount || 0);
+          return sum;
+        }, 0) : 0),
+        // Ensure paidAmount is properly set from payment records
+        paidAmount: bill.paidAmount || (bill.paymentRecords ? bill.paymentRecords.reduce((sum, record) => sum + record.amount, 0) : 0),
+        // Ensure balance is properly calculated
+        balance: bill.balance || (bill.totalAmount || 0) - (bill.paidAmount || (bill.paymentRecords ? bill.paymentRecords.reduce((sum, record) => sum + record.amount, 0) : 0)),
+        // Ensure status is properly set
+        status: bill.status || calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || (bill.paymentRecords ? bill.paymentRecords.reduce((sum, record) => sum + record.amount, 0) : 0))
       });
       setSelectedCustomer({
         id: bill.customerId || '',
@@ -448,7 +491,8 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     formData.gstPercent,
     formData.discount,
     formData.discountType,
-    formData.paidAmount
+    formData.paidAmount, // This ensures recalculation when paidAmount changes
+    formData.totalAmount // This ensures recalculation when totalAmount changes
   ]);
 
   // Fetch order details for UPI message
@@ -1166,12 +1210,20 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           totalAmount={formData.totalAmount || 0}
           currentPaidAmount={formData.paidAmount || 0}
           onPaymentChange={(paidAmount, paymentRecords, totalCash, totalOnline) => {
+            // Calculate new balance and status
+            const newBalance = Math.max(0, (formData.totalAmount || 0) - paidAmount);
+            const newStatus = calculateBillStatus(formData.totalAmount || 0, paidAmount);
+            
             setFormData(prev => ({
               ...prev,
               paidAmount,
               paymentRecords,
               totalCashReceived: totalCash,
-              totalOnlineReceived: totalOnline
+              totalOnlineReceived: totalOnline,
+              balance: newBalance,
+              status: newStatus,
+              // Update QR amount to new balance if not manually overridden
+              qrAmount: prev.qrAmount === prev.balance || !prev.qrAmount ? newBalance : prev.qrAmount
             }));
           }}
           initialPaymentRecords={formData.paymentRecords || []}
