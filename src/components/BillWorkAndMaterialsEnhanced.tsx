@@ -78,7 +78,10 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
   // Calculate total amount for an item including sub-items
   const calculateItemTotal = (item: BillItem): number => {
     if (item.subItems && item.subItems.length > 0) {
-      return item.subItems.reduce((sum, subItem) => sum + subItem.amount, 0);
+      // If item has sub-items, sum the sub-items + main item amount for consistency
+      const subItemsTotal = item.subItems.reduce((sum, subItem) => sum + subItem.amount, 0);
+      const mainItemAmount = item.quantity * item.rate;
+      return mainItemAmount + subItemsTotal;
     }
     return item.quantity * item.rate;
   };
@@ -100,7 +103,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       id: uuidv4(),
       type: 'service',
       description: '',
-      quantity: 1,
+      quantity: 0.1,
       rate: 0,
       cost: 0,
       amount: 0,
@@ -117,7 +120,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       id: uuidv4(),
       type: 'service',
       description: '',
-      quantity: 1,
+      quantity: 0.1,
       rate: 0,
       cost: 0,
       amount: 0,
@@ -148,9 +151,21 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
     const updatedItems = billItems.map(item => {
       if (item.id === id) {
         const updatedItem = { ...item, [field]: value };
-        if (field === 'quantity' || field === 'rate') {
-          updatedItem.amount = updatedItem.quantity * updatedItem.rate;
+        
+        // Ensure valid numbers and prevent NaN
+        if (field === 'quantity') {
+          updatedItem.quantity = Math.max(0.1, parseFloat(value) || 0.1);
+        } else if (field === 'rate') {
+          updatedItem.rate = Math.max(0, parseFloat(value) || 0);
         }
+        
+        // Recalculate amount with safe numbers
+        if (field === 'quantity' || field === 'rate') {
+          const safeQuantity = updatedItem.quantity || 0.1;
+          const safeRate = updatedItem.rate || 0;
+          updatedItem.amount = safeQuantity * safeRate;
+        }
+        
         return updatedItem;
       }
       
@@ -159,9 +174,21 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
         const updatedSubItems = item.subItems.map(subItem => {
           if (subItem.id === id) {
             const updatedSubItem = { ...subItem, [field]: value };
-            if (field === 'quantity' || field === 'rate') {
-              updatedSubItem.amount = updatedSubItem.quantity * updatedSubItem.rate;
+            
+            // Ensure valid numbers and prevent NaN for sub-items
+            if (field === 'quantity') {
+              updatedSubItem.quantity = Math.max(0.1, parseFloat(value) || 0.1);
+            } else if (field === 'rate') {
+              updatedSubItem.rate = Math.max(0, parseFloat(value) || 0);
             }
+            
+            // Recalculate amount with safe numbers for sub-items
+            if (field === 'quantity' || field === 'rate') {
+              const safeQuantity = updatedSubItem.quantity || 0.1;
+              const safeRate = updatedSubItem.rate || 0;
+              updatedSubItem.amount = safeQuantity * safeRate;
+            }
+            
             return updatedSubItem;
           }
           return subItem;
@@ -375,10 +402,12 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
             <NumberInput
               id={`item-qty-${item.id}`}
               value={item.quantity}
-              onChange={(value) => updateBillItem(item.id, 'quantity', value || 1)}
-              min={1}
+              onChange={(value) => updateBillItem(item.id, 'quantity', value || 0.1)}
+              min={0.1}
+              step={0.1}
+              decimals={1}
               allowEmpty={false}
-              emptyValue={1}
+              emptyValue={0.1}
               className="mt-1 bg-white"
               required
             />
@@ -387,7 +416,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
           {/* Rate */}
           <div>
             <Label htmlFor={`item-rate-${item.id}`} className="text-sm font-medium text-gray-700">
-              Rate (₹) *
+              Rate per unit (₹) *
             </Label>
             <NumberInput
               id={`item-rate-${item.id}`}
@@ -399,7 +428,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               allowEmpty={false}
               emptyValue={0}
               className="mt-1 bg-white"
-              placeholder="Enter rate"
+              placeholder="Enter rate per unit"
               required
             />
           </div>
@@ -418,6 +447,18 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                   {formatCurrency(item.amount || 0)}
                 </span>
               </div>
+              {/* Show calculation breakdown for clarity */}
+              {!hasSubItems && item.quantity > 0 && item.rate > 0 && (
+                <div className="text-xs text-gray-600 mt-1">
+                  {item.quantity} × ₹{item.rate} = ₹{(item.quantity * item.rate).toFixed(2)}
+                </div>
+              )}
+              {hasSubItems && item.subItems && item.subItems.length > 0 && (
+                <div className="text-xs text-gray-600 mt-1">
+                  Main: ₹{(item.quantity * item.rate).toFixed(2)} + 
+                  Sub: ₹{(item.subItems.reduce((sum, sub) => sum + sub.amount, 0)).toFixed(2)}
+                </div>
+              )}
             </div>
           </div>
 

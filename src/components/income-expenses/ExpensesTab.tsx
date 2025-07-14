@@ -543,8 +543,9 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
               ))}
             </div>
           ) : expenseEntries.length > 0 ? (
-            <div className="space-y-3">
-              {expenseEntries.map((entry) => (
+            <div className="h-96 overflow-y-auto">
+              <div className="space-y-3 pr-2">
+                {expenseEntries.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex items-center space-x-4 flex-1">
                     <div className={`p-2 rounded-full ${getExpenseColor(entry.type)}`}>
@@ -612,6 +613,7 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           ) : (
             <div className="text-center py-12">

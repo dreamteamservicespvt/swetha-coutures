@@ -253,7 +253,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
     const newDescription: ProductDescription = {
       id: uuidv4(),
       description: '',
-      qty: 1,
+      qty: 0.1,
       rate: 0,
       amount: 0
     };
@@ -528,12 +528,14 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                             <Label className="text-sm font-medium text-gray-700">Qty *</Label>
                             <NumberInput
                               value={desc.qty}
-                              onChange={(value) => updateDescription(product.id, desc.id, 'qty', value || 1)}
-                              min={1}
+                              onChange={(value) => updateDescription(product.id, desc.id, 'qty', value || 0.1)}
+                              min={0.1}
+                              step={0.1}
+                              decimals={1}
                               allowEmpty={false}
-                              emptyValue={1}
+                              emptyValue={0.1}
                               className="mt-1 bg-white"
-                              placeholder="Qty"
+                              placeholder="0.1"
                               required
                             />
                           </div>

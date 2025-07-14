@@ -509,16 +509,18 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
                       <Label className="text-sm">Qty</Label>
                       <NumberInput
                         value={item.quantity}
-                        onChange={(value) => updateItem(item.id, 'quantity', value?.toString() || '1')}
-                        min={1}
+                        onChange={(value) => updateItem(item.id, 'quantity', value?.toString() || '0.1')}
+                        min={0.1}
+                        step={0.1}
+                        decimals={1}
                         allowEmpty={false}
-                        emptyValue={1}
-                        placeholder="1"
+                        emptyValue={0.1}
+                        placeholder="0.1"
                       />
                     </div>
                     
                     <div>
-                      <Label className="text-sm">Rate</Label>
+                      <Label className="text-sm">Rate per unit (₹)</Label>
                       <NumberInput
                         value={item.rate}
                         onChange={(value) => updateItem(item.id, 'rate', value?.toString() || '0')}
@@ -526,7 +528,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
                         step={0.01}
                         allowEmpty={false}
                         emptyValue={0}
-                        placeholder="0.00"
+                        placeholder="Enter rate per unit"
                       />
                     </div>
                     
@@ -538,6 +540,12 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
                           readOnly
                           className="bg-white font-medium text-purple-600"
                         />
+                        {/* Show calculation breakdown for clarity */}
+                        {item.quantity > 0 && item.rate > 0 && (
+                          <div className="text-xs text-gray-600 mt-1">
+                            {item.quantity} × ₹{item.rate} = ₹{(item.quantity * item.rate).toFixed(2)}
+                          </div>
+                        )}
                       </div>
                       {items.length > 1 && (
                         <Button

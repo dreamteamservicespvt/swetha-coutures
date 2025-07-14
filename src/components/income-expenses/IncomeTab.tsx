@@ -404,8 +404,9 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
               ))}
             </div>
           ) : incomeEntries.length > 0 ? (
-            <div className="space-y-3">
-              {incomeEntries.map((entry) => (
+            <div className="h-96 overflow-y-auto">
+              <div className="space-y-3 pr-2">
+                {incomeEntries.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex items-center space-x-4 flex-1">
                     <div className={`p-2 rounded-full ${entry.type === 'billing' ? 'bg-blue-100' : 'bg-green-100'}`}>
@@ -469,6 +470,7 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           ) : (
             <div className="text-center py-12">

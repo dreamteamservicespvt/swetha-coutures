@@ -63,7 +63,7 @@ const getValidationClasses = (item: BillItem, field: 'description' | 'rate' | 'q
   } else if (field === 'rate') {
     return item.rate > 0 ? baseClasses : `${baseClasses} border-red-500 border-2`;
   } else if (field === 'quantity') {
-    return item.quantity > 0 ? baseClasses : `${baseClasses} border-red-500 border-2`;
+    return item.quantity >= 0.1 ? baseClasses : `${baseClasses} border-red-500 border-2`;
   }
   
   return baseClasses;
@@ -134,10 +134,10 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       id: uuidv4(),
       type: 'service',
       description: '',
-      quantity: 1, // Default to 1 (positive value)
+      quantity: 0.1, // Default to 0.1 (minimum positive value)
       rate: 1, // Default to 1 (positive value) instead of 0
       cost: 0,
-      amount: 1, // quantity * rate = 1 * 1 = 1
+      amount: 0.1, // quantity * rate = 0.1 * 1 = 0.1
       subItems: [],
       isSubItem: false
     };
@@ -151,10 +151,10 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       id: uuidv4(),
       type: 'service',
       description: '',
-      quantity: 1, // Default to 1 (positive value)
+      quantity: 0.1, // Default to 0.1 (minimum positive value)
       rate: 1, // Default to 1 (positive value) instead of 0
       cost: 0,
-      amount: 1, // quantity * rate = 1 * 1 = 1
+      amount: 0.1, // quantity * rate = 0.1 * 1 = 0.1
       parentId: parentId,
       isSubItem: true
     };
@@ -185,13 +185,13 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
         
         // Ensure valid numbers and prevent NaN
         if (field === 'quantity') {
-          updatedItem.quantity = Math.max(1, parseInt(value) || 1);
+          updatedItem.quantity = Math.max(0.1, parseFloat(value) || 0.1);
         } else if (field === 'rate') {
           updatedItem.rate = Math.max(0, parseFloat(value) || 0);
         }
         
         // Recalculate amount with safe numbers
-        const safeQuantity = updatedItem.quantity || 1;
+        const safeQuantity = updatedItem.quantity || 0.1;
         const safeRate = updatedItem.rate || 0;
         updatedItem.amount = safeQuantity * safeRate;
         
@@ -206,13 +206,13 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
             
             // Ensure valid numbers and prevent NaN
             if (field === 'quantity') {
-              updatedSubItem.quantity = Math.max(1, parseInt(value) || 1);
+              updatedSubItem.quantity = Math.max(0.1, parseFloat(value) || 0.1);
             } else if (field === 'rate') {
               updatedSubItem.rate = Math.max(0, parseFloat(value) || 0);
             }
             
             // Recalculate amount with safe numbers
-            const safeQuantity = updatedSubItem.quantity || 1;
+            const safeQuantity = updatedSubItem.quantity || 0.1;
             const safeRate = updatedSubItem.rate || 0;
             updatedSubItem.amount = safeQuantity * safeRate;
             
@@ -432,13 +432,15 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                   id={`item-qty-mobile-${item.id}`}
                   value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity}
                   onChange={(value) => {
-                    if (value !== null && value > 0) {
+                    if (value !== null && value >= 0.1) {
                       updateBillItem(item.id, 'quantity', value);
                     }
                   }}
-                  min={1}
+                  min={0.1}
+                  step={0.1}
+                  decimals={1}
                   allowEmpty={false}
-                  emptyValue={1}
+                  emptyValue={0.1}
                   className={getValidationClasses(item, 'quantity')}
                   required
                 />
@@ -605,13 +607,15 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                 id={`item-qty-${item.id}`}
                 value={item.quantity == null || isNaN(item.quantity) ? '' : item.quantity}
                 onChange={(value) => {
-                  if (value !== null && value > 0) {
+                  if (value !== null && value >= 0.1) {
                     updateBillItem(item.id, 'quantity', value);
                   }
                 }}
-                min={1}
+                min={0.1}
+                step={0.1}
+                decimals={1}
                 allowEmpty={false}
-                emptyValue={1}
+                emptyValue={0.1}
                 className={`mt-1 ${getValidationClasses(item, 'quantity')}`}
                 required
               />
