@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { User, Phone, Mail, MapPin, Package, Ruler, Calendar, IndianRupee, ShoppingBag } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Package, Ruler, Calendar, IndianRupee, ShoppingBag, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -58,6 +58,47 @@ interface Order {
   createdAt: any;
 }
 
+interface Bill {
+  id: string;
+  billId: string;
+  customerId?: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  customerAddress?: string;
+  orderId?: string;
+  items?: Array<{
+    id: string;
+    description: string;
+    quantity: number;
+    rate: number;
+    amount: number;
+    type?: string;
+  }>;
+  products?: Array<{
+    name: string;
+    descriptions: Array<{
+      description: string;
+      qty: number;
+      rate: number;
+      amount: number;
+    }>;
+  }>;
+  subtotal: number;
+  gstPercent: number;
+  gstAmount: number;
+  discount: number;
+  discountType: 'amount' | 'percentage';
+  totalAmount: number;
+  paidAmount: number;
+  balance: number;
+  status: 'paid' | 'partial' | 'unpaid';
+  date: any;
+  dueDate?: any;
+  notes?: string;
+  createdAt?: any;
+}
+
 interface CustomerProfilePanelProps {
   customer: Customer | null;
   isOpen: boolean;
@@ -66,19 +107,41 @@ interface CustomerProfilePanelProps {
 
 const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, isOpen, onClose }) => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(false);
   const [aggregatedSizes, setAggregatedSizes] = useState<Record<string, any>>({});
+  const [activeTab, setActiveTab] = useState<'orders' | 'bills'>('orders');
 
   useEffect(() => {
     if (customer && isOpen) {
-      fetchCustomerOrders();
+      fetchCustomerData();
     }
   }, [customer, isOpen]);
+
+  const fetchCustomerData = async () => {
+    if (!customer) return;
+    
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchCustomerOrders(),
+        fetchCustomerBills()
+      ]);
+    } catch (error) {
+      console.error('Error fetching customer data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch customer data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchCustomerOrders = async () => {
     if (!customer) return;
     
-    setLoading(true);
     console.log('Fetching orders for customer:', customer.name, 'with ID:', customer.id);
     
     try {
@@ -144,8 +207,76 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
         description: "Failed to fetch customer orders",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchCustomerBills = async () => {
+    if (!customer) return;
+    
+    console.log('Fetching bills for customer:', customer.name, 'with ID:', customer.id);
+    
+    try {
+      // Try to fetch bills by customerId first
+      let billsQuery = query(
+        collection(db, 'bills'),
+        where('customerId', '==', customer.id)
+      );
+      let billsSnapshot = await getDocs(billsQuery);
+      let billsData = billsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Bill[];
+      
+      console.log('Bills found by customerId:', billsData.length);
+      
+      // If no bills found by customerId, try by customerName (exact match)
+      if (billsData.length === 0) {
+        billsQuery = query(
+          collection(db, 'bills'),
+          where('customerName', '==', customer.name)
+        );
+        billsSnapshot = await getDocs(billsQuery);
+        billsData = billsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Bill[];
+        
+        console.log('Bills found by exact customerName:', billsData.length);
+        
+        // If still no bills found, try case-insensitive search by fetching all bills and filtering
+        if (billsData.length === 0) {
+          billsQuery = query(collection(db, 'bills'));
+          billsSnapshot = await getDocs(billsQuery);
+          const allBills = billsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Bill[];
+          
+          billsData = allBills.filter(bill => 
+            bill.customerName && 
+            bill.customerName.toLowerCase() === customer.name.toLowerCase()
+          );
+          
+          console.log('Bills found by case-insensitive customerName:', billsData.length);
+        }
+      }
+      
+      // Sort bills by date (newest first)
+      billsData.sort((a, b) => {
+        const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date || 0);
+        const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date || 0);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      console.log('Final bills found:', billsData.length);
+      setBills(billsData);
+    } catch (error) {
+      console.error('Error fetching customer bills:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch customer bills",
+        variant: "destructive",
+      });
     }
   };
 
@@ -251,22 +382,47 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
             </Card>
           )}
 
-          {/* Orders */}
+          {/* Orders and Bills Tabs */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                Order History ({orders.length})
+                Transaction History
               </CardTitle>
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    activeTab === 'orders'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Orders ({orders.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('bills')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    activeTab === 'bills'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Bills ({bills.length})
+                </button>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-4">Loading orders...</div>
-              ) : orders.length > 0 ? (
-                <div className="space-y-4">
-                  {orders.map((order) => (
-                    <div key={order.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
-                      {/* Order Header */}
+                <div className="text-center py-4">Loading {activeTab}...</div>
+              ) : (
+                <>
+                  {activeTab === 'orders' && (
+                    orders.length > 0 ? (
+                      <div className="space-y-4">
+                        {orders.map((order) => (
+                          <div key={order.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                            {/* Order Header */}
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h4 className="font-semibold text-lg">
@@ -374,11 +530,93 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p>No orders found for this customer</p>
-                </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                        <p>No orders found for this customer</p>
+                      </div>
+                    )
+                  )}
+                  
+                  {activeTab === 'bills' && (
+                    bills.length > 0 ? (
+                      <div className="space-y-4">
+                        {bills.map((bill) => (
+                          <div key={bill.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                            {/* Bill Header */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-5 w-5 text-blue-600" />
+                                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                    Bill #{bill.billId}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {bill.status === 'paid' && (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  )}
+                                  {bill.status === 'partial' && (
+                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                  )}
+                                  {bill.status === 'unpaid' && (
+                                    <XCircle className="h-4 w-4 text-red-600" />
+                                  )}
+                                  <span className={`text-sm px-2 py-1 rounded ${
+                                    bill.status === 'paid' ? 'bg-green-100 text-green-800' :
+                                    bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {bill.status}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(bill.date?.toDate ? bill.date.toDate() : bill.date).toLocaleDateString()}
+                              </div>
+                            </div>
+                            
+                            {/* Bill Details */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Total Amount:</span>
+                                <span className="font-medium flex items-center gap-1">
+                                  <IndianRupee className="h-4 w-4" />
+                                  {bill.totalAmount.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Paid Amount:</span>
+                                <span className="font-medium flex items-center gap-1">
+                                  <IndianRupee className="h-4 w-4" />
+                                  {bill.paidAmount.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Balance:</span>
+                                <span className="font-medium flex items-center gap-1">
+                                  <IndianRupee className="h-4 w-4" />
+                                  {bill.balance.toLocaleString()}
+                                </span>
+                              </div>
+                              
+                              {bill.notes && (
+                                <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
+                                  <strong>Notes:</strong> {bill.notes}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                        <p>No bills found for this customer</p>
+                      </div>
+                    )
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

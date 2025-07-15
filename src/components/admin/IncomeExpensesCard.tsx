@@ -282,7 +282,7 @@ const IncomeExpensesCard: React.FC<IncomeExpensesCardProps> = ({ onClick }) => {
           <div className={`flex items-center gap-1 ${financialData.trend === 'up' ? 'text-green-600' : financialData.trend === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
             {getTrendIcon()}
             <span className="text-sm font-medium">
-              {loading ? '...' : `${Math.abs(financialData.profitMargin).toFixed(1)}%`}
+              {loading ? '...' : `${financialData.profitMargin >= 0 ? '' : '-'}${Math.abs(financialData.profitMargin).toFixed(1)}%`}
             </span>
           </div>
         </div>

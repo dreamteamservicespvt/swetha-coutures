@@ -38,6 +38,7 @@ interface BreakdownEntry {
   sourceName?: string;
   customerName?: string;
   itemName?: string;
+  expenseName?: string; // ✅ Added expenseName field
   supplier?: string;
   type: string;
 }
@@ -131,14 +132,14 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
         if (dateRange) {
           incomeQuery = query(
             collection(db, 'income'),
-            where('createdAt', '>=', dateRange.start),
-            where('createdAt', '<=', dateRange.end),
-            orderBy('createdAt', 'desc')
+            where('date', '>=', dateRange.start),
+            where('date', '<=', dateRange.end),
+            orderBy('date', 'desc')
           ) as any;
         } else {
           incomeQuery = query(
             collection(db, 'income'),
-            orderBy('createdAt', 'desc')
+            orderBy('date', 'desc')
           ) as any;
         }
 
@@ -208,14 +209,14 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
         if (dateRange) {
           expensesQuery = query(
             collection(db, 'expenses'),
-            where('createdAt', '>=', dateRange.start),
-            where('createdAt', '<=', dateRange.end),
-            orderBy('createdAt', 'desc')
+            where('date', '>=', dateRange.start),
+            where('date', '<=', dateRange.end),
+            orderBy('date', 'desc')
           ) as any;
         } else {
           expensesQuery = query(
             collection(db, 'expenses'),
-            orderBy('createdAt', 'desc')
+            orderBy('date', 'desc')
           ) as any;
         }
 
@@ -229,6 +230,7 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
             date: data.date || data.createdAt,
             notes: data.notes,
             category: data.category,
+            expenseName: data.expenseName, // ✅ Added missing expenseName field
             type: 'custom'
           };
 
@@ -528,7 +530,11 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
                       <div className="flex-1">
                         <div className="font-medium">
                           {entry.type === 'salary' ? `${entry.staffName} Salary` :
-                           entry.expenseName || entry.sourceName || entry.customerName || entry.itemName || entry.category || 'Unnamed Entry'}
+                           entry.type === 'inventory' ? entry.itemName || 'Material Item' :
+                           entry.type === 'billing' ? `Bill - ${entry.customerName || 'Customer'}` :
+                           entry.type === 'custom' && type === 'expense' ? entry.expenseName || 'Expense Entry' :
+                           entry.type === 'custom' && type === 'income' ? entry.sourceName || 'Income Entry' :
+                           entry.sourceName || entry.customerName || entry.itemName || 'Entry'}
                         </div>
                         <div className="text-sm text-gray-600 flex items-center space-x-4">
                           <span className="flex items-center">

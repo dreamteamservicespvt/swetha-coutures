@@ -10,7 +10,8 @@ import { Product, ProductDescription } from '@/utils/billingUtils';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
-import EditableCombobox from '@/components/EditableCombobox';
+import ProductNameInput from '@/components/ProductNameInput';
+import SubItemDescriptionInput from '@/components/SubItemDescriptionInput';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface ProductDescriptionManagerProps {
@@ -319,6 +320,14 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   };
 
   const handleDescriptionSelect = (productId: string, descriptionId: string, selectedDescription: string) => {
+    // Only process if the selected description is different from current value
+    const product = products.find(p => p.id === productId);
+    const currentDesc = product?.descriptions.find(d => d.id === descriptionId);
+    
+    if (currentDesc && currentDesc.description === selectedDescription) {
+      return; // No change needed
+    }
+    
     // Track if this is a new description and add it to the options list
     if (!savedDescriptions.includes(selectedDescription) && selectedDescription.trim()) {
       setNewDescriptions(prev => new Set([...prev, selectedDescription]));
@@ -328,6 +337,13 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   };
 
   const handleProductNameSelect = (productId: string, selectedName: string) => {
+    // Only process if the selected name is different from current value
+    const product = products.find(p => p.id === productId);
+    
+    if (product && product.name === selectedName) {
+      return; // No change needed
+    }
+    
     // Track if this is a new product name and add it to the options list
     if (!productNames.includes(selectedName) && selectedName.trim()) {
       setNewProductNames(prev => new Set([...prev, selectedName]));
@@ -349,7 +365,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   return (
     <div className="space-y-4">
       {/* Sticky Action Bar */}
-      <div className="sticky top-4 z-40 bg-white border-2 border-purple-200 rounded-lg p-4 shadow-lg">
+      <div className="sticky top-4 bg-white border-2 border-purple-200 rounded-lg p-4 shadow-lg">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-purple-600" />
@@ -423,29 +439,18 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                             <ChevronRight className="h-4 w-4 text-purple-600" />
                           )}
                         </Button>
-                      </div>
-
-                      {/* Product Name */}
+                      </div>                      {/* Product Name */}
                       <div className="sm:col-span-2 lg:col-span-6">
                         <Label className="text-sm font-medium text-gray-700">Product Name *</Label>
-                    <EditableCombobox
-                      value={product.name}
-                      onValueChange={(value) => handleProductNameSelect(product.id, value)}
-                      options={productNames}
-                      placeholder="Type or select product name..."
-                      className="mt-1 bg-white w-full"
-                      allowAdd={false}
-                      allowDelete={true}
-                      onAddNew={(value) => {
-                        setNewProductNames(prev => new Set([...prev, value]));
-                        handleProductNameSelect(product.id, value);
-                      }}
-                      onDelete={(value) => {
-                        setDeleteItem({ type: 'product', value });
-                        setShowDeleteModal(true);
-                      }}
-                    />
-                  </div>
+                        <ProductNameInput
+                          value={product.name}
+                          onChange={(value) => handleProductNameSelect(product.id, value)}
+                          options={productNames}
+                          placeholder="Type or select product name..."
+                          className="mt-1 bg-white w-full"
+                          required
+                        />
+                      </div>
 
                   {/* Total Amount */}
                   <div className="sm:col-span-1 lg:col-span-3">
@@ -504,22 +509,13 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                           {/* Description */}
                           <div className="sm:col-span-2 lg:col-span-4">
                             <Label className="text-sm font-medium text-gray-700">Sub-Item Description *</Label>
-                            <EditableCombobox
+                            <SubItemDescriptionInput
                               value={desc.description}
-                              onValueChange={(value) => handleDescriptionSelect(product.id, desc.id, value)}
+                              onChange={(value) => handleDescriptionSelect(product.id, desc.id, value)}
                               options={savedDescriptions}
                               placeholder="Type or select description..."
                               className="mt-1 bg-white w-full"
-                              allowAdd={false}
-                              allowDelete={true}
-                              onAddNew={(value) => {
-                                setNewDescriptions(prev => new Set([...prev, value]));
-                                handleDescriptionSelect(product.id, desc.id, value);
-                              }}
-                              onDelete={(value) => {
-                                setDeleteItem({ type: 'description', value });
-                                setShowDeleteModal(true);
-                              }}
+                              required
                             />
                           </div>
 

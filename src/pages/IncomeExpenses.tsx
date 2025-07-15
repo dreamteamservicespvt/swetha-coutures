@@ -343,7 +343,10 @@ const IncomeExpenses = () => {
             <div className="text-2xl font-bold text-red-600">₹{financialData.totalExpenses.toLocaleString()}</div>
             <div className="text-sm text-gray-500 mt-2">
               Net Profit: <span className={`font-medium ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ₹{financialData.netProfit.toLocaleString()}
+                {financialData.netProfit < 0 ? 
+                  `-₹${Math.abs(financialData.netProfit).toLocaleString()}` : 
+                  `₹${financialData.netProfit.toLocaleString()}`
+                }
               </span>
             </div>
           </CardContent>

@@ -34,24 +34,95 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
   const [searchValue, setSearchValue] = useState(value);
   const [filteredOptions, setFilteredOptions] = useState<string[]>(options);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
+  const [justSelected, setJustSelected] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const selectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const justSelectedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    setSearchValue(value);
-  }, [value]);
+    // Only update searchValue if user is not actively typing or just selected an option
+    // Add additional check to prevent updates during rapid selections
+    if (!userHasInteracted && !justSelected && !isSelecting && value !== searchValue) {
+      setSearchValue(value);
+    }
+  }, [value, userHasInteracted, justSelected, isSelecting, searchValue]);
+
+  // Reset userHasInteracted when value prop changes from parent
+  useEffect(() => {
+    if (value !== searchValue && !userHasInteracted && !justSelected) {
+      setUserHasInteracted(false);
+    }
+  }, [value, searchValue, userHasInteracted, justSelected]);
+
+  // Reset justSelected flag after a short delay
+  useEffect(() => {
+    if (justSelected) {
+      if (justSelectedTimeoutRef.current) {
+        clearTimeout(justSelectedTimeoutRef.current);
+      }
+      justSelectedTimeoutRef.current = setTimeout(() => {
+        setJustSelected(false);
+      }, 50); // Reduced from 150ms to 50ms for faster reset
+    }
+  }, [justSelected]);
+
+  // Reset isSelecting flag after a short delay
+  useEffect(() => {
+    if (isSelecting) {
+      const timer = setTimeout(() => {
+        setIsSelecting(false);
+      }, 50); // Reduced from 150ms to 50ms for faster reset
+      return () => clearTimeout(timer);
+    }
+  }, [isSelecting]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+      if (justSelectedTimeoutRef.current) {
+        clearTimeout(justSelectedTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
           inputRef.current && !inputRef.current.contains(event.target as Node)) {
-        setOpen(false);
-        // Reset to original value if user didn't select anything
-        if (userHasInteracted && searchValue !== value) {
-          setSearchValue(value);
-          setUserHasInteracted(false);
+        
+        // Don't process outside clicks if we're in the middle of selecting
+        if (isSelecting || justSelected) {
+          return;
         }
+        
+        setOpen(false);
+        
+        // Only reset to original value if user was typing and didn't get an exact match
+        if (userHasInteracted && searchValue !== value) {
+          const exactMatch = options.find(option => 
+            option.toLowerCase() === searchValue.toLowerCase()
+          );
+          if (!exactMatch) {
+            if (searchValue.trim() === '' && !allowAdd) {
+              // Allow empty value for fields that don't allow add
+              onValueChange('');
+            } else {
+              // Reset to original value if no exact match
+              setSearchValue(value);
+            }
+          }
+        }
+        setUserHasInteracted(false);
       }
     };
 
@@ -59,7 +130,7 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [userHasInteracted, searchValue, value]);
+  }, [userHasInteracted, searchValue, value, options, allowAdd, isSelecting, justSelected]);
 
   useEffect(() => {
     // Always filter from the full master list (options), not the current filtered list
@@ -74,15 +145,40 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
   }, [searchValue, options]);
 
   const handleSelect = (selectedValue: string) => {
-    onValueChange(selectedValue);
-    setSearchValue(selectedValue);
-    setOpen(false);
+    // Clear ALL existing timeouts to prevent conflicts
+    if (selectionTimeoutRef.current) {
+      clearTimeout(selectionTimeoutRef.current);
+    }
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+    if (justSelectedTimeoutRef.current) {
+      clearTimeout(justSelectedTimeoutRef.current);
+    }
+    
+    // Immediately set the selecting state to prevent other handlers from interfering
+    setIsSelecting(true);
+    setJustSelected(true);
     setUserHasInteracted(false);
     
-    // Ensure the dropdown closes and value is set
+    // Update states synchronously
+    setSearchValue(selectedValue);
+    setOpen(false);
+    
+    // Call parent's onChange with the selected value IMMEDIATELY
+    onValueChange(selectedValue);
+    
+    // Blur the input to close any mobile keyboards
     if (inputRef.current) {
       inputRef.current.blur();
     }
+    
+    // Use a much shorter timeout to reset the selection state
+    // This prevents the longer timeouts from interfering with rapid selections
+    justSelectedTimeoutRef.current = setTimeout(() => {
+      setJustSelected(false);
+      setIsSelecting(false);
+    }, 50); // Reduced from 150ms to 50ms
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,18 +186,8 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
     setUserHasInteracted(true);
     setSearchValue(newValue);
     
-    // Only call onValueChange if the new value exactly matches one of the saved options
-    // This prevents showing partial typed values in the dropdown
-    const exactMatch = options.find(option => 
-      option.toLowerCase() === newValue.toLowerCase()
-    );
-    
-    if (exactMatch) {
-      onValueChange(exactMatch);
-    } else {
-      // Don't persist partial typed values - only persist when user explicitly selects or adds
-      // This fixes the issue where typing "gova" would show "gova", "gov", "go", "g" in suggestions
-    }
+    // Don't call onValueChange for exact matches during typing to prevent conflicts
+    // The value will be set properly when user selects from dropdown or on blur
     
     if (!open) {
       setOpen(true);
@@ -115,46 +201,61 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
   };
 
   const handleInputBlur = () => {
+    // Clear any existing blur timeout
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+    
+    // Don't process blur if we're in the middle of selecting
+    if (isSelecting || justSelected) {
+      return;
+    }
+    
     // Delay to allow clicking on dropdown items
-    setTimeout(() => {
+    blurTimeoutRef.current = setTimeout(() => {
       if (!dropdownRef.current?.contains(document.activeElement)) {
         // Only close if user clicked outside the dropdown
         setOpen(false);
         
         // Only persist value if it's an exact match with existing options
-        // This prevents saving partial typed values that don't match saved options
         const exactMatch = options.find(option => 
           option.toLowerCase() === searchValue.toLowerCase()
         );
         
-        if (exactMatch) {
+        if (exactMatch && exactMatch !== value) {
           onValueChange(exactMatch);
-        } else {
-          // Reset to original value if no exact match
-          setSearchValue(value);
+        } else if (!exactMatch && userHasInteracted) {
+          // For fields with allowAdd=false, if user clears the value, allow it to be empty
+          if (searchValue.trim() === '' && !allowAdd) {
+            onValueChange('');
+          } else {
+            // Reset to original value if no exact match and user was typing
+            setSearchValue(value);
+          }
         }
         
         setUserHasInteracted(false);
       }
-    }, 150);
+    }, 150); // Reduced from 200ms to 150ms
   };
 
   const handleAddNew = () => {
     if (searchValue.trim() && !options.includes(searchValue.trim())) {
       const trimmedValue = searchValue.trim();
       
+      // Clear interaction state first
+      setUserHasInteracted(false);
+      setOpen(false);
+      
       // Update the value immediately
-      onValueChange(trimmedValue);
       setSearchValue(trimmedValue);
+      onValueChange(trimmedValue);
       
       // Call the onAddNew callback to add to the dropdown options
       // This ensures new items are tracked properly for saving
       if (onAddNew) {
         onAddNew(trimmedValue);
       }
-      
-      setOpen(false);
-      setUserHasInteracted(false);
     }
   };
 
@@ -168,6 +269,11 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
     } else if (e.key === 'Tab' && exactMatch) {
       // Auto-select exact match on tab
       handleSelect(exactMatch);
+    } else if (e.key === 'Tab' && !exactMatch && searchValue.trim() === '') {
+      // Allow empty value on tab if allowAdd is false
+      if (!allowAdd) {
+        onValueChange('');
+      }
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setOpen(false);
@@ -220,7 +326,17 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
                     <div
                       key={option}
                       className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 group"
-                      onClick={() => handleSelect(option)}
+                      onMouseDown={(e) => {
+                        // Use onMouseDown to ensure it fires before onBlur
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSelect(option);
+                      }}
+                      onTouchStart={(e) => {
+                        // Handle touch events for mobile
+                        e.stopPropagation();
+                        handleSelect(option);
+                      }}
                     >
                       <div className="flex items-center gap-2 flex-1">
                         <span className="text-sm">{option}</span>
@@ -252,7 +368,15 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
                 <div className="border-t py-1">
                   <div
                     className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-blue-50 text-primary"
-                    onClick={handleAddNew}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleAddNew();
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                      handleAddNew();
+                    }}
                   >
                     <Plus className="h-4 w-4" />
                     <span className="text-sm">Add "{searchValue.trim()}"</span>

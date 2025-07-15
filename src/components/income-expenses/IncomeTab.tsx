@@ -110,14 +110,14 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
       if (dateRange) {
         incomeQuery = query(
           collection(db, 'income'),
-          where('createdAt', '>=', dateRange.start),
-          where('createdAt', '<=', dateRange.end),
-          orderBy('createdAt', 'desc')
+          where('date', '>=', dateRange.start),
+          where('date', '<=', dateRange.end),
+          orderBy('date', 'desc')
         ) as any;
       } else {
         incomeQuery = query(
           collection(db, 'income'),
-          orderBy('createdAt', 'desc')
+          orderBy('date', 'desc')
         ) as any;
       }
       

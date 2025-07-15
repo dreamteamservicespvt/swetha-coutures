@@ -227,14 +227,14 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
       if (dateRange) {
         expensesQuery = query(
           collection(db, 'expenses'),
-          where('createdAt', '>=', dateRange.start),
-          where('createdAt', '<=', dateRange.end),
-          orderBy('createdAt', 'desc')
+          where('date', '>=', dateRange.start),
+          where('date', '<=', dateRange.end),
+          orderBy('date', 'desc')
         ) as any;
       } else {
         expensesQuery = query(
           collection(db, 'expenses'),
-          orderBy('createdAt', 'desc')
+          orderBy('date', 'desc')
         ) as any;
       }
       
@@ -555,7 +555,7 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
                       <div className="font-medium">
                         {entry.type === 'inventory' ? entry.itemName : 
                          entry.type === 'salary' ? `${entry.staffName} Salary` : 
-                         entry.expenseName || entry.category || 'Expense'}
+                         entry.expenseName || 'Expense'}
                       </div>
                       <div className="text-sm text-gray-600 flex items-center space-x-4">
                         {entry.supplier && (

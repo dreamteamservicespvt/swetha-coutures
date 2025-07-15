@@ -48,12 +48,28 @@ const NetProfitChart = ({ financialData }: NetProfitChartProps) => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      
+      // Determine color based on type and value
+      let textColor = 'text-gray-600';
+      if (data.type === 'income') {
+        textColor = 'text-green-600';
+      } else if (data.type === 'expense') {
+        textColor = 'text-red-600';
+      } else if (data.type === 'net') {
+        textColor = data.value >= 0 ? 'text-green-600' : 'text-red-600';
+      }
+      
+      // Format the value with proper sign for negative numbers
+      const formattedValue = data.value < 0 ? 
+        `-₹${Math.abs(data.value).toLocaleString()}` : 
+        `₹${data.value.toLocaleString()}`;
+      
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-medium">{label}</p>
-          <p className={`text-sm ${data.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            ₹{Math.abs(data.value).toLocaleString()}
-            {data.value < 0 && ' (Loss)'}
+          <p className={`text-sm ${textColor}`}>
+            {formattedValue}
+            {data.type === 'net' && data.value < 0 && ' (Loss)'}
           </p>
         </div>
       );
@@ -126,7 +142,10 @@ const NetProfitChart = ({ financialData }: NetProfitChartProps) => {
           <div className="text-center">
             <div className="text-sm text-gray-600">Net Profit</div>
             <div className={`text-lg font-bold ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ₹{financialData.netProfit.toLocaleString()}
+              {financialData.netProfit < 0 ? 
+                `-₹${Math.abs(financialData.netProfit).toLocaleString()}` : 
+                `₹${financialData.netProfit.toLocaleString()}`
+              }
             </div>
           </div>
         </div>
