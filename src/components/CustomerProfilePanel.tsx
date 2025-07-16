@@ -103,20 +103,26 @@ interface CustomerProfilePanelProps {
   customer: Customer | null;
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'orders' | 'bills';
 }
 
-const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, isOpen, onClose }) => {
+const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, isOpen, onClose, initialTab = 'orders' }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(false);
   const [aggregatedSizes, setAggregatedSizes] = useState<Record<string, any>>({});
-  const [activeTab, setActiveTab] = useState<'orders' | 'bills'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'bills'>(initialTab);
 
   useEffect(() => {
     if (customer && isOpen) {
       fetchCustomerData();
     }
   }, [customer, isOpen]);
+
+  // Reset tab when initialTab changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const fetchCustomerData = async () => {
     if (!customer) return;

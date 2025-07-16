@@ -15,6 +15,7 @@ import CustomersStats from '@/components/CustomersStats';
 import CustomerForm from '@/components/CustomerForm';
 import CustomersTable from '@/components/CustomersTable';
 import CustomersGridView from '@/components/CustomersGridView';
+import { enrichCustomersWithStats } from '@/utils/customerCalculations';
 
 interface Customer {
   id: string;
@@ -26,11 +27,13 @@ interface Customer {
   pincode?: string;
   notes?: string;
   totalOrders?: number;
+  totalBills?: number;
   totalSpent?: number;
   lastOrderDate?: string;
   customerType: 'regular' | 'premium' | 'vip';
   createdAt: any;
   sizes?: Record<string, string>; // Add sizes field
+  paymentStatus?: 'paid' | 'partial' | 'unpaid';
 }
 
 const Customers = () => {
@@ -43,6 +46,7 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
+  const [profilePanelInitialTab, setProfilePanelInitialTab] = useState<'orders' | 'bills'>('orders');
   const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [isBulkWhatsAppOpen, setIsBulkWhatsAppOpen] = useState(false);
@@ -50,6 +54,9 @@ const Customers = () => {
   const [whatsAppCustomer, setWhatsAppCustomer] = useState<Customer | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid view
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'totalSpent' | 'totalOrders' | 'recent'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [enrichingCustomers, setEnrichingCustomers] = useState(false);
 
   useEffect(() => {
     // Set up real-time listener for customers
@@ -58,15 +65,27 @@ const Customers = () => {
       orderBy('createdAt', 'desc')
     );
     
-    const unsubscribe = onSnapshot(customersQuery, (snapshot) => {
+    const unsubscribe = onSnapshot(customersQuery, async (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Customer[];
       
-      setCustomers(customersData);
-      setFilteredCustomers(customersData);
-      setLoading(false);
+      // Enrich customers with real-time stats
+      setEnrichingCustomers(true);
+      try {
+        const enrichedCustomers = await enrichCustomersWithStats(customersData);
+        setCustomers(enrichedCustomers);
+        setFilteredCustomers(enrichedCustomers);
+      } catch (error) {
+        console.error('Error enriching customers:', error);
+        // Fall back to basic customer data
+        setCustomers(customersData);
+        setFilteredCustomers(customersData);
+      } finally {
+        setEnrichingCustomers(false);
+        setLoading(false);
+      }
     }, (error) => {
       console.error('Error fetching customers:', error);
       toast({
@@ -75,13 +94,13 @@ const Customers = () => {
         variant: "destructive",
       });
       setLoading(false);
+      setEnrichingCustomers(false);
     });
 
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    // Apply search filter
     let filtered = customers;
     
     // Apply search filter
@@ -94,26 +113,60 @@ const Customers = () => {
       );
     }
     
-    // Apply payment status filter (based on outstanding balance)
+    // Apply payment status filter based on actual bill payment status
     if (paymentStatusFilter) {
       filtered = filtered.filter(customer => {
-        const totalSpent = customer.totalSpent || 0;
-        // This is a simplified logic - in a real app, you'd fetch actual bill data
         switch (paymentStatusFilter) {
-          case 'outstanding':
-            return totalSpent > 0 && (customer.totalOrders || 0) > 0;
           case 'paid':
-            return totalSpent > 0;
+            return customer.paymentStatus === 'paid';
           case 'partial':
-            return totalSpent > 0 && (customer.totalOrders || 0) > 0;
+            return customer.paymentStatus === 'partial';
+          case 'unpaid':
+            return customer.paymentStatus === 'unpaid';
+          case 'outstanding':
+            return customer.paymentStatus === 'partial' || customer.paymentStatus === 'unpaid';
           default:
             return true;
         }
       });
     }
+
+    // Apply sorting
+    filtered = filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = (a.name || '').toLowerCase();
+          bValue = (b.name || '').toLowerCase();
+          break;
+        case 'totalSpent':
+          aValue = a.totalSpent || 0;
+          bValue = b.totalSpent || 0;
+          break;
+        case 'totalOrders':
+          aValue = a.totalOrders || 0;
+          bValue = b.totalOrders || 0;
+          break;
+        case 'recent':
+          aValue = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+          bValue = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+          break;
+        default:
+          aValue = a.name || '';
+          bValue = b.name || '';
+      }
+
+      if (sortOrder === 'desc') {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      } else {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      }
+    });
     
     setFilteredCustomers(filtered);
-  }, [customers, searchTerm, paymentStatusFilter]);
+  }, [customers, searchTerm, paymentStatusFilter, sortBy, sortOrder]);
 
   const handleDateFilter = (startDate: Date | null, endDate: Date | null) => {
     if (!startDate || !endDate) {
@@ -141,6 +194,11 @@ const Customers = () => {
 
   const handlePaymentStatusFilter = (status: string | null) => {
     setPaymentStatusFilter(status);
+  };
+
+  const handleSortChange = (sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setSortBy(sortBy as any);
+    setSortOrder(sortOrder);
   };
 
   const handleSearch = (term: string) => {
@@ -171,8 +229,9 @@ const Customers = () => {
     }
   };
 
-  const handleCustomerClick = (customer: Customer) => {
+  const handleCustomerClick = (customer: Customer, initialTab: 'orders' | 'bills' = 'orders') => {
     setSelectedCustomer(customer);
+    setProfilePanelInitialTab(initialTab);
     setIsProfilePanelOpen(true);
   };
 
@@ -247,6 +306,24 @@ const Customers = () => {
     );
   }
 
+  if (enrichingCustomers && customers.length === 0) {
+    return (
+      <div className="mobile-page-layout">
+        <div className="mobile-page-wrapper container-responsive space-y-4 sm:space-y-6">
+          <div className="mobile-page-header">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-dark-fix">Customer Management</h1>
+            <p className="text-gray-600 text-sm sm:text-base">Calculating customer statistics...</p>
+          </div>
+          <div className="stats-grid-responsive">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="animate-pulse bg-gray-200 dark:bg-gray-700 h-24 sm:h-32 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const selectedPhoneNumbers = filteredCustomers
     .filter(customer => selectedCustomers.has(customer.id))
     .map(customer => customer.phone)
@@ -259,7 +336,15 @@ const Customers = () => {
         <div className="mobile-page-header">
           <div className="space-y-1 flex-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-dark-fix">Customer Management</h1>
-            <p className="responsive-text-base text-muted-dark-fix">Manage customer information and relationships</p>
+            <p className="responsive-text-base text-muted-dark-fix">
+              Manage customer information and relationships
+              {enrichingCustomers && (
+                <span className="ml-2 inline-flex items-center gap-1 text-blue-600">
+                  <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  Updating statistics...
+                </span>
+              )}
+            </p>
           </div>
         <div className="responsive-actions">
           {/* View Mode Toggle */}
@@ -314,8 +399,9 @@ const Customers = () => {
         onTypeFilter={handleTypeFilter}
         onPaymentStatusFilter={handlePaymentStatusFilter}
         onSearch={handleSearch}
+        onSortChange={handleSortChange}
         searchTerm={searchTerm}
-        loading={loading}
+        loading={loading || enrichingCustomers}
       />
 
       {/* Customers Display - Dynamic based on view mode */}
@@ -359,6 +445,7 @@ const Customers = () => {
         customer={selectedCustomer}
         isOpen={isProfilePanelOpen}
         onClose={() => setIsProfilePanelOpen(false)}
+        initialTab={profilePanelInitialTab}
       />
 
       {/* Bulk WhatsApp Modal */}

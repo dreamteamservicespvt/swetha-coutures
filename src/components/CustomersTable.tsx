@@ -19,10 +19,12 @@ interface Customer {
   pincode?: string;
   notes?: string;
   totalOrders?: number;
+  totalBills?: number;
   totalSpent?: number;
   lastOrderDate?: string;
   customerType: 'regular' | 'premium' | 'vip';
   createdAt: any;
+  paymentStatus?: 'paid' | 'partial' | 'unpaid';
 }
 
 interface CustomersTableProps {
@@ -32,7 +34,7 @@ interface CustomersTableProps {
   searchTerm: string;
   onSelectCustomer: (customerId: string, checked: boolean) => void;
   onSelectAll: (checked: boolean) => void;
-  onCustomerClick: (customer: Customer) => void;
+  onCustomerClick: (customer: Customer, initialTab?: 'orders' | 'bills') => void;
   onEdit: (customer: Customer) => void;
   onDelete: (customerId: string) => void;
   onWhatsApp: (customer: Customer) => void;
@@ -80,26 +82,42 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
         </Badge>
       </div>
       
-      <div className="grid grid-cols-2 gap-2 responsive-text-sm">
-        <div>
-          <span className="text-muted-dark-fix">Phone:</span>
-          <div className="flex items-center space-x-1">
-            <span className="text-dark-fix truncate">{customer.phone || 'N/A'}</span>
-            {customer.phone && (
-              <ContactActions 
-                phone={customer.phone}
-                message={`Hi ${customer.name}, thank you for choosing us! How can we assist you today?`}
-              />
-            )}
+      <div className="space-y-2 responsive-text-sm">
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <span className="text-muted-dark-fix">Phone:</span>
+            <div className="flex items-center space-x-1">
+              <span className="text-dark-fix truncate">{customer.phone || 'N/A'}</span>
+              {customer.phone && (
+                <ContactActions 
+                  phone={customer.phone}
+                  message={`Hi ${customer.name}, thank you for choosing us! How can we assist you today?`}
+                />
+              )}
+            </div>
+          </div>
+          <div>
+            <span className="text-muted-dark-fix">Location:</span>
+            <div className="text-dark-fix truncate">{customer.city || 'N/A'}</div>
           </div>
         </div>
-        <div>
-          <span className="text-muted-dark-fix">Location:</span>
-          <div className="text-dark-fix truncate">{customer.city || 'N/A'}</div>
-        </div>
-        <div>
-          <span className="text-muted-dark-fix">Orders:</span>
-          <div className="text-dark-fix">{customer.totalOrders || 0}</div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition-colors"
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onCustomerClick(customer);
+               }}>
+            <span className="text-muted-dark-fix">Orders:</span>
+            <div className="text-dark-fix">{customer.totalOrders || 0}</div>
+          </div>
+          <div className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition-colors"
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onCustomerClick(customer, 'bills');
+               }}>
+            <span className="text-muted-dark-fix">Bills:</span>
+            <div className="text-dark-fix">{customer.totalBills || 0}</div>
+          </div>
         </div>
         <div>
           <span className="text-gray-500 dark:text-gray-400">Total Spent:</span>
@@ -176,6 +194,7 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                       <TableHead className="text-dark-fix">Location</TableHead>
                       <TableHead className="text-dark-fix">Type</TableHead>
                       <TableHead className="text-dark-fix">Orders</TableHead>
+                      <TableHead className="text-dark-fix">Bills</TableHead>
                       <TableHead className="text-dark-fix">Total Spent</TableHead>
                       <TableHead className="text-dark-fix">Last Order</TableHead>
                       <TableHead className="text-dark-fix">Actions</TableHead>
@@ -219,6 +238,7 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                           </Badge>
                         </TableCell>
                         <TableCell onClick={() => onCustomerClick(customer)} className="text-dark-fix">{customer.totalOrders || 0}</TableCell>
+                        <TableCell onClick={() => onCustomerClick(customer, 'bills')} className="text-dark-fix cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">{customer.totalBills || 0}</TableCell>
                         <TableCell onClick={() => onCustomerClick(customer)} className="text-dark-fix">₹{(customer.totalSpent || 0).toLocaleString()}</TableCell>
                         <TableCell onClick={() => onCustomerClick(customer)} className="text-dark-fix table-cell-responsive">{customer.lastOrderDate || 'Never'}</TableCell>
                         <TableCell>
@@ -327,6 +347,7 @@ const CustomersTable: React.FC<CustomersTableProps> = ({
                           </Badge>
                         </TableCell>
                         <TableCell onClick={() => onCustomerClick(customer)} className="text-dark-fix">{customer.totalOrders || 0}</TableCell>
+                        <TableCell onClick={() => onCustomerClick(customer, 'bills')} className="text-dark-fix cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">{customer.totalBills || 0}</TableCell>
                         <TableCell onClick={() => onCustomerClick(customer)} className="text-dark-fix">₹{(customer.totalSpent || 0).toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">

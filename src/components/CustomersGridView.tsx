@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit, Trash2, User, Phone, Mail, MapPin, Package, TrendingUp, MessageSquare } from 'lucide-react';
+import { Edit, Trash2, User, Phone, Mail, MapPin, Package, TrendingUp, MessageSquare, FileText } from 'lucide-react';
 import ContactActions from '@/components/ContactActions';
 import CustomersEmptyState from './CustomersEmptyState';
 
@@ -17,10 +17,12 @@ interface Customer {
   pincode?: string;
   notes?: string;
   totalOrders?: number;
+  totalBills?: number;
   totalSpent?: number;
   lastOrderDate?: string;
   customerType: 'regular' | 'premium' | 'vip';
   createdAt: any;
+  paymentStatus?: 'paid' | 'partial' | 'unpaid';
 }
 
 interface CustomersGridViewProps {
@@ -28,7 +30,7 @@ interface CustomersGridViewProps {
   selectedCustomers: Set<string>;
   searchTerm: string;
   onSelectCustomer: (customerId: string, checked: boolean) => void;
-  onCustomerClick: (customer: Customer) => void;
+  onCustomerClick: (customer: Customer, initialTab?: 'orders' | 'bills') => void;
   onEdit: (customer: Customer) => void;
   onDelete: (customerId: string) => void;
   onWhatsApp: (customer: Customer) => void;
@@ -150,20 +152,41 @@ const CustomersGridView: React.FC<CustomersGridViewProps> = ({
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <Package className="h-4 w-4 text-blue-600" />
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Orders</p>
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                    {customer.totalOrders || 0}
-                  </p>
+            <div className="space-y-2 mb-4">
+              {/* First Row: Orders and Bills */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-1 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onCustomerClick(customer);
+                     }}>
+                  <Package className="h-4 w-4 text-blue-600" />
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Orders</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      {customer.totalOrders || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onCustomerClick(customer, 'bills');
+                     }}>
+                  <FileText className="h-4 w-4 text-purple-600" />
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Bills</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      {customer.totalBills || 0}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              {/* Second Row: Spent (full width) */}
+              <div className="flex items-center gap-1 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <TrendingUp className="h-4 w-4 text-green-600" />
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Spent</p>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Total Spent</p>
                   <p className="font-semibold text-gray-900 dark:text-gray-100">
                     ₹{(customer.totalSpent || 0).toLocaleString()}
                   </p>
@@ -179,7 +202,7 @@ const CustomersGridView: React.FC<CustomersGridViewProps> = ({
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex justify-end gap-2 transition-opacity">
               <Button
                 size="sm"
                 variant="outline"

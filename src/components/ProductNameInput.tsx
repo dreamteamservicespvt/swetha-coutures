@@ -25,6 +25,7 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchValue, setSearchValue] = useState(value);
   const [filteredOptions, setFilteredOptions] = useState<string[]>([]);
+  const [justSelectedOption, setJustSelectedOption] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -73,9 +74,16 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
   };
 
   const handleInputBlur = () => {
+    // Don't run blur logic if we just selected an option
+    if (justSelectedOption) {
+      setJustSelectedOption(false);
+      return;
+    }
+    
     // Small delay to allow for option clicks
     setTimeout(() => {
-      if (searchValue !== value) {
+      // Only update if the field has focus lost and value hasn't been set by option click
+      if (searchValue !== value && searchValue.trim() !== '') {
         onChange(searchValue);
       }
       setIsOpen(false);
@@ -83,9 +91,14 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
   };
 
   const handleOptionClick = (option: string) => {
+    setJustSelectedOption(true);
     setSearchValue(option);
     onChange(option);
     setIsOpen(false);
+    // Blur the input to prevent handleInputBlur from running
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -124,6 +137,7 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
                   <div
                     key={`${option}-${index}`}
                     className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
+                    onMouseDown={(e) => e.preventDefault()} // Prevent input blur
                     onClick={() => handleOptionClick(option)}
                   >
                     <span className="text-sm">{option}</span>

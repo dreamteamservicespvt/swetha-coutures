@@ -509,13 +509,13 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
                       <Label className="text-sm">Qty</Label>
                       <NumberInput
                         value={item.quantity}
-                        onChange={(value) => updateItem(item.id, 'quantity', value?.toString() || '0.1')}
+                        onChange={(value) => updateItem(item.id, 'quantity', value?.toString() || '1')}
                         min={0.1}
                         step={0.1}
                         decimals={1}
                         allowEmpty={false}
-                        emptyValue={0.1}
-                        placeholder="0.1"
+                        emptyValue={1}
+                        placeholder="1"
                       />
                     </div>
                     
