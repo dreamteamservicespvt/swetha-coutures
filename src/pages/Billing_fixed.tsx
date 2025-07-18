@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, where, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Bill, formatCurrency, getBillStatusColor, calculateBillStatus, downloadPDF } from '@/utils/billingUtils';
+import { Bill, formatCurrency, getBillStatusColor, calculateBillStatus, downloadPDF, printBill, formatBillDate, formatDateForDisplay } from '@/utils/billingUtils';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -455,7 +455,7 @@ const Billing = () => {
                             <div>
                               <h3 className="font-semibold text-purple-600 text-lg">{bill.billId || 'N/A'}</h3>
                               <p className="text-sm text-gray-500">
-                                {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
+                                {formatDateForDisplay(bill.date)}
                               </p>
                             </div>
                             <Badge className={getBillStatusColor(status)}>

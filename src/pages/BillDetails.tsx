@@ -22,7 +22,7 @@ import {
 import { ArrowLeft, Edit, Trash2, Download, MessageSquare, CreditCard, QrCode, Printer } from 'lucide-react';
 import { doc, getDoc, deleteDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Bill, BillCreate, formatCurrency, getBillStatusColor, downloadPDF, getWhatsAppTemplates, printBill } from '@/utils/billingUtils';
+import { Bill, BillCreate, formatCurrency, calculateBillStatus, downloadPDF, printBill, formatBillDate, formatDateForDisplay, getBillStatusColor } from '@/utils/billingUtils';
 import { toast } from '@/hooks/use-toast';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
 import BillFormAdvanced from '@/components/BillFormAdvanced';
@@ -331,9 +331,12 @@ const BillDetails = () => {
           </Button>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Bill {bill.billId}</h1>
-            <p className="text-sm sm:text-base text-gray-500">
-              Created on {bill.date?.toDate?.()?.toLocaleDateString() || 'N/A'}
-            </p>
+            <div className="space-y-1 text-sm sm:text-base text-gray-500">
+              <p>Created: {formatDateForDisplay(bill.createdAt)}</p>
+              {bill.updatedAt && (
+                <p>Last Updated: {formatDateForDisplay(bill.updatedAt)}</p>
+              )}
+            </div>
           </div>
         </div>
         

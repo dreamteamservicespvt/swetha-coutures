@@ -76,18 +76,17 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
   const handleInputBlur = () => {
     // Don't run blur logic if we just selected an option
     if (justSelectedOption) {
-      setJustSelectedOption(false);
-      return;
+      return; // Exit early, don't reset the flag here
     }
     
     // Small delay to allow for option clicks
     setTimeout(() => {
-      // Only update if the field has focus lost and value hasn't been set by option click
-      if (searchValue !== value && searchValue.trim() !== '') {
+      // Only update if we're not in the middle of a selection
+      if (!justSelectedOption && searchValue !== value && searchValue.trim() !== '') {
         onChange(searchValue);
       }
       setIsOpen(false);
-    }, 150);
+    }, 200); // Increased timeout for better reliability
   };
 
   const handleOptionClick = (option: string) => {
@@ -95,10 +94,11 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
     setSearchValue(option);
     onChange(option);
     setIsOpen(false);
-    // Blur the input to prevent handleInputBlur from running
-    if (inputRef.current) {
-      inputRef.current.blur();
-    }
+    
+    // Reset the flag after a brief delay to allow any other handlers to complete
+    setTimeout(() => {
+      setJustSelectedOption(false);
+    }, 200); // Increased timeout to ensure all handlers complete
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

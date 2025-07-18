@@ -116,8 +116,8 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
         onChange?.(emptyValue);
         onValueChange?.('');
       } else {
-        // Set to minimum value or 0 if required
-        const fallbackValue = min !== undefined ? min : 0;
+        // Use emptyValue if specified, otherwise fall back to min or 0
+        const fallbackValue = emptyValue !== null && emptyValue !== undefined ? emptyValue : (min !== undefined ? min : 0);
         setDisplayValue(fallbackValue.toString());
         onChange?.(fallbackValue);
         onValueChange?.(fallbackValue.toString());
@@ -135,7 +135,8 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({
         onChange?.(emptyValue);
         onValueChange?.('');
       } else {
-        const fallbackValue = min !== undefined ? min : 0;
+        // Use emptyValue if specified, otherwise fall back to min or 0
+        const fallbackValue = emptyValue !== null && emptyValue !== undefined ? emptyValue : (min !== undefined ? min : 0);
         setDisplayValue(fallbackValue.toString());
         onChange?.(fallbackValue);
         onValueChange?.(fallbackValue.toString());

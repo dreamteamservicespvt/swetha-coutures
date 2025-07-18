@@ -34,14 +34,16 @@ export const calculateCustomerStats = async (customerId: string, customerName: s
         .map(doc => ({ ...doc.data(), id: doc.id }))
         .filter((order: any) => order.orderDate || order.createdAt)
         .sort((a: any, b: any) => {
-          const dateA = a.orderDate ? new Date(a.orderDate) : (a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt));
-          const dateB = b.orderDate ? new Date(b.orderDate) : (b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt));
+          const { formatBillDate } = require('./billingUtils');
+          const dateA = formatBillDate(a.orderDate || a.createdAt);
+          const dateB = formatBillDate(b.orderDate || b.createdAt);
           return dateB.getTime() - dateA.getTime();
         });
       
       if (ordersWithDates.length > 0) {
+        const { formatBillDate } = require('./billingUtils');
         const lastOrder = ordersWithDates[0] as any;
-        const lastOrderDate = lastOrder.orderDate ? new Date(lastOrder.orderDate) : (lastOrder.createdAt?.toDate ? lastOrder.createdAt.toDate() : new Date(lastOrder.createdAt));
+        const lastOrderDate = formatBillDate(lastOrder.orderDate || lastOrder.createdAt);
         stats.lastOrderDate = lastOrderDate.toLocaleDateString('en-IN');
       }
     }

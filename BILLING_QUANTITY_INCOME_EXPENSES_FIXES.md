@@ -5,7 +5,7 @@
 ### 1. **Billing Sub Item Quantity Floating Point Support**
 **Problem**: Quantity fields in billing sub-items only accepted integers starting from 1, not allowing precise measurements like 0.5 meters, 0.3 kg, etc.
 
-**Solution**: Updated all billing quantity inputs to accept floating point numbers starting from 0.1.
+**Solution**: Updated all billing quantity inputs to accept floating point numbers starting from 1.
 
 ### 2. **Income & Expenses History Scroll Issue**
 **Problem**: Income and Expenses history sections showed all entries with unlimited height, making the page very long when there are many entries.
@@ -19,23 +19,23 @@
 ### **Billing Quantity Fixes:**
 
 #### 1. **BillWorkAndMaterials.tsx**
-- **Quantity Input (Mobile & Desktop)**: Changed `min={1}` to `min={0.1}`, added `step={0.1}`, `decimals={1}`
-- **Validation Logic**: Updated from `Math.max(1, parseInt(value) || 1)` to `Math.max(0.1, parseFloat(value) || 0.1)`
-- **Default Values**: Changed new item creation from `quantity: 1` to `quantity: 0.1`
-- **Validation Classes**: Updated from `item.quantity > 0` to `item.quantity >= 0.1`
+- **Quantity Input (Mobile & Desktop)**: Changed `min={1}` to `min={1}`, added `step={1}`, `decimals={1}`
+- **Validation Logic**: Updated from `Math.max(1, parseInt(value) || 1)` to `Math.max(1, parseFloat(value) || 1)`
+- **Default Values**: Changed new item creation from `quantity: 1` to `quantity: 1`
+- **Validation Classes**: Updated from `item.quantity > 0` to `item.quantity >= 1`
 
 #### 2. **BillWorkAndMaterialsEnhanced.tsx**
-- **Quantity Input**: Changed `min={1}` to `min={0.1}`, added `step={0.1}`, `decimals={1}`
-- **Default Values**: Updated new item creation from `quantity: 1` to `quantity: 0.1`
+- **Quantity Input**: Changed `min={1}` to `min={1}`, added `step={1}`, `decimals={1}`
+- **Default Values**: Updated new item creation from `quantity: 1` to `quantity: 1`
 
 #### 3. **BillForm.tsx**
-- **Quantity Input**: Changed `min={1}` to `min={0.1}`, added `step={0.1}`, `decimals={1}`
-- **Placeholder**: Updated from `placeholder="1"` to `placeholder="0.1"`
+- **Quantity Input**: Changed `min={1}` to `min={1}`, added `step={1}`, `decimals={1}`
+- **Placeholder**: Updated from `placeholder="1"` to `placeholder="1"`
 
 #### 4. **ProductDescriptionManager.tsx**
-- **Quantity Input**: Changed `min={1}` to `min={0.1}`, added `step={0.1}`, `decimals={1}`
-- **Default Values**: Updated new description creation from `qty: 1` to `qty: 0.1`
-- **Placeholder**: Updated from `placeholder="Qty"` to `placeholder="0.1"`
+- **Quantity Input**: Changed `min={1}` to `min={1}`, added `step={1}`, `decimals={1}`
+- **Default Values**: Updated new description creation from `qty: 1` to `qty: 1`
+- **Placeholder**: Updated from `placeholder="Qty"` to `placeholder="1"`
 
 ### **Income & Expenses History Scroll Fixes:**
 
@@ -65,12 +65,12 @@
 
 // After
 <NumberInput
-  min={0.1}
-  step={0.1}
+  min={1}
+  step={1}
   decimals={1}
   allowEmpty={false}
-  emptyValue={0.1}
-  placeholder="0.1"
+  emptyValue={1}
+  placeholder="1"
 />
 ```
 
@@ -83,7 +83,7 @@ if (field === 'quantity') {
 
 // After
 if (field === 'quantity') {
-  updatedItem.quantity = Math.max(0.1, parseFloat(value) || 0.1);
+  updatedItem.quantity = Math.max(1, parseFloat(value) || 1);
 }
 ```
 
@@ -107,7 +107,7 @@ if (field === 'quantity') {
 ## ✅ Benefits Achieved
 
 ### **1. Enhanced Billing Precision**
-- ✅ Support for fractional quantities (0.1, 0.5, 2.3, etc.)
+- ✅ Support for fractional quantities (1, 0.5, 2.3, etc.)
 - ✅ Better for material measurements (meters, kilograms, etc.)
 - ✅ More accurate billing for services with partial units
 - ✅ Consistent across all billing components
@@ -143,9 +143,9 @@ if (field === 'quantity') {
 ## 🔄 Testing Recommendations
 
 1. **Test Quantity Inputs**: 
-   - Try entering 0.1, 0.5, 1.2, 5.75, etc.
+   - Try entering 1, 0.5, 1.2, 5.75, etc.
    - Verify calculations work correctly with decimal quantities
-   - Test validation (should reject values less than 0.1)
+   - Test validation (should reject values less than 1)
 
 2. **Test History Scrolling**:
    - Add multiple income/expense entries (10+)
@@ -161,7 +161,7 @@ if (field === 'quantity') {
 
 ## 📝 Notes
 
-- **Minimum Quantity**: Set to 0.1 to prevent zero or negative quantities while allowing precise fractional amounts
+- **Minimum Quantity**: Set to 1 to prevent zero or negative quantities while allowing precise fractional amounts
 - **Decimal Places**: Limited to 1 decimal place for practical use while maintaining precision
 - **Scroll Height**: 24rem (384px) provides good balance between visibility and page layout
 - **Performance**: Changes don't impact calculation performance as all logic remains optimized

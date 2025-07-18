@@ -848,7 +848,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         qrAmount: formData.qrAmount || formData.balance || 0,
         notes: formData.notes?.trim() || '',
         createdAt: bill?.createdAt || new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date() // Always update the updatedAt timestamp
       };
 
       // Add optional payment fields only if they have valid values

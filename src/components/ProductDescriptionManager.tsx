@@ -295,9 +295,25 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
           if (desc.id === descriptionId) {
             const updatedDesc = { ...desc, [field]: value };
             
-            // Auto-calculate amount when qty or rate changes
+            // Special handling for quantity field
+            if (field === 'qty') {
+              // Ensure quantity is valid and defaults to 1 if invalid
+              const qtyValue = typeof value === 'number' && value >= 0.1 ? value : 1;
+              updatedDesc.qty = qtyValue;
+            }
+            
+            // Auto-calculate amount only when both qty and rate have valid positive values
             if (field === 'qty' || field === 'rate') {
-              updatedDesc.amount = updatedDesc.qty * updatedDesc.rate;
+              const finalQty = field === 'qty' ? updatedDesc.qty : desc.qty;
+              const finalRate = field === 'rate' ? (value || 0) : desc.rate;
+              
+              // Only calculate amount if both values are valid and positive
+              if (finalQty > 0 && finalRate > 0) {
+                updatedDesc.amount = finalQty * finalRate;
+              } else {
+                // Set amount to 0 if either value is invalid/empty/zero
+                updatedDesc.amount = 0;
+              }
             }
             
             return updatedDesc;
@@ -524,7 +540,14 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                             <Label className="text-sm font-medium text-gray-700">Qty *</Label>
                             <NumberInput
                               value={desc.qty}
-                              onChange={(value) => updateDescription(product.id, desc.id, 'qty', value || 1)}
+                              onChange={(value) => {
+                                // Handle quantity field: always default to 1 when empty, allow any valid number >= 0.1
+                                if (value === null || value === undefined) {
+                                  updateDescription(product.id, desc.id, 'qty', 1);
+                                } else {
+                                  updateDescription(product.id, desc.id, 'qty', value);
+                                }
+                              }}
                               min={0.1}
                               step={0.1}
                               decimals={1}
@@ -590,7 +613,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                       className="w-full flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
                     >
                       <Plus className="h-4 w-4" />
-                      Add Item +
+                      Add Item
                     </Button>
                   </div>
                 </div>

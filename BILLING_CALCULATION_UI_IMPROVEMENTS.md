@@ -85,14 +85,14 @@ const calculateItemTotal = (item: BillItem): number => {
 ```tsx
 // Added safe number handling in updateBillItem
 if (field === 'quantity') {
-  updatedItem.quantity = Math.max(0.1, parseFloat(value) || 0.1);
+  updatedItem.quantity = Math.max(1, parseFloat(value) || 1);
 } else if (field === 'rate') {
   updatedItem.rate = Math.max(0, parseFloat(value) || 0);
 }
 
 // Safe calculation
 if (field === 'quantity' || field === 'rate') {
-  const safeQuantity = updatedItem.quantity || 0.1;
+  const safeQuantity = updatedItem.quantity || 1;
   const safeRate = updatedItem.rate || 0;
   updatedItem.amount = safeQuantity * safeRate;
 }
@@ -136,7 +136,7 @@ if (field === 'quantity' || field === 'rate') {
 
 The billing system uses **standard per-unit pricing**:
 - **Formula**: `Amount = Quantity × Rate per Unit`
-- **Example**: 0.1 quantity × ₹100 per unit = ₹10 total amount
+- **Example**: 1 quantity × ₹100 per unit = ₹10 total amount
 - **This is mathematically correct** and standard in billing systems
 
 If users need **fixed total pricing** regardless of quantity, they should:
@@ -149,7 +149,7 @@ If users need **fixed total pricing** regardless of quantity, they should:
 ## 🔄 Testing Recommendations
 
 1. **Test Calculation Display**:
-   - Create new bill items with fractional quantities (0.1, 0.5, 2.3)
+   - Create new bill items with fractional quantities (1, 0.5, 2.3)
    - Verify calculation breakdown shows correctly
    - Check that amounts update properly when quantity or rate changes
 

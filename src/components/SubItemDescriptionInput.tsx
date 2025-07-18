@@ -67,6 +67,9 @@ const SubItemDescriptionInput: React.FC<SubItemDescriptionInputProps> = ({
     const newValue = e.target.value;
     setSearchValue(newValue);
     setIsOpen(true);
+    
+    // Don't call onChange while typing to prevent conflicts with selection
+    // The value will be set on blur or when an option is selected
   };
 
   const handleInputFocus = () => {
@@ -76,29 +79,31 @@ const SubItemDescriptionInput: React.FC<SubItemDescriptionInputProps> = ({
   const handleInputBlur = () => {
     // Don't run blur logic if we just selected an option
     if (justSelectedOption) {
-      setJustSelectedOption(false);
-      return;
+      return; // Exit early, don't reset the flag here
     }
     
     // Small delay to allow for option clicks
     setTimeout(() => {
-      // Only update if the field has focus lost and value hasn't been set by option click
-      if (searchValue !== value && searchValue.trim() !== '') {
+      // Only update if we're not in the middle of a selection
+      if (!justSelectedOption && searchValue !== value && searchValue.trim() !== '') {
         onChange(searchValue);
       }
       setIsOpen(false);
-    }, 150);
+    }, 200); // Increased timeout for better reliability
   };
 
   const handleOptionClick = (option: string) => {
     setJustSelectedOption(true);
+    
+    // Immediately set the search value and call onChange to prevent truncation
     setSearchValue(option);
     onChange(option);
     setIsOpen(false);
-    // Blur the input to prevent handleInputBlur from running
-    if (inputRef.current) {
-      inputRef.current.blur();
-    }
+    
+    // Reset the flag after a brief delay to allow any other handlers to complete
+    setTimeout(() => {
+      setJustSelectedOption(false);
+    }, 200); // Increased timeout to ensure all handlers complete
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -137,8 +142,15 @@ const SubItemDescriptionInput: React.FC<SubItemDescriptionInputProps> = ({
                   <div
                     key={`${option}-${index}`}
                     className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
-                    onMouseDown={(e) => e.preventDefault()} // Prevent input blur
-                    onClick={() => handleOptionClick(option)}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Prevent input blur
+                      e.stopPropagation(); // Stop event bubbling
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleOptionClick(option);
+                    }}
                   >
                     <span className="text-sm">{option}</span>
                   </div>

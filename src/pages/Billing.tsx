@@ -61,7 +61,7 @@ import {
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, where, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Bill, formatCurrency, getBillStatusColor, calculateBillStatus, downloadPDF, printBill } from '@/utils/billingUtils';
+import { Bill, formatCurrency, getBillStatusColor, calculateBillStatus, downloadPDF, printBill, formatBillDate, formatDateForDisplay } from '@/utils/billingUtils';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -236,7 +236,7 @@ const Billing = () => {
     
     let matchesDate = true;
     if (filterDateRange !== 'all') {
-      const billDate = new Date(bill.date?.toDate?.() || bill.date);
+      const billDate = formatBillDate(bill.date);
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
@@ -791,7 +791,7 @@ const Billing = () => {
                               <div className="flex items-center">
                                 <Calendar className="h-3 w-3 mr-1" />
                                 <span className="text-xs">
-                                  {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
+                                  {formatDateForDisplay(bill.date)}
                                 </span>
                               </div>
                             </div>
@@ -918,7 +918,7 @@ const Billing = () => {
                             <div className="min-w-0 flex-1">
                               <h3 className="font-semibold text-purple-600 text-base sm:text-lg truncate">{bill.billId || 'N/A'}</h3>
                               <p className="text-xs sm:text-sm text-gray-500 truncate">
-                                {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
+                                {formatDateForDisplay(bill.date)}
                               </p>
                             </div>
                             
@@ -1062,7 +1062,7 @@ const Billing = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-dark-fix">
-                              {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
+                              {formatDateForDisplay(bill.date)}
                             </TableCell>
                             <TableCell className="font-medium text-dark-fix">{formatCurrency(bill.totalAmount || 0)}</TableCell>
                             <TableCell>
@@ -1137,7 +1137,7 @@ const Billing = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-dark-fix table-cell-responsive">
-                              {bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A'}
+                              {formatDateForDisplay(bill.date)}
                             </TableCell>
                             <TableCell className="font-medium text-dark-fix">{formatCurrency(bill.totalAmount || 0)}</TableCell>
                             <TableCell className="text-green-600 dark:text-green-400">{formatCurrency(bill.paidAmount || 0)}</TableCell>

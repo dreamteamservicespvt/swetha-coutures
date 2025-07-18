@@ -57,7 +57,14 @@ const BillingExportDialog: React.FC<BillingExportDialogProps> = ({ bills, open, 
     {
       id: 'billDate',
       title: 'Bill Date',
-      key: (bill: Bill) => bill.date ? new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN') : 'N/A',
+      key: (bill: Bill) => {
+        try {
+          const { formatDateForDisplay } = require('@/utils/billingUtils');
+          return formatDateForDisplay(bill.date);
+        } catch {
+          return 'N/A';
+        }
+      },
       width: 12,
       enabled: true
     },
@@ -116,14 +123,28 @@ const BillingExportDialog: React.FC<BillingExportDialogProps> = ({ bills, open, 
     {
       id: 'createdAt',
       title: 'Created Date',
-      key: (bill: Bill) => bill.createdAt ? new Date(bill.createdAt?.toDate?.() || bill.createdAt).toLocaleDateString('en-IN') : 'N/A',
+      key: (bill: Bill) => {
+        try {
+          const { formatDateForDisplay } = require('@/utils/billingUtils');
+          return formatDateForDisplay(bill.createdAt);
+        } catch {
+          return 'N/A';
+        }
+      },
       width: 12,
       enabled: false
     },
     {
       id: 'dueDate',
       title: 'Due Date',
-      key: (bill: Bill) => bill.dueDate ? new Date(bill.dueDate?.toDate?.() || bill.dueDate).toLocaleDateString('en-IN') : 'N/A',
+      key: (bill: Bill) => {
+        try {
+          const { formatDateForDisplay } = require('@/utils/billingUtils');
+          return bill.dueDate ? formatDateForDisplay(bill.dueDate) : 'N/A';
+        } catch {
+          return 'N/A';
+        }
+      },
       width: 12,
       enabled: false
     },

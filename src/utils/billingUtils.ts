@@ -82,16 +82,16 @@ export interface Bill {
   paymentRecords?: PaymentRecord[];
   totalCashReceived?: number;
   totalOnlineReceived?: number;
-  date: any;
-  dueDate?: any;
+  date: any; // Date field - handles both string and Timestamp formats
+  dueDate?: any; // Due date - handles both string and Timestamp formats
   bankDetails: BankDetails;
   upiId: string;
   upiLink: string;
   qrCodeUrl: string;
   qrAmount?: number; // This should default to balance amount
   notes?: string;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: any; // Creation timestamp - handles both string and Timestamp formats
+  updatedAt: any; // Last update timestamp - handles both string and Timestamp formats
 }
 
 // Interface for creating new bills (without id since Firestore generates it)
@@ -112,6 +112,66 @@ export interface BusinessSettings {
 export const generateBillId = (): string => {
   const timestamp = Date.now().toString().slice(-6);
   return `BILL${timestamp}`;
+};
+
+// Utility function to handle date formatting consistently
+export const formatBillDate = (date: any): Date => {
+  if (!date) return new Date();
+  
+  // If it's already a Date object
+  if (date instanceof Date) {
+    return date;
+  }
+  
+  // If it's a Firebase Timestamp with toDate method
+  if (date && typeof date === 'object' && typeof date.toDate === 'function') {
+    try {
+      return date.toDate();
+    } catch (error) {
+      console.error('Error converting Firebase timestamp:', error);
+      return new Date();
+    }
+  }
+  
+  // If it's a Firebase Timestamp with seconds and nanoseconds
+  if (date && typeof date === 'object' && 'seconds' in date && 'nanoseconds' in date) {
+    try {
+      return new Date(date.seconds * 1000 + date.nanoseconds / 1000000);
+    } catch (error) {
+      console.error('Error converting timestamp object:', error);
+      return new Date();
+    }
+  }
+  
+  // If it's a string or number
+  if (typeof date === 'string' || typeof date === 'number') {
+    try {
+      const parsedDate = new Date(date);
+      return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    } catch (error) {
+      console.error('Error parsing date string/number:', error);
+      return new Date();
+    }
+  }
+  
+  // Fallback to current date
+  console.warn('Unknown date format, using current date:', date);
+  return new Date();
+};
+
+// Utility function to format date for display consistently
+export const formatDateForDisplay = (date: any, locale: string = 'en-IN'): string => {
+  try {
+    const validDate = formatBillDate(date);
+    return validDate.toLocaleDateString(locale, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error formatting date for display:', error);
+    return 'Invalid Date';
+  }
 };
 
 export const generateUPILink = async (
@@ -509,7 +569,7 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
           ${bill.paymentRecords.map((payment, index) => `
             <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8fafc'}; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 15px; font-size: 13px; color: #475569;">
-                ${new Date(payment.paymentDate?.toDate?.() || payment.paymentDate).toLocaleDateString('en-IN', {
+                ${formatBillDate(payment.paymentDate).toLocaleDateString('en-IN', {
                   day: 'numeric',
                   month: 'short',
                   year: 'numeric'
@@ -567,20 +627,12 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
             <div style="space-y: 12px;">
               <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
                 <span style="color: #64748b; font-size: 14px;">Invoice Date:</span>
-                <span style="color: #1e293b; font-weight: 600; font-size: 14px;">${new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}</span>
+                <span style="color: #1e293b; font-weight: 600; font-size: 14px;">${formatDateForDisplay(bill.date)}</span>
               </div>
               ${bill.dueDate ? `
                 <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
                   <span style="color: #64748b; font-size: 14px;">Due Date:</span>
-                  <span style="color: #dc2626; font-weight: 600; font-size: 14px;">${new Date(bill.dueDate?.toDate?.() || bill.dueDate).toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  })}</span>
+                  <span style="color: #dc2626; font-weight: 600; font-size: 14px;">${formatDateForDisplay(bill.dueDate)}</span>
                 </div>
               ` : ''}
               ${bill.orderId ? `
@@ -1028,17 +1080,10 @@ const generateZylkerItemsTableRows = (bill: Bill): string => {
  */
 const generateZylkerStyleBillHTML = async (bill: Bill): Promise<string> => {
   // Format dates
-  const invoiceDate = new Date(bill.date?.toDate?.() || bill.date).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
+  const invoiceDate = formatDateForDisplay(bill.date);
   
-  const dueDate = bill.dueDate ? new Date(bill.dueDate?.toDate?.() || bill.dueDate).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  }) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
+  const dueDate = bill.dueDate ? formatDateForDisplay(bill.dueDate)
+  : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric'
