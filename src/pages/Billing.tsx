@@ -84,6 +84,7 @@ const Billing = () => {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilterLoading, setDateFilterLoading] = useState(false);
+  const [downloadingPdfBillId, setDownloadingPdfBillId] = useState<string | null>(null);
   
   // Status update states
   const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -286,6 +287,7 @@ const Billing = () => {
 
   const handleDownloadPDF = async (bill: Bill, event: React.MouseEvent) => {
     event.stopPropagation();
+    setDownloadingPdfBillId(bill.id);
     try {
       await downloadPDF(bill);
       toast({
@@ -299,6 +301,8 @@ const Billing = () => {
         description: "Failed to download PDF",
         variant: "destructive",
       });
+    } finally {
+      setDownloadingPdfBillId(null);
     }
   };
 
@@ -862,10 +866,15 @@ const Billing = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={(e) => handleDownloadPDF(bill, e)}
+                                disabled={downloadingPdfBillId === bill.id}
                                 className="hover:bg-purple-50 hover:border-purple-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
                               >
-                                <Download className="h-3.5 w-3.5 mr-1.5" />
-                                Download
+                                {downloadingPdfBillId === bill.id ? (
+                                  <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                ) : (
+                                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                                )}
+                                {downloadingPdfBillId === bill.id ? 'Downloading...' : 'Download'}
                               </Button>
                             </div>
 
@@ -1009,10 +1018,17 @@ const Billing = () => {
                               size="sm"
                               variant="outline"
                               onClick={(e) => handleDownloadPDF(bill, e)}
+                              disabled={downloadingPdfBillId === bill.id}
                               className="hover:bg-purple-50 hover:border-purple-300 text-xs px-2 py-1 h-8"
                             >
-                              <Download className="h-3 w-3 sm:mr-1" />
-                              <span className="hidden sm:inline">PDF</span>
+                              {downloadingPdfBillId === bill.id ? (
+                                <RefreshCw className="h-3 w-3 sm:mr-1 animate-spin" />
+                              ) : (
+                                <Download className="h-3 w-3 sm:mr-1" />
+                              )}
+                              <span className="hidden sm:inline">
+                                {downloadingPdfBillId === bill.id ? 'Downloading...' : 'PDF'}
+                              </span>
                             </Button>
                             <Button
                               size="sm"
@@ -1177,9 +1193,14 @@ const Billing = () => {
                                   size="sm"
                                   variant="outline"
                                   onClick={(e) => handleDownloadPDF(bill, e)}
+                                  disabled={downloadingPdfBillId === bill.id}
                                   className="button-dark-fix hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-900/20 dark:hover:border-green-700"
                                 >
-                                  <Download className="h-3 w-3" />
+                                  {downloadingPdfBillId === bill.id ? (
+                                    <RefreshCw className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Download className="h-3 w-3" />
+                                  )}
                                 </Button>
                                 <Button
                                   size="sm"

@@ -57,6 +57,7 @@ const Billing = () => {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilterLoading, setDateFilterLoading] = useState(false);
+  const [downloadingPdfBillId, setDownloadingPdfBillId] = useState<string | null>(null);
 
   // Calculate stats
   const stats = {
@@ -202,6 +203,7 @@ const Billing = () => {
 
   const handleDownloadPDF = async (bill: Bill, event: React.MouseEvent) => {
     event.stopPropagation();
+    setDownloadingPdfBillId(bill.id);
     try {
       await downloadPDF(bill);
       toast({
@@ -215,6 +217,8 @@ const Billing = () => {
         description: "Failed to download PDF",
         variant: "destructive",
       });
+    } finally {
+      setDownloadingPdfBillId(null);
     }
   };
 
@@ -514,10 +518,15 @@ const Billing = () => {
                               size="sm"
                               variant="outline"
                               onClick={(e) => handleDownloadPDF(bill, e)}
+                              disabled={downloadingPdfBillId === bill.id}
                               className="hover:bg-purple-50 hover:border-purple-300 text-xs"
                             >
-                              <Download className="h-3 w-3 mr-1" />
-                              PDF
+                              {downloadingPdfBillId === bill.id ? (
+                                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <Download className="h-3 w-3 mr-1" />
+                              )}
+                              {downloadingPdfBillId === bill.id ? 'Downloading...' : 'PDF'}
                             </Button>
                           </div>
                         </div>
@@ -599,9 +608,14 @@ const Billing = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={(e) => handleDownloadPDF(bill, e)}
+                                disabled={downloadingPdfBillId === bill.id}
                                 className="hover:bg-green-50 hover:border-green-300"
                               >
-                                <Download className="h-3 w-3" />
+                                {downloadingPdfBillId === bill.id ? (
+                                  <RefreshCw className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Download className="h-3 w-3" />
+                                )}
                               </Button>
                               <Button
                                 size="sm"

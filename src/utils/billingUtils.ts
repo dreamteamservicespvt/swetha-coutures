@@ -418,17 +418,23 @@ export const downloadPDF = async (bill: Bill) => {
 
 // Helper function to generate table rows for both products and legacy items structure
 const generateItemsTableRows = (bill: Bill): string => {
+  let productCounter = 0;
+  
   // If bill has products (new structure), use them
   if (bill.products && bill.products.length > 0) {
     return bill.products.map(product => {
       const descriptions = product.descriptions || [];
       if (descriptions.length === 0) return '';
       
+      // Increment product counter only once per product
+      productCounter++;
+      
       return descriptions.map((desc, index) => {
         if (index === 0) {
-          // First row includes product name with rowSpan
+          // First row includes S.No and product name with rowSpan
           return `
             <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
+              <td style="padding: 12px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600; border-right: 1px solid #e2e8f0;" rowspan="${descriptions.length}">${productCounter}</td>
               <td style="padding: 12px 20px; font-size: 14px; color: #1e293b; font-weight: 700; border-right: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);" rowspan="${descriptions.length}">
                 ${product.name}
               </td>
@@ -441,7 +447,7 @@ const generateItemsTableRows = (bill: Bill): string => {
             </tr>
           `;
         } else {
-          // Subsequent rows don't include product name (covered by rowSpan)
+          // Subsequent rows don't include S.No and product name (covered by rowSpan)
           return `
             <tr style="border-bottom: 1px solid #e2e8f0; background: #fafbfc;">
               <td style="padding: 12px 25px; font-size: 14px; color: #374151; line-height: 1.5;">
@@ -477,12 +483,16 @@ const generateItemsTableRows = (bill: Bill): string => {
       groupedItems[productName].push(item);
     });
     
-    return Object.entries(groupedItems).map(([productName, items]) => {
+    return Object.entries(groupedItems).map(([productName, items], groupIndex) => {
+      // Increment product counter for each group
+      productCounter++;
+      
       return items.map((item, index) => {
         if (index === 0) {
-          // First row includes product name with rowSpan
+          // First row includes S.No and product name with rowSpan
           return `
             <tr style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
+              <td style="padding: 18px 15px; text-align: center; font-size: 14px; color: #475569; font-weight: 600; border-right: 1px solid #e2e8f0;" rowspan="${items.length}">${productCounter}</td>
               <td style="padding: 18px 20px; font-size: 14px; color: #1e293b; font-weight: 700; border-right: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);" rowspan="${items.length}">
                 ${productName}
               </td>
@@ -498,7 +508,7 @@ const generateItemsTableRows = (bill: Bill): string => {
             </tr>
           `;
         } else {
-          // Subsequent rows don't include product name (covered by rowSpan)
+          // Subsequent rows don't include S.No and product name (covered by rowSpan)
           return `
             <tr style="border-bottom: 1px solid #e2e8f0; transition: background-color 0.2s;">
               <td style="padding: 18px 25px; font-size: 14px; color: #1e293b; line-height: 1.5;">
@@ -517,7 +527,7 @@ const generateItemsTableRows = (bill: Bill): string => {
     }).join('');
   }
   
-  return '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #64748b;">No items found</td></tr>';
+  return '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #64748b;">No items found</td></tr>';
 };
 
 // Helper function to calculate total of all items (products or legacy items)
@@ -692,6 +702,7 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);">
+                <th style="padding: 18px 15px; text-align: center; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; width: 60px;">S.No</th>
                 <th style="padding: 18px 20px; text-align: left; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; width: 150px;">Product</th>
                 <th style="padding: 18px 25px; text-align: left; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
                 <th style="padding: 18px 15px; text-align: center; font-weight: 600; color: #334155; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; width: 80px;">Qty</th>
@@ -702,7 +713,7 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
             <tbody>
               ${generateItemsTableRows(bill)}
               <tr style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-top: 2px solid #3b82f6;">
-                <td colspan="4" style="padding: 18px 25px; font-weight: 700; font-size: 16px; color: #1e293b;">Items Subtotal</td>
+                <td colspan="5" style="padding: 18px 25px; font-weight: 700; font-size: 16px; color: #1e293b;">Items Subtotal</td>
                 <td style="padding: 18px 25px; text-align: right; font-weight: 700; font-size: 16px; color: #3b82f6;">
                   ${formatCurrency(calculateItemsTotal(bill))}
                 </td>
@@ -714,7 +725,7 @@ const generateProfessionalBillHTML = async (bill: Bill): Promise<string> => {
         <!-- Enhanced Bill Summary -->
         <div style="display: flex; justify-content: flex-end; margin-bottom: 40px;">
           <div style="width: 400px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-left: 6px solid #3b82f6;">
-            <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px 25px;">
+           <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px 25px;">
               <h3 style="margin: 0; font-size: 18px; font-weight: 600; display: flex; align-items: center;">
                 <span style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 8px; margin-right: 12px; font-size: 14px;">💰</span>
                 Invoice Summary
