@@ -112,9 +112,11 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       // If item has sub-items, sum the sub-items + main item amount
       const subItemsTotal = item.subItems.reduce((sum, subItem) => sum + subItem.amount, 0);
       const mainItemAmount = item.quantity * item.rate;
-      return mainItemAmount + subItemsTotal;
+      const total = mainItemAmount + subItemsTotal;
+      return Math.round(total * 100) / 100; // Round to 2 decimal places for precision
     }
-    return item.quantity * item.rate;
+    const total = item.quantity * item.rate;
+    return Math.round(total * 100) / 100; // Round to 2 decimal places for precision
   };
 
   // Update item amounts when sub-items change
@@ -190,10 +192,10 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
           updatedItem.rate = Math.max(0, parseFloat(value) || 0);
         }
         
-        // Recalculate amount with safe numbers
+        // Recalculate amount with safe numbers and proper floating-point handling
         const safeQuantity = updatedItem.quantity || 1;
         const safeRate = updatedItem.rate || 0;
-        updatedItem.amount = safeQuantity * safeRate;
+        updatedItem.amount = Math.round((safeQuantity * safeRate) * 100) / 100; // Round to 2 decimal places
         
         return updatedItem;
       }
@@ -211,10 +213,10 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               updatedSubItem.rate = Math.max(0, parseFloat(value) || 0);
             }
             
-            // Recalculate amount with safe numbers
+            // Recalculate amount with safe numbers and proper floating-point handling
             const safeQuantity = updatedSubItem.quantity || 1;
             const safeRate = updatedSubItem.rate || 0;
-            updatedSubItem.amount = safeQuantity * safeRate;
+            updatedSubItem.amount = Math.round((safeQuantity * safeRate) * 100) / 100; // Round to 2 decimal places
             
             return updatedSubItem;
           }

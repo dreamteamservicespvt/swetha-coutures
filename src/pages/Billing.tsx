@@ -108,13 +108,31 @@ const Billing = () => {
   // Fetch bills with real-time updates
   useEffect(() => {
     const unsubscribe = onSnapshot(
-      query(collection(db, 'bills'), orderBy('createdAt', 'desc')),
+      query(collection(db, 'bills'), orderBy('createdAt', 'desc')), // Keep createdAt for primary sort (latest first)
       (snapshot) => {
         try {
           const billsData = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           })) as Bill[];
+          
+          // Secondary sort by billNumber for proper sequential display when creation times are similar
+          billsData.sort((a, b) => {
+            // First sort by creation date (most recent first)
+            const dateA = formatBillDate(a.date || a.createdAt);
+            const dateB = formatBillDate(b.date || b.createdAt);
+            const dateDiff = dateB.getTime() - dateA.getTime();
+            
+            // If dates are very close (within 1 minute), sort by bill number descending
+            if (Math.abs(dateDiff) < 60000) {
+              const billNumA = a.billNumber || parseInt(a.billId?.replace(/\D/g, '') || '0');
+              const billNumB = b.billNumber || parseInt(b.billId?.replace(/\D/g, '') || '0');
+              return billNumB - billNumA; // Higher bill numbers first
+            }
+            
+            return dateDiff;
+          });
+          
           setBills(billsData);
           setLoading(false);
         } catch (error) {

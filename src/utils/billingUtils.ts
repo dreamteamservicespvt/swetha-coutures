@@ -61,6 +61,7 @@ export interface PaymentRecord {
 export interface Bill {
   id: string;
   billId: string;
+  billNumber?: number; // New field for sequential numbering
   customerId?: string;
   customerName: string;
   customerPhone: string;
@@ -109,9 +110,41 @@ export interface BusinessSettings {
   logo?: string;
 }
 
-export const generateBillId = (): string => {
-  const timestamp = Date.now().toString().slice(-6);
-  return `BILL${timestamp}`;
+export const generateBillId = async (): Promise<string> => {
+  try {
+    const { getDocs, query, collection, orderBy, limit } = await import('firebase/firestore');
+    const { db } = await import('@/lib/firebase');
+    
+    // Get all existing bill numbers to find gaps or the next number
+    const billsQuery = query(
+      collection(db, 'bills'), 
+      orderBy('billNumber', 'asc')
+    );
+    
+    const billsSnapshot = await getDocs(billsQuery);
+    const existingNumbers = new Set<number>();
+    
+    // Collect all existing bill numbers
+    billsSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (typeof data.billNumber === 'number' && data.billNumber >= 100) {
+        existingNumbers.add(data.billNumber);
+      }
+    });
+    
+    // Find the first available number starting from 100
+    let nextBillNumber = 100;
+    while (existingNumbers.has(nextBillNumber)) {
+      nextBillNumber++;
+    }
+    
+    return `#${nextBillNumber}`;
+  } catch (error) {
+    console.error('Error generating sequential bill ID:', error);
+    // Fallback to timestamp-based ID if database query fails
+    const timestamp = Date.now().toString().slice(-6);
+    return `BILL${timestamp}`;
+  }
 };
 
 // Utility function to handle date formatting consistently
@@ -222,15 +255,39 @@ export const calculateBillTotals = (
   discount: number,
   discountType: 'amount' | 'percentage' = 'amount'
 ) => {
-  // Sanitize inputs to prevent NaN
-  const safeItems = items.filter(item => item.amount && !isNaN(item.amount));
+  // Ensure all items have properly calculated amounts, especially for floating-point quantities
+  const itemsWithCorrectAmounts = items.map(item => {
+    // Recalculate amount to ensure floating-point precision
+    const safeQuantity = typeof item.quantity === 'number' && !isNaN(item.quantity) ? item.quantity : 0;
+    const safeRate = typeof item.rate === 'number' && !isNaN(item.rate) ? item.rate : 0;
+    const calculatedAmount = safeQuantity * safeRate;
+    
+    return {
+      ...item,
+      amount: calculatedAmount
+    };
+  });
+
+  // Filter out items with zero or invalid amounts after recalculation
+  const validItems = itemsWithCorrectAmounts.filter(item => 
+    typeof item.amount === 'number' && 
+    !isNaN(item.amount) && 
+    item.amount > 0
+  );
+
+  // Sanitize breakdown inputs
   const safeBreakdown = Object.fromEntries(
     Object.entries(breakdown).map(([key, value]) => [key, isNaN(value) ? 0 : value])
   ) as BillBreakdown;
   const safeGstPercent = isNaN(gstPercent) ? 0 : gstPercent;
   const safeDiscount = isNaN(discount) ? 0 : discount;
   
-  const itemsTotal = safeItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  // Calculate totals with proper floating-point handling
+  const itemsTotal = validItems.reduce((sum, item) => {
+    const amount = typeof item.amount === 'number' && !isNaN(item.amount) ? item.amount : 0;
+    return sum + amount;
+  }, 0);
+  
   const breakdownTotal = Object.values(safeBreakdown).reduce((sum, value) => sum + (value || 0), 0);
   const subtotal = itemsTotal + breakdownTotal;
   const gstAmount = (subtotal * safeGstPercent) / 100;
@@ -242,11 +299,12 @@ export const calculateBillTotals = (
   
   const totalAmount = subtotal + gstAmount - discountAmount;
   
+  // Round to 2 decimal places to handle floating-point precision issues
   return {
-    subtotal: Math.max(0, subtotal),
-    gstAmount: Math.max(0, gstAmount),
-    totalAmount: Math.max(0, totalAmount),
-    discountAmount: Math.max(0, discountAmount)
+    subtotal: Math.max(0, Math.round(subtotal * 100) / 100),
+    gstAmount: Math.max(0, Math.round(gstAmount * 100) / 100),
+    totalAmount: Math.max(0, Math.round(totalAmount * 100) / 100),
+    discountAmount: Math.max(0, Math.round(discountAmount * 100) / 100)
   };
 };
 

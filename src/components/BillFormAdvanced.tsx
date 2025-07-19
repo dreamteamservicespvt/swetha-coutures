@@ -77,7 +77,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
 }) => {
   // Form state
   const [formData, setFormData] = useState<Partial<Bill>>({
-    billId: generateBillId(),
+    billId: '', // Will be set asynchronously
     customerName: '',
     customerPhone: '',
     customerEmail: '',
@@ -135,6 +135,33 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
   
   // New Product + Description state
   const [products, setProducts] = useState<Product[]>([]);
+
+  // Fetch data on mount
+  useEffect(() => {
+    // Initialize bill ID for new bills
+    const initializeBillId = async () => {
+      if (!bill && !formData.billId) {
+        try {
+          const newBillId = await generateBillId();
+          setFormData(prev => ({
+            ...prev,
+            billId: newBillId,
+            billNumber: parseInt(newBillId.replace('#', ''))
+          }));
+        } catch (error) {
+          console.error('Error generating bill ID:', error);
+          // Fallback to timestamp-based ID
+          const timestamp = Date.now().toString().slice(-6);
+          setFormData(prev => ({
+            ...prev,
+            billId: `BILL${timestamp}`
+          }));
+        }
+      }
+    };
+
+    initializeBillId();
+  }, [bill, formData.billId]);
 
   // Fetch data on mount
   useEffect(() => {

@@ -354,7 +354,14 @@ const NewBill = () => {
       
       // Ensure required fields are present
       if (!sanitizedBillData.billId) {
-        sanitizedBillData.billId = generateBillId();
+        const newBillId = await generateBillId();
+        sanitizedBillData.billId = newBillId;
+        
+        // Extract numeric part for billNumber (remove # prefix)
+        const billNumberMatch = newBillId.match(/(\d+)/);
+        if (billNumberMatch) {
+          sanitizedBillData.billNumber = parseInt(billNumberMatch[1]);
+        }
       }
       
       if (isEditing && billId) {
