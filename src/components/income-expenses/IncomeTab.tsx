@@ -8,12 +8,13 @@ import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Receipt, User, Calendar, DollarSign, Edit2, Trash2, Settings, BarChart3 } from 'lucide-react';
+import { Plus, Receipt, User, Calendar, DollarSign, Edit2, Trash2, Settings, BarChart3, Banknote, CreditCard, ArrowLeftRight } from 'lucide-react';
 import { collection, addDoc, getDocs, query, where, onSnapshot, Timestamp, orderBy, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import CategoryBreakdown from './CategoryBreakdown';
 import CategoryInput from '../CategoryInput';
+import PaymentModeSelector, { PaymentBreakdown } from './PaymentModeSelector';
 
 interface IncomeTabProps {
   dateRange: { start: Timestamp; end: Timestamp } | null;
@@ -31,6 +32,10 @@ interface IncomeEntry {
   customerName?: string;
   billId?: string;
   type: 'billing' | 'custom';
+  // Payment mode tracking
+  paymentMode?: 'cash' | 'online' | 'split';
+  cashAmount?: number;
+  onlineAmount?: number;
 }
 
 const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
@@ -44,7 +49,18 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
     category: '',
     amount: 0,
     date: new Date(),
-    notes: ''
+    notes: '',
+    // Payment mode tracking
+    paymentMode: 'cash' as 'cash' | 'online' | 'split',
+    cashAmount: 0,
+    onlineAmount: 0
+  });
+
+  const [paymentBreakdown, setPaymentBreakdown] = useState<PaymentBreakdown>({
+    type: 'cash',
+    totalAmount: 0,
+    cashAmount: 0,
+    onlineAmount: 0
   });
 
   const fetchIncomeData = async () => {
@@ -155,6 +171,12 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
       const incomeData = {
         ...formData,
         date: Timestamp.fromDate(formData.date),
+        // Include payment mode tracking
+        paymentMode: paymentBreakdown.type,
+        cashAmount: paymentBreakdown.type === 'cash' ? formData.amount : 
+                   paymentBreakdown.type === 'split' ? paymentBreakdown.cashAmount : 0,
+        onlineAmount: paymentBreakdown.type === 'online' ? formData.amount : 
+                     paymentBreakdown.type === 'split' ? paymentBreakdown.onlineAmount : 0,
         ...(editingEntry ? { updatedAt: Timestamp.now() } : { createdAt: Timestamp.now() })
       };
 
@@ -179,7 +201,10 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
         category: '',
         amount: 0,
         date: new Date(),
-        notes: ''
+        notes: '',
+        paymentMode: 'cash',
+        cashAmount: 0,
+        onlineAmount: 0
       });
       
       fetchIncomeData();
@@ -223,7 +248,16 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
       category: entry.category || '',
       amount: entry.amount,
       date: entry.date?.toDate?.() || new Date(entry.date),
-      notes: entry.notes || ''
+      notes: entry.notes || '',
+      paymentMode: entry.paymentMode || 'cash',
+      cashAmount: entry.cashAmount || (entry.paymentMode === 'cash' ? entry.amount : 0),
+      onlineAmount: entry.onlineAmount || (entry.paymentMode === 'online' ? entry.amount : 0)
+    });
+    setPaymentBreakdown({
+      type: entry.paymentMode || 'cash',
+      totalAmount: entry.amount,
+      cashAmount: entry.cashAmount || (entry.paymentMode === 'cash' ? entry.amount : 0),
+      onlineAmount: entry.onlineAmount || (entry.paymentMode === 'online' ? entry.amount : 0)
     });
     setIsDialogOpen(true);
   };
@@ -264,7 +298,16 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
       category: '',
       amount: 0,
       date: new Date(),
-      notes: ''
+      notes: '',
+      paymentMode: 'cash',
+      cashAmount: 0,
+      onlineAmount: 0
+    });
+    setPaymentBreakdown({
+      type: 'cash',
+      totalAmount: 0,
+      cashAmount: 0,
+      onlineAmount: 0
     });
     setEditingEntry(null);
   };
@@ -308,74 +351,119 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
                 Add Income
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-[95vw] w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">
                   {editingEntry ? 'Edit Income Entry' : 'Add Income Entry'}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-sm">
                   {editingEntry ? 'Update the income entry details.' : 'Add a custom income source to track additional revenue.'}
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="sourceName">Source Name</Label>
-                  <Input
-                    id="sourceName"
-                    value={formData.sourceName}
-                    onChange={(e) => setFormData({...formData, sourceName: e.target.value})}
-                    placeholder="e.g., Consulting Fee"
-                    required
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                  <div>
+                    <Label htmlFor="sourceName" className="text-sm font-medium">Source Name</Label>
+                    <Input
+                      id="sourceName"
+                      value={formData.sourceName}
+                      onChange={(e) => setFormData({...formData, sourceName: e.target.value})}
+                      placeholder="e.g., Consulting Fee"
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                    <CategoryInput
+                      value={formData.category}
+                      onChange={(value) => setFormData({...formData, category: value})}
+                      type="income"
+                      placeholder="Enter or select category"
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="amount" className="text-sm font-medium">Amount (₹)</Label>
+                      <NumberInput
+                        id="amount"
+                        value={formData.amount}
+                        onChange={(value) => setFormData({...formData, amount: value || 0})}
+                        min={0}
+                        step={0.01}
+                        decimals={2}
+                        allowEmpty={false}
+                        emptyValue={0}
+                        placeholder="0.00"
+                        className="mt-1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="date" className="text-sm font-medium">Date</Label>
+                      <DatePicker
+                        date={formData.date}
+                        onDateChange={(date) => setFormData({...formData, date: date || new Date()})}
+                        placeholder="Select date"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Payment Mode Selector - Make responsive */}
+                <div className="border-t pt-3 sm:pt-4">
+                  <PaymentModeSelector
+                    totalAmount={formData.amount}
+                    onPaymentChange={(breakdown) => {
+                      setPaymentBreakdown(breakdown);
+                      setFormData(prev => ({
+                        ...prev,
+                        paymentMode: breakdown.type,
+                        cashAmount: breakdown.type === 'cash' ? breakdown.totalAmount : 
+                                   breakdown.type === 'split' ? breakdown.cashAmount || 0 : 0,
+                        onlineAmount: breakdown.type === 'online' ? breakdown.totalAmount : 
+                                     breakdown.type === 'split' ? breakdown.onlineAmount || 0 : 0
+                      }));
+                    }}
+                    initialBreakdown={{
+                      type: formData.paymentMode,
+                      totalAmount: formData.amount,
+                      cashAmount: formData.cashAmount,
+                      onlineAmount: formData.onlineAmount
+                    }}
+                    title="Payment Mode"
+                    description="How was this income received?"
                   />
                 </div>
+                
                 <div>
-                  <Label htmlFor="category">Category</Label>
-                  <CategoryInput
-                    value={formData.category}
-                    onChange={(value) => setFormData({...formData, category: value})}
-                    type="income"
-                    placeholder="Enter or select category"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="amount">Amount (₹)</Label>
-                  <NumberInput
-                    id="amount"
-                    value={formData.amount}
-                    onChange={(value) => setFormData({...formData, amount: value || 0})}
-                    min={0}
-                    step={0.01}
-                    decimals={2}
-                    allowEmpty={false}
-                    emptyValue={0}
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="date">Date</Label>
-                  <DatePicker
-                    date={formData.date}
-                    onDateChange={(date) => setFormData({...formData, date: date || new Date()})}
-                    placeholder="Select date"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Label htmlFor="notes" className="text-sm font-medium">Notes (Optional)</Label>
                   <Textarea
                     id="notes"
                     value={formData.notes}
                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
                     placeholder="Additional notes"
                     rows={2}
+                    className="mt-1 resize-none"
                   />
                 </div>
-                <div className="flex justify-end space-x-3">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                
+                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 border-t">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
+                    className="w-full sm:w-auto"
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-gradient-to-r from-green-600 to-blue-600">
+                  <Button 
+                    type="submit" 
+                    className="bg-gradient-to-r from-green-600 to-blue-600 w-full sm:w-auto"
+                  >
                     {editingEntry ? 'Update Income' : 'Add Income'}
                   </Button>
                 </div>
@@ -432,6 +520,29 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
                             {entry.category}
                           </span>
                         )}
+                        {/* Payment Mode Display */}
+                        {entry.paymentMode && entry.type === 'custom' && (
+                          <span className="flex items-center">
+                            {entry.paymentMode === 'cash' && (
+                              <span className="flex items-center bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                                <Banknote className="h-3 w-3 mr-1" />
+                                Cash
+                              </span>
+                            )}
+                            {entry.paymentMode === 'online' && (
+                              <span className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                Online
+                              </span>
+                            )}
+                            {entry.paymentMode === 'split' && (
+                              <span className="flex items-center bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                                <ArrowLeftRight className="h-3 w-3 mr-1" />
+                                Split
+                              </span>
+                            )}
+                          </span>
+                        )}
                         <span className="flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
                           {formatDate(entry.date)}
@@ -439,6 +550,19 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
                       </div>
                       {entry.notes && (
                         <div className="text-xs text-gray-500 mt-1">{entry.notes}</div>
+                      )}
+                      {/* Split Payment Breakdown */}
+                      {entry.paymentMode === 'split' && entry.type === 'custom' && (
+                        <div className="text-xs text-gray-600 mt-1 flex items-center space-x-3">
+                          <span className="flex items-center">
+                            <Banknote className="h-3 w-3 mr-1 text-green-600" />
+                            Cash: ₹{(entry.cashAmount || 0).toLocaleString()}
+                          </span>
+                          <span className="flex items-center">
+                            <CreditCard className="h-3 w-3 mr-1 text-blue-600" />
+                            Online: ₹{(entry.onlineAmount || 0).toLocaleString()}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>

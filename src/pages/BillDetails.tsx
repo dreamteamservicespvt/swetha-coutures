@@ -407,7 +407,7 @@ const BillDetails = () => {
                 <h3 className="font-semibold mb-2 text-sm sm:text-base">Bill Details</h3>
                 <div className="text-sm space-y-1">
                   <p><strong>Bill No:</strong> {bill.billId}</p>
-                  <p><strong>Date:</strong> {bill.date?.toDate?.()?.toLocaleDateString() || 'N/A'}</p>
+                  <p><strong>Date:</strong> {formatDateForDisplay(bill.date)}</p>
                   {bill.orderId && <p><strong>Order ID:</strong> {bill.orderId}</p>}
                 </div>
               </div>
@@ -434,37 +434,56 @@ const BillDetails = () => {
             <div className="block sm:hidden space-y-3">
               {/* Products Structure */}
               {bill.products && bill.products.length > 0 ? (
-                bill.products.map((product, productIndex) => (
-                  <div key={productIndex} className="border rounded-lg bg-gray-50">
-                    <div className="font-semibold p-3 bg-purple-50 border-b">
-                      {product.name} - {formatCurrency(product.total)}
-                    </div>
-                    {product.descriptions.map((desc, descIndex) => (
-                      <div key={descIndex} className="p-3 border-b last:border-b-0">
-                        <div className="font-medium">{desc.description}</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          Qty: {desc.qty} × Rate: {formatCurrency(desc.rate)}
+                (() => {
+                  let serialNumber = 1;
+                  return bill.products.map((product, productIndex) => (
+                    <div key={productIndex} className="border rounded-lg bg-gray-50">
+                      <div className="font-semibold p-3 bg-purple-50 border-b flex items-center gap-2">
+                        <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                          {serialNumber++}
                         </div>
-                        <div className="text-right font-medium text-purple-600">
-                          {formatCurrency(desc.amount)}
-                        </div>
+                        <span>{product.name} - {formatCurrency(product.total)}</span>
                       </div>
-                    ))}
-                  </div>
-                ))
+                      {product.descriptions.map((desc, descIndex) => (
+                        <div key={descIndex} className="p-3 border-b last:border-b-0">
+                          <div className="flex items-center gap-2 font-medium">
+                            <div className="w-4 h-4 bg-gray-500 text-white rounded-full flex items-center justify-center text-xs">
+                              {descIndex + 1}
+                            </div>
+                            <span>{desc.description}</span>
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1 ml-6">
+                            Qty: {desc.qty} × Rate: {formatCurrency(desc.rate)}
+                          </div>
+                          <div className="text-right font-medium text-purple-600 ml-6">
+                            {formatCurrency(desc.amount)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()
               ) : (
                 /* Legacy Items Structure */
-                bill.items.map((item, index) => (
-                  <div key={index} className="border rounded-lg p-3 bg-gray-50">
-                    <div className="font-medium">{item.description}</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Qty: {item.quantity} × Rate: {formatCurrency(item.rate || 0)}
+                (() => {
+                  let serialNumber = 1;
+                  return bill.items.map((item, index) => (
+                    <div key={index} className="border rounded-lg p-3 bg-gray-50">
+                      <div className="flex items-center gap-2 font-medium">
+                        <div className="w-6 h-6 bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                          {serialNumber++}
+                        </div>
+                        <span>{item.description}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1 ml-8">
+                        Qty: {item.quantity} × Rate: {formatCurrency(item.rate || 0)}
+                      </div>
+                      <div className="text-right font-medium text-purple-600 ml-8">
+                        {formatCurrency(item.amount || 0)}
+                      </div>
                     </div>
-                    <div className="text-right font-medium text-purple-600">
-                      {formatCurrency(item.amount || 0)}
-                    </div>
-                  </div>
-                ))
+                  ));
+                })()
               )}
               <div className="border-t pt-2 flex justify-between font-semibold">
                 <span>Items Subtotal</span>
@@ -483,6 +502,7 @@ const BillDetails = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-16 text-center">S.No</TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
@@ -493,24 +513,35 @@ const BillDetails = () => {
                 <TableBody>
                   {/* Products Structure */}
                   {bill.products && bill.products.length > 0 ? (
-                    bill.products.map((product, productIndex) => 
-                      product.descriptions.map((desc, descIndex) => (
-                        <TableRow key={`${productIndex}-${descIndex}`}>
-                          {descIndex === 0 && (
-                            <TableCell 
-                              rowSpan={product.descriptions.length} 
-                              className="font-semibold bg-purple-50 border-r"
-                            >
-                              {product.name}
-                            </TableCell>
-                          )}
-                          <TableCell>{desc.description}</TableCell>
-                          <TableCell className="text-right">{desc.qty}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(desc.rate)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(desc.amount)}</TableCell>
-                        </TableRow>
-                      ))
-                    )
+                    (() => {
+                      let serialNumber = 1;
+                      return bill.products.map((product, productIndex) => 
+                        product.descriptions.map((desc, descIndex) => (
+                          <TableRow key={`${productIndex}-${descIndex}`}>
+                            {descIndex === 0 && (
+                              <>
+                                <TableCell 
+                                  rowSpan={product.descriptions.length} 
+                                  className="text-center font-medium bg-gray-50 border-r"
+                                >
+                                  {serialNumber++}
+                                </TableCell>
+                                <TableCell 
+                                  rowSpan={product.descriptions.length} 
+                                  className="font-semibold bg-purple-50 border-r"
+                                >
+                                  {product.name}
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell>{desc.description}</TableCell>
+                            <TableCell className="text-right">{desc.qty}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(desc.rate)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(desc.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      );
+                    })()
                   ) : (
                     /* Legacy Items Structure - Group by item type */
                     (() => {
@@ -530,16 +561,25 @@ const BillDetails = () => {
                         groupedItems[productName].push(item);
                       });
                       
+                      let serialNumber = 1;
                       return Object.entries(groupedItems).map(([productName, items]) =>
                         items.map((item, itemIndex) => (
                           <TableRow key={`${productName}-${itemIndex}`}>
                             {itemIndex === 0 && (
-                              <TableCell 
-                                rowSpan={items.length} 
-                                className="font-semibold bg-purple-50 border-r"
-                              >
-                                {productName}
-                              </TableCell>
+                              <>
+                                <TableCell 
+                                  rowSpan={items.length} 
+                                  className="text-center font-medium bg-gray-50 border-r"
+                                >
+                                  {serialNumber++}
+                                </TableCell>
+                                <TableCell 
+                                  rowSpan={items.length} 
+                                  className="font-semibold bg-purple-50 border-r"
+                                >
+                                  {productName}
+                                </TableCell>
+                              </>
                             )}
                             <TableCell>{item.description}</TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>

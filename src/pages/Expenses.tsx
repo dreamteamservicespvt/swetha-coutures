@@ -272,40 +272,42 @@ const Expenses = () => {
               Add Expense
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-[95vw] w-full sm:max-w-lg md:max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-base sm:text-lg">
                 {editingExpense ? 'Edit Expense' : 'Add New Expense'}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-sm">
                 Fill in the expense details below.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title" className="text-sm font-medium">Title</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   placeholder="Expense title"
+                  className="mt-1"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description" className="text-sm font-medium">Description</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   placeholder="Expense description"
                   rows={2}
+                  className="mt-1 resize-none"
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="amount">Amount (₹)</Label>
+                  <Label htmlFor="amount" className="text-sm font-medium">Amount (₹)</Label>
                   <NumberInput
                     id="amount"
                     value={formData.amount}
@@ -316,58 +318,72 @@ const Expenses = () => {
                     allowEmpty={false}
                     emptyValue={0}
                     placeholder="0.00"
+                    className="mt-1"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="date">Date</Label>
+                  <Label htmlFor="date" className="text-sm font-medium">Date</Label>
                   <Input
                     id="date"
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    className="mt-1"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+                  <select
+                    id="category"
+                    className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value as 'personal' | 'professional'})}
+                    required
+                  >
+                    <option value="professional">Professional</option>
+                    <option value="personal">Personal</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="type" className="text-sm font-medium">Type</Label>
+                  <CategoryInput
+                    value={formData.type}
+                    onChange={(value) => setFormData({...formData, type: value})}
+                    type="expense"
+                    placeholder="Enter expense type..."
+                    className="mt-1"
                     required
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="category">Category</Label>
-                <select
-                  id="category"
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value as 'personal' | 'professional'})}
-                  required
-                >
-                  <option value="professional">Professional</option>
-                  <option value="personal">Personal</option>
-                </select>
-              </div>
-              <div>
-                <Label htmlFor="type">Type</Label>
-                <CategoryInput
-                  value={formData.type}
-                  onChange={(value) => setFormData({...formData, type: value})}
-                  type="expense"
-                  placeholder="Enter expense type..."
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Label htmlFor="notes" className="text-sm font-medium">Notes (Optional)</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
                   placeholder="Additional notes"
                   rows={2}
+                  className="mt-1 resize-none"
                 />
               </div>
-              <div className="flex justify-end space-x-3">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 border-t">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="w-full sm:w-auto"
+                >
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600">
+                <Button 
+                  type="submit" 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 w-full sm:w-auto"
+                >
                   {editingExpense ? 'Update Expense' : 'Add Expense'}
                 </Button>
               </div>

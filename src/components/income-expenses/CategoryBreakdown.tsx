@@ -440,12 +440,14 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
                   <span className="truncate">{category.name}</span>
                   <Eye className="h-4 w-4 text-gray-400" />
                 </CardTitle>
-                <CardDescription className="flex items-center space-x-2">
-                  <span>{category.count} entries</span>
+                <div className="flex items-center space-x-2">
+                  <CardDescription className="mb-0">
+                    {category.count} entries
+                  </CardDescription>
                   <Badge variant="secondary" className="text-xs">
                     {((category.total / totalAmount) * 100).toFixed(1)}%
                   </Badge>
-                </CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className={`text-lg font-bold ${type === 'income' ? 'text-green-600' : 'text-red-600'}`}>

@@ -435,11 +435,18 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
               <p>No products added yet. Click "Add Product" in the action bar above to get started.</p>
             </div>
           ) : (
-            products.map(product => (
+            products.map((product, productIndex) => (
               <div key={product.id} className="border-2 border-purple-200 rounded-lg bg-white shadow-sm">
                 {/* Header Panel - Main Product */}
                 <div className="p-4 bg-purple-50 border-b border-purple-200">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-center">
+                      {/* Serial Number */}
+                      <div className="sm:col-span-1 lg:col-span-1 flex justify-center">
+                        <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-semibold text-sm">
+                          {productIndex + 1}
+                        </div>
+                      </div>
+                      
                       {/* Chevron Toggle */}
                       <div className="sm:col-span-1 lg:col-span-1 flex justify-center">
                         <Button
@@ -456,7 +463,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                           )}
                         </Button>
                       </div>                      {/* Product Name */}
-                      <div className="sm:col-span-2 lg:col-span-6">
+                      <div className="sm:col-span-2 lg:col-span-5">
                         <Label className="text-sm font-medium text-gray-700">Product Name *</Label>
                         <ProductNameInput
                           value={product.name}
@@ -510,15 +517,13 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                       <p className="text-sm">No items added yet. Click the "+" button above to add an item.</p>
                     </div>
                   ) : (
-                    product.descriptions.map(desc => (
+                    product.descriptions.map((desc, descIndex) => (
                       <div key={desc.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-                          {/* Sub-Item Icon */}
+                          {/* Sub-Item Serial Number */}
                           <div className="sm:col-span-1 lg:col-span-1 flex items-center justify-center">
-                            <div className="h-4 w-4 text-gray-400">
-                              <svg viewBox="0 0 16 16" fill="currentColor">
-                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                              </svg>
+                            <div className="w-6 h-6 bg-gray-500 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                              {descIndex + 1}
                             </div>
                           </div>
 
