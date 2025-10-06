@@ -766,7 +766,7 @@ const Billing = () => {
                           <div className="flex justify-between items-start">
                             <div className="space-y-1 flex-1 min-w-0">
                               <div className="flex items-center space-x-2">
-                                <span className="font-bold text-lg">{bill.billId || 'N/A'}</span>
+                                <span className="font-bold text-lg" style={{ fontVariantLigatures: 'none', fontFeatureSettings: 'normal', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{bill.billId || 'N/A'}</span>
                                 
                                 {/* Status Update Dropdown */}
                                 <DropdownMenu>
@@ -939,7 +939,7 @@ const Billing = () => {
                           {/* Header */}
                           <div className="flex justify-between items-start gap-2">
                             <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-purple-600 text-base sm:text-lg truncate">{bill.billId || 'N/A'}</h3>
+                              <h3 className="font-semibold text-purple-600 text-base sm:text-lg truncate" style={{ fontVariantLigatures: 'none', fontFeatureSettings: 'normal', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{bill.billId || 'N/A'}</h3>
                               <p className="text-xs sm:text-sm text-gray-500 truncate">
                                 {formatDateForDisplay(bill.date)}
                               </p>
@@ -1084,7 +1084,11 @@ const Billing = () => {
                             className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                             onClick={() => navigate(`/billing/${bill.id}`)}
                           >
-                            <TableCell className="font-medium text-purple-600 dark:text-purple-400">{bill.billId || 'N/A'}</TableCell>
+                            <TableCell className="font-medium text-purple-600 dark:text-purple-400">
+                              <span style={{ fontVariantLigatures: 'none', fontFeatureSettings: 'normal', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                                {bill.billId || 'N/A'}
+                              </span>
+                            </TableCell>
                             <TableCell>
                               <div>
                                 <div className="font-medium text-dark-fix">{bill.customerName || 'N/A'}</div>
@@ -1159,7 +1163,9 @@ const Billing = () => {
                             className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                             onClick={() => navigate(`/billing/${bill.id}`)}
                           >
-                            <TableCell className="font-medium text-purple-600 dark:text-purple-400 table-cell-responsive">{bill.billId || 'N/A'}</TableCell>
+                            <TableCell className="font-medium text-purple-600 dark:text-purple-400 table-cell-responsive">
+                              <span style={{ fontVariantLigatures: 'none', fontFeatureSettings: 'normal', fontFamily: 'system-ui, -apple-system, sans-serif' }}>{bill.billId || 'N/A'}</span>
+                            </TableCell>
                             <TableCell className="table-cell-responsive">
                               <div>
                                 <div className="font-medium text-dark-fix">{bill.customerName || 'N/A'}</div>
