@@ -21,6 +21,8 @@ import Billing from './pages/Billing';
 import BillDetails from './pages/BillDetails';
 import NewBill from './pages/NewBill';
 import IncomeExpenses from './pages/IncomeExpenses';
+import BillMigration from './pages/BillMigration';
+import DateFormatFixer from './pages/DateFormatFixer';
 import ROIDashboard from './components/ROIDashboard';
 import StaffOrdersView from './components/StaffOrdersView';
 import StaffInventoryView from './components/StaffInventoryView';
@@ -241,6 +243,26 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <NewBill />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/date-format-fixer"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Layout>
+                    <DateFormatFixer />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing-migration"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Layout>
+                    <BillMigration />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "diagnose-bills": "node scripts/diagnose-bills.js",
+    "migrate-bills": "node scripts/migrate-bills.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

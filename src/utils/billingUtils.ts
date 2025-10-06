@@ -127,18 +127,20 @@ export const generateBillId = async (): Promise<string> => {
     // Collect all existing bill numbers
     billsSnapshot.docs.forEach(doc => {
       const data = doc.data();
-      if (typeof data.billNumber === 'number' && data.billNumber >= 100) {
+      if (typeof data.billNumber === 'number' && data.billNumber >= 1) {
         existingNumbers.add(data.billNumber);
       }
     });
     
-    // Find the first available number starting from 100
-    let nextBillNumber = 100;
+    // Find the first available number starting from 1
+    let nextBillNumber = 1;
     while (existingNumbers.has(nextBillNumber)) {
       nextBillNumber++;
     }
     
-    return `#${nextBillNumber}`;
+    // Format: Bill001, Bill002, Bill003, etc.
+    const formattedNumber = nextBillNumber.toString().padStart(3, '0');
+    return `Bill${formattedNumber}`;
   } catch (error) {
     console.error('Error generating sequential bill ID:', error);
     // Fallback to timestamp-based ID if database query fails

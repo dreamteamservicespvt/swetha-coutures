@@ -108,7 +108,7 @@ const Billing = () => {
   // Fetch bills with real-time updates
   useEffect(() => {
     const unsubscribe = onSnapshot(
-      query(collection(db, 'bills'), orderBy('createdAt', 'desc')), // Keep createdAt for primary sort (latest first)
+      query(collection(db, 'bills')),
       (snapshot) => {
         try {
           const billsData = snapshot.docs.map(doc => ({
@@ -116,21 +116,11 @@ const Billing = () => {
             ...doc.data()
           })) as Bill[];
           
-          // Secondary sort by billNumber for proper sequential display when creation times are similar
+          // Sort by billNumber descending (highest/newest bill numbers first)
           billsData.sort((a, b) => {
-            // First sort by creation date (most recent first)
-            const dateA = formatBillDate(a.date || a.createdAt);
-            const dateB = formatBillDate(b.date || b.createdAt);
-            const dateDiff = dateB.getTime() - dateA.getTime();
-            
-            // If dates are very close (within 1 minute), sort by bill number descending
-            if (Math.abs(dateDiff) < 60000) {
-              const billNumA = a.billNumber || parseInt(a.billId?.replace(/\D/g, '') || '0');
-              const billNumB = b.billNumber || parseInt(b.billId?.replace(/\D/g, '') || '0');
-              return billNumB - billNumA; // Higher bill numbers first
-            }
-            
-            return dateDiff;
+            const billNumA = a.billNumber || parseInt(a.billId?.replace(/\D/g, '') || '0');
+            const billNumB = b.billNumber || parseInt(b.billId?.replace(/\D/g, '') || '0');
+            return billNumB - billNumA; // Bill095, Bill094, Bill093... Bill002, Bill001
           });
           
           setBills(billsData);
@@ -164,22 +154,28 @@ const Billing = () => {
     setDateFilterLoading(true);
     
     try {
-      let q = query(collection(db, 'bills'), orderBy('createdAt', 'desc'));
+      let q = query(collection(db, 'bills'));
       
       if (startDate && endDate) {
         q = query(
           collection(db, 'bills'),
-          where('createdAt', '>=', Timestamp.fromDate(startDate)),
-          where('createdAt', '<=', Timestamp.fromDate(endDate)),
-          orderBy('createdAt', 'desc')
+          where('date', '>=', Timestamp.fromDate(startDate)),
+          where('date', '<=', Timestamp.fromDate(endDate))
         );
       }
       
       const snapshot = await getDocs(q);
-      const filteredBills = snapshot.docs.map(doc => ({
+      let filteredBills = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Bill[];
+      
+      // Sort by billNumber descending
+      filteredBills.sort((a, b) => {
+        const billNumA = a.billNumber || parseInt(a.billId?.replace(/\D/g, '') || '0');
+        const billNumB = b.billNumber || parseInt(b.billId?.replace(/\D/g, '') || '0');
+        return billNumB - billNumA;
+      });
       
       setBills(filteredBills);
       
@@ -770,7 +766,7 @@ const Billing = () => {
                           <div className="flex justify-between items-start">
                             <div className="space-y-1 flex-1 min-w-0">
                               <div className="flex items-center space-x-2">
-                                <span className="font-bold text-lg">#{bill.billId?.slice(-4) || 'N/A'}</span>
+                                <span className="font-bold text-lg">{bill.billId || 'N/A'}</span>
                                 
                                 {/* Status Update Dropdown */}
                                 <DropdownMenu>

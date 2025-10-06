@@ -146,7 +146,8 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
           setFormData(prev => ({
             ...prev,
             billId: newBillId,
-            billNumber: parseInt(newBillId.replace('#', ''))
+            // Parse bill number correctly (remove any # prefix and parse as integer)
+            billNumber: parseInt(newBillId.replace(/[^0-9]/g, ''))
           }));
         } catch (error) {
           console.error('Error generating bill ID:', error);
@@ -477,50 +478,8 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
     }
   };
 
-  // Calculate totals whenever relevant fields change
-  useEffect(() => {
-    // Use enhanced bill items if available, otherwise fall back to legacy items
-    const itemsToUse = enhancedBillItems.length > 0 ? enhancedBillItems : formData.items || [];
-    
-    const { subtotal, gstAmount, totalAmount } = calculateBillTotals(
-      itemsToUse,
-      formData.breakdown || { fabric: 0, stitching: 0, accessories: 0, customization: 0, otherCharges: 0 },
-      formData.gstPercent || 0,
-      formData.discount || 0,
-      formData.discountType || 'amount'
-    );
-
-    const balance = Math.max(0, totalAmount - (formData.paidAmount || 0));
-    const status = calculateBillStatus(totalAmount, formData.paidAmount || 0);
-
-    // Always update QR amount to current balance unless user has manually overridden it
-    // Check if qrAmount was manually set by comparing to previous balance
-    const shouldUpdateQrAmount = 
-      formData.qrAmount === undefined || 
-      formData.qrAmount === null || 
-      formData.qrAmount === 0 ||
-      formData.qrAmount === formData.balance; // If it matches old balance, update to new balance
-
-    setFormData(prev => ({
-      ...prev,
-      subtotal,
-      gstAmount,
-      totalAmount,
-      balance,
-      status,
-      // Always auto-update QR amount to current balance for real-time payment
-      qrAmount: shouldUpdateQrAmount ? balance : prev.qrAmount
-    }));
-  }, [
-    formData.items,
-    enhancedBillItems,
-    formData.breakdown,
-    formData.gstPercent,
-    formData.discount,
-    formData.discountType,
-    formData.paidAmount, // This ensures recalculation when paidAmount changes
-    formData.totalAmount // This ensures recalculation when totalAmount changes
-  ]);
+  // REMOVED REDUNDANT useEffect - The first useEffect at line 327-389 already handles all calculations
+  // This was causing the double-update bug where changes wouldn't apply on first save
 
   // Fetch order details for UPI message
   const [orderDetails, setOrderDetails] = useState<{
