@@ -10,7 +10,7 @@
 
 **Impact**: This created a frustrating user experience where users had to select items multiple times for them to "stick".
 
-## 🔍 **ROOT CAUSE ANALYSIS**
+## 🔍 **ROOT CAUSE ANALYSIS** 
 
 ### **Why This Was Happening:**
 
