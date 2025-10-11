@@ -19,13 +19,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Edit, Trash2, Download, MessageSquare, CreditCard, QrCode, Printer } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Download, MessageSquare, CreditCard, QrCode, Printer, Share2 } from 'lucide-react';
 import { doc, getDoc, deleteDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Bill, BillCreate, formatCurrency, calculateBillStatus, downloadPDF, printBill, formatBillDate, formatDateForDisplay, getBillStatusColor } from '@/utils/billingUtils';
 import { toast } from '@/hooks/use-toast';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
 import BillFormAdvanced from '@/components/BillFormAdvanced';
+import { getOrCreateShareToken, generatePublicBillUrl, generateWhatsAppShareUrl } from '@/utils/billShareUtils';
 
 const BillDetails = () => {
   const { billId } = useParams<{ billId: string }>();
@@ -37,6 +38,7 @@ const BillDetails = () => {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     if (billId) {
@@ -227,6 +229,39 @@ const BillDetails = () => {
     }
   };
 
+  const handleShareBill = async () => {
+    if (!bill) return;
+    
+    setSharing(true);
+    try {
+      // Generate or get existing share token
+      const token = await getOrCreateShareToken(bill.id);
+      
+      // Generate public bill URL
+      const publicUrl = generatePublicBillUrl(token);
+      
+      // Generate WhatsApp share URL
+      const whatsappUrl = generateWhatsAppShareUrl(bill.customerPhone, publicUrl);
+      
+      // Open WhatsApp
+      window.open(whatsappUrl, '_blank');
+      
+      toast({
+        title: "✅ Bill Shared",
+        description: "Opening WhatsApp to share bill link",
+      });
+    } catch (error) {
+      console.error('Error sharing bill:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate share link. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const handleBillSave = async (updatedBill: BillCreate) => {
     try {
       // For updates, we need the bill ID, so use the current bill's ID if not provided
@@ -378,12 +413,23 @@ const BillDetails = () => {
           
           <Button 
             variant="outline" 
+            onClick={handleShareBill}
+            disabled={sharing}
+            className="text-green-600 hover:bg-green-50"
+            size="sm"
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            {sharing ? 'Sharing...' : 'Share Bill'}
+          </Button>
+          
+          <Button 
+            variant="outline" 
             onClick={() => setShowWhatsAppModal(true)}
-            className="text-green-600"
+            className="text-blue-600"
             size="sm"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
-            Share
+            WhatsApp
           </Button>
           
           <Button variant="outline" onClick={handleDelete} className="text-red-600" size="sm">

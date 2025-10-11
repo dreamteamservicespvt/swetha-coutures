@@ -23,6 +23,8 @@ import NewBill from './pages/NewBill';
 import IncomeExpenses from './pages/IncomeExpenses';
 import BillMigration from './pages/BillMigration';
 import DateFormatFixer from './pages/DateFormatFixer';
+import DuplicateBillFixer from './pages/DuplicateBillFixer';
+import PublicBillView from './pages/PublicBillView';
 import ROIDashboard from './components/ROIDashboard';
 import StaffOrdersView from './components/StaffOrdersView';
 import StaffInventoryView from './components/StaffInventoryView';
@@ -37,6 +39,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            {/* Public route for viewing shared bills - no authentication required */}
+            <Route path="/view-bill/:token" element={<PublicBillView />} />
             <Route
               path="/dashboard"
               element={
@@ -263,6 +267,16 @@ function App() {
                 <ProtectedRoute adminOnly>
                   <Layout>
                     <BillMigration />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/duplicate-bill-fixer"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Layout>
+                    <DuplicateBillFixer />
                   </Layout>
                 </ProtectedRoute>
               }

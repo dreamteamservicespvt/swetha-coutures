@@ -785,6 +785,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
 
       const billData: BillCreate = {
         billId: formData.billId!,
+        billNumber: formData.billNumber, // Include billNumber field for proper sorting
         customerId: formData.customerId || selectedCustomer?.id || '',
         customerName: customerName,
         customerPhone: customerPhone,
