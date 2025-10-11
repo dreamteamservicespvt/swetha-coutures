@@ -771,6 +771,56 @@ const BillDetails = () => {
           </CardContent>
         </Card>
 
+        {/* Payment Screenshot Section */}
+        {bill.paymentScreenshot && (
+          <Card className="mb-4 sm:mb-6 border-green-200 bg-green-50">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-green-600" />
+                Payment Screenshot
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <div 
+                  className="relative cursor-pointer group"
+                  onClick={() => setShowQRCode(true)}
+                >
+                  <img
+                    src={bill.paymentScreenshot}
+                    alt="Payment Screenshot"
+                    className="w-20 h-20 object-cover rounded-lg border-2 border-green-300 group-hover:border-green-500 transition-all"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all flex items-center justify-center">
+                    <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-semibold">View Full</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-800">
+                    Payment screenshot uploaded by customer
+                  </p>
+                  {bill.paymentScreenshotUploadedAt && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Uploaded: {formatDateForDisplay(bill.paymentScreenshotUploadedAt)}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Open in new tab for full view
+                    window.open(bill.paymentScreenshot, '_blank');
+                  }}
+                  className="border-green-300 hover:bg-green-100"
+                >
+                  Open Full Screen
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Footer */}
         <Card>
           <CardContent className="pt-6 text-center">

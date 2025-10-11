@@ -57,7 +57,8 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
-  ChevronDown
+  ChevronDown,
+  Share2
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, where, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -68,6 +69,7 @@ import { useNavigate } from 'react-router-dom';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
 import BillingFilters from '@/components/BillingFilters';
 import BillingExportDialog from '@/components/BillingExportDialog';
+import { getOrCreateShareToken, generatePublicBillUrl, generateWhatsAppShareUrl } from '@/utils/billShareUtils';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -85,6 +87,7 @@ const Billing = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilterLoading, setDateFilterLoading] = useState(false);
   const [downloadingPdfBillId, setDownloadingPdfBillId] = useState<string | null>(null);
+  const [sharingBillId, setSharingBillId] = useState<string | null>(null);
   
   // Status update states
   const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -366,6 +369,32 @@ const Billing = () => {
         description: "Failed to prepare bill for printing",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleShareBill = async (bill: Bill, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSharingBillId(bill.id);
+    try {
+      const token = await getOrCreateShareToken(bill.id);
+      const publicUrl = generatePublicBillUrl(token);
+      const whatsappUrl = generateWhatsAppShareUrl(bill.customerPhone, publicUrl);
+      
+      window.open(whatsappUrl, '_blank');
+      
+      toast({
+        title: "✅ Bill Shared",
+        description: "Opening WhatsApp to share bill link",
+      });
+    } catch (error) {
+      console.error('Error sharing bill:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate share link",
+        variant: "destructive",
+      });
+    } finally {
+      setSharingBillId(null);
     }
   };
 
@@ -869,11 +898,16 @@ const Billing = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={(e) => handlePrintBill(bill, e)}
-                                className="hover:bg-gray-50 hover:border-gray-200 text-xs flex items-center justify-center transition-colors h-9 font-medium"
+                                onClick={(e) => handleShareBill(bill, e)}
+                                disabled={sharingBillId === bill.id}
+                                className="hover:bg-green-50 hover:border-green-200 text-green-600 text-xs flex items-center justify-center transition-colors h-9 font-medium"
                               >
-                                <Printer className="h-3.5 w-3.5 mr-1.5" />
-                                Print
+                                {sharingBillId === bill.id ? (
+                                  <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                ) : (
+                                  <Share2 className="h-3.5 w-3.5 mr-1.5" />
+                                )}
+                                {sharingBillId === bill.id ? 'Sharing...' : 'Share Bill'}
                               </Button>
                               
                               <Button

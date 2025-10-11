@@ -91,6 +91,10 @@ export interface Bill {
   qrCodeUrl: string;
   qrAmount?: number; // This should default to balance amount
   notes?: string;
+  paymentScreenshot?: string; // Cloudinary URL for payment screenshot uploaded by customer
+  paymentScreenshotUploadedAt?: any; // Timestamp when screenshot was uploaded
+  shareToken?: string; // Secure token for sharing bill
+  shareTokenCreatedAt?: any; // Timestamp when share token was created
   createdAt: any; // Creation timestamp - handles both string and Timestamp formats
   updatedAt: any; // Last update timestamp - handles both string and Timestamp formats
 }
