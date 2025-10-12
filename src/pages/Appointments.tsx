@@ -282,7 +282,12 @@ const Appointments = () => {
     message += `We look forward to seeing you! Please arrive 5 minutes early.\n\n`;
     message += `Best regards,\nTeam Swetha Couture`;
 
-    const whatsappUrl = `https://wa.me/${appointment.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    // Add country code to phone number
+    const cleanPhone = appointment.customerPhone.replace(/\D/g, '');
+    const phoneWithCountryCode = cleanPhone.length === 10 ? `91${cleanPhone}` : 
+                                  (cleanPhone.startsWith('91') && cleanPhone.length === 12) ? cleanPhone :
+                                  `91${cleanPhone}`;
+    const whatsappUrl = `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -313,7 +318,12 @@ const Appointments = () => {
     message += `Looking forward to meeting with you!\n\n`;
     message += `Best regards,\nSwetha Couture`;
 
-    const whatsappUrl = `https://wa.me/${appointment.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    // Add country code to phone number
+    const cleanPhone = appointment.customerPhone.replace(/\D/g, '');
+    const phoneWithCountryCode = cleanPhone.length === 10 ? `91${cleanPhone}` : 
+                                  (cleanPhone.startsWith('91') && cleanPhone.length === 12) ? cleanPhone :
+                                  `91${cleanPhone}`;
+    const whatsappUrl = `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 

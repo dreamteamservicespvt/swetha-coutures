@@ -81,11 +81,37 @@ export const getBillByShareToken = async (token: string): Promise<Bill | null> =
 };
 
 /**
- * Generate WhatsApp share URL with pre-filled message
+ * Add India country code (+91) to phone number if not already present
+ * @param phoneNumber - Phone number (can include special characters)
+ * @returns Phone number with country code
  */
-export const generateWhatsAppShareUrl = (phoneNumber: string, shareUrl: string): string => {
+export const addCountryCode = (phoneNumber: string): string => {
   // Remove any non-digit characters from phone number
   const cleanPhone = phoneNumber.replace(/\D/g, '');
+  
+  // If phone number is exactly 10 digits (standard Indian mobile), add country code
+  if (cleanPhone.length === 10) {
+    return `91${cleanPhone}`;
+  }
+  // If phone starts with 91 and is 12 digits, it already has country code
+  else if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+    return cleanPhone;
+  }
+  // If phone doesn't start with 91, prepend it
+  else if (!cleanPhone.startsWith('91')) {
+    return `91${cleanPhone}`;
+  }
+  
+  return cleanPhone;
+};
+
+/**
+ * Generate WhatsApp share URL with pre-filled message
+ * Automatically adds India country code (+91) if not present
+ */
+export const generateWhatsAppShareUrl = (phoneNumber: string, shareUrl: string): string => {
+  // Add country code to phone number
+  const phoneWithCountryCode = addCountryCode(phoneNumber);
   
   // Create the message
   const message = `Here is your bill: ${shareUrl}
@@ -99,7 +125,7 @@ Thank you for choosing Swetha Couture's 💖`;
   
   // Return WhatsApp URL
   // Use wa.me for universal compatibility (works on mobile and desktop)
-  return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+  return `https://wa.me/${phoneWithCountryCode}?text=${encodedMessage}`;
 };
 
 /**

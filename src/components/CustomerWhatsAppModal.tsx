@@ -238,7 +238,12 @@ Swetha's Couture Team`
 
   const handleSendWhatsApp = () => {
     if (phoneNumber && message) {
-      const whatsappUrl = `https://wa.me/${phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+      // Add country code to phone number
+      const cleanPhone = phoneNumber.replace(/\D/g, '');
+      const phoneWithCountryCode = cleanPhone.length === 10 ? `91${cleanPhone}` : 
+                                    (cleanPhone.startsWith('91') && cleanPhone.length === 12) ? cleanPhone :
+                                    `91${cleanPhone}`;
+      const whatsappUrl = `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     }
   };
