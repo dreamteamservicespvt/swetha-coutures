@@ -37,6 +37,7 @@ const BillDetails = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showScreenshotModal, setShowScreenshotModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
 
@@ -784,7 +785,7 @@ const BillDetails = () => {
               <div className="flex items-center gap-4">
                 <div 
                   className="relative cursor-pointer group"
-                  onClick={() => setShowQRCode(true)}
+                  onClick={() => setShowScreenshotModal(true)}
                 >
                   <img
                     src={bill.paymentScreenshot}
@@ -814,12 +815,44 @@ const BillDetails = () => {
                   }}
                   className="border-green-300 hover:bg-green-100"
                 >
-                  Open Full Screen
+                  Open in New Tab
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Payment Screenshot Modal */}
+        <Dialog open={showScreenshotModal} onOpenChange={setShowScreenshotModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+            <DialogHeader className="p-6 pb-2">
+              <DialogTitle>Payment Screenshot</DialogTitle>
+            </DialogHeader>
+            <div className="relative p-4">
+              <img
+                src={bill.paymentScreenshot}
+                alt="Payment Screenshot"
+                className="w-full h-auto max-h-[calc(90vh-150px)] object-contain rounded-lg"
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(bill.paymentScreenshot, '_blank')}
+                >
+                  Open in New Tab
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowScreenshotModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Footer */}
         <Card>

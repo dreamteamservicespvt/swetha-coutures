@@ -419,6 +419,8 @@ const PublicBillView = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-16 text-center">S.No</TableHead>
+                    <TableHead>Product</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Rate</TableHead>
@@ -426,14 +428,95 @@ const PublicBillView = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bill.items && bill.items.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(item.amount)}</TableCell>
-                    </TableRow>
-                  ))}
+                  {/* Products Structure */}
+                  {bill.products && bill.products.length > 0 ? (
+                    (() => {
+                      let serialNumber = 1;
+                      return bill.products.map((product, productIndex) => 
+                        product.descriptions.map((desc, descIndex) => (
+                          <TableRow key={`${productIndex}-${descIndex}`}>
+                            {descIndex === 0 && (
+                              <>
+                                <TableCell 
+                                  rowSpan={product.descriptions.length} 
+                                  className="text-center font-medium bg-gray-50 border-r"
+                                >
+                                  {serialNumber++}
+                                </TableCell>
+                                <TableCell 
+                                  rowSpan={product.descriptions.length} 
+                                  className="font-semibold bg-purple-50 border-r"
+                                >
+                                  {product.name}
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell>{desc.description}</TableCell>
+                            <TableCell className="text-right">{desc.qty}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(desc.rate)}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(desc.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      );
+                    })()
+                  ) : (
+                    /* Legacy Items Structure - Group by item type */
+                    (() => {
+                      const groupedItems: { [key: string]: typeof bill.items } = {};
+                      
+                      bill.items.forEach(item => {
+                        let productName = 'General Services';
+                        if (item.type === 'inventory') {
+                          productName = 'Materials & Supplies';
+                        } else if (item.type === 'staff') {
+                          productName = 'Professional Services';
+                        }
+                        
+                        if (!groupedItems[productName]) {
+                          groupedItems[productName] = [];
+                        }
+                        groupedItems[productName].push(item);
+                      });
+                      
+                      let serialNumber = 1;
+                      return Object.entries(groupedItems).map(([productName, items]) =>
+                        items.map((item, itemIndex) => (
+                          <TableRow key={`${productName}-${itemIndex}`}>
+                            {itemIndex === 0 && (
+                              <>
+                                <TableCell 
+                                  rowSpan={items.length} 
+                                  className="text-center font-medium bg-gray-50 border-r"
+                                >
+                                  {serialNumber++}
+                                </TableCell>
+                                <TableCell 
+                                  rowSpan={items.length} 
+                                  className="font-semibold bg-purple-50 border-r"
+                                >
+                                  {productName}
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell>{item.description}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(item.amount)}</TableCell>
+                          </TableRow>
+                        ))
+                      );
+                    })()
+                  )}
+                  <TableRow className="font-semibold bg-gray-100">
+                    <TableCell colSpan={5}>Items Subtotal</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(
+                        bill.products && bill.products.length > 0
+                          ? bill.products.reduce((sum, product) => sum + product.total, 0)
+                          : bill.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+                      )}
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
@@ -496,17 +579,17 @@ const PublicBillView = () => {
               </p>
               
               {/* Copyable UPI ID */}
-              <div className="bg-white rounded-lg border-2 border-green-300 p-4">
+              <div className="bg-white rounded-lg border-2 border-green-300 p-3 sm:p-4">
                 <p className="text-xs text-gray-600 mb-2 font-medium">UPI ID</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-50 rounded-md px-4 py-3 font-mono text-sm font-semibold text-gray-800 border border-gray-200">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex-1 bg-gray-50 rounded-md px-3 sm:px-4 py-2 sm:py-3 font-mono text-xs sm:text-sm font-semibold text-gray-800 border border-gray-200 overflow-x-auto whitespace-nowrap">
                     {bill.upiId}
                   </div>
                   <Button
                     onClick={handleCopyUPI}
                     variant={copiedUPI ? "default" : "outline"}
-                    size="lg"
-                    className={copiedUPI ? "bg-green-600 hover:bg-green-700 text-white" : "border-green-600 text-green-600 hover:bg-green-50"}
+                    size="default"
+                    className={`w-full sm:w-auto ${copiedUPI ? "bg-green-600 hover:bg-green-700 text-white" : "border-green-600 text-green-600 hover:bg-green-50"}`}
                   >
                     {copiedUPI ? (
                       <>
