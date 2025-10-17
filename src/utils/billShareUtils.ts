@@ -116,7 +116,7 @@ export const generateWhatsAppShareUrl = (phoneNumber: string, shareUrl: string):
   // Create the message
   const message = `Here is your bill: ${shareUrl}
 
-For your order, please review it and make the payment as soon as possible.
+For your order, please review it and Kindly make the payment at your earliest convenience. Thank you for your support!.
 
 Thank you for choosing Swetha Couture's 💖`;
   
