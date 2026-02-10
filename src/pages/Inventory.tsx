@@ -398,30 +398,40 @@ const Inventory = () => {
 
   // Render barcode when barcodeValue and ref are available
   useEffect(() => {
-    if (barcodeValue && barcodeRef.current) {
-      try {
-        // Clear existing barcode
+    // Use a small delay to ensure SVG ref is mounted in DOM
+    const timeoutId = setTimeout(() => {
+      if (barcodeValue && barcodeRef.current) {
+        try {
+          // Clear existing barcode
+          barcodeRef.current.innerHTML = '';
+          
+          JsBarcode(barcodeRef.current, barcodeValue, {
+            format: 'CODE128',
+            width: 3,
+            height: 100,
+            displayValue: false, // We show the value separately below
+            fontSize: 16,
+            margin: 15,
+            background: '#ffffff',
+            lineColor: '#000000',
+          });
+          
+          console.log('Barcode generated successfully:', barcodeValue);
+        } catch (error) {
+          console.error('Error generating barcode:', error);
+          toast({
+            title: 'Barcode Error',
+            description: 'Failed to generate barcode. Check console for details.',
+            variant: 'destructive',
+          });
+        }
+      } else if (!barcodeValue && barcodeRef.current) {
         barcodeRef.current.innerHTML = '';
-        
-        JsBarcode(barcodeRef.current, barcodeValue, {
-          format: 'CODE128',
-          width: 2,
-          height: 80,
-          displayValue: true,
-          fontSize: 14,
-          margin: 10,
-          background: '#ffffff',
-          lineColor: '#000000',
-        });
-        
-        console.log('Barcode generated successfully:', barcodeValue);
-      } catch (error) {
-        console.error('Error generating barcode:', error);
       }
-    } else if (!barcodeValue && barcodeRef.current) {
-      barcodeRef.current.innerHTML = '';
-    }
-  }, [barcodeValue]);
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [barcodeValue, isDialogOpen]);
 
   // Download barcode as PNG
   const downloadBarcode = () => {
@@ -1199,8 +1209,8 @@ const Inventory = () => {
                       <div className="flex flex-col items-center justify-center">
                         <svg 
                           ref={barcodeRef} 
-                          className="max-w-full h-auto"
-                          style={{ minHeight: '100px' }}
+                          className="max-w-full"
+                          style={{ minHeight: '120px', width: '100%', maxWidth: '400px' }}
                         ></svg>
                         <p className="text-base text-gray-700 dark:text-gray-300 mt-3 font-mono font-bold bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded">
                           {barcodeValue}
