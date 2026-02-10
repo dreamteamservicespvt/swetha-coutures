@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, ChevronDown, ChevronRight, Package, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Package, AlertTriangle, Scan } from 'lucide-react';
 import { Product, ProductDescription } from '@/utils/billingUtils';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -30,6 +30,9 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{type: 'product' | 'description', value: string} | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
 
   // Track new entries that haven't been saved yet
   const [newProductNames, setNewProductNames] = useState<Set<string>>(new Set());
@@ -226,6 +229,77 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
     onProductsChange([...products, newProduct]);
   };
 
+  const scanBarcodeAndAddProduct = async () => {
+    if (!barcodeInput.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a barcode value',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsScanning(true);
+    try {
+      // Fetch inventory items from Firestore
+      const inventorySnapshot = await getDocs(collection(db, 'inventory'));
+      
+      // Find item by barcode value
+      const matchedItem = inventorySnapshot.docs.find(doc => {
+        const data = doc.data();
+        return data.barcodeValue === barcodeInput.trim();
+      });
+
+      if (matchedItem) {
+        const itemData = matchedItem.data();
+        
+        // Create new product with inventory item details
+        const newProduct: Product = {
+          id: uuidv4(),
+          name: itemData.name || '',
+          total: 0,
+          descriptions: [{
+            id: uuidv4(),
+            description: `${itemData.category || ''} - ${itemData.type || ''}`.trim(),
+            qty: 1,
+            rate: itemData.costPerUnit || 0,
+            amount: itemData.costPerUnit || 0
+          }],
+          expanded: true
+        };
+
+        // Calculate product total
+        newProduct.total = newProduct.descriptions.reduce((sum, desc) => sum + desc.amount, 0);
+
+        onProductsChange([...products, newProduct]);
+        
+        toast({
+          title: 'Success',
+          description: `Added ${itemData.name} from barcode scan`,
+        });
+
+        // Close dialog and reset
+        setShowBarcodeScanner(false);
+        setBarcodeInput('');
+      } else {
+        toast({
+          title: 'Not Found',
+          description: 'No inventory item found with this barcode',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error scanning barcode:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to scan barcode',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   const removeProduct = (productId: string) => {
     onProductsChange(products.filter(p => p.id !== productId));
   };
@@ -397,6 +471,15 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Product
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setShowBarcodeScanner(true)}
+              className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
+              size="sm"
+            >
+              <Scan className="h-4 w-4 mr-2" />
+              Scan Barcode
             </Button>
             <Button
               type="button"
@@ -681,6 +764,82 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
               disabled={deleteConfirmText !== 'DELETE'}
             >
               Delete {deleteItem?.type}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Barcode Scanner Dialog */}
+      <Dialog open={showBarcodeScanner} onOpenChange={setShowBarcodeScanner}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Scan className="h-5 w-5 text-green-600" />
+              Scan Inventory Barcode
+            </DialogTitle>
+            <DialogDescription>
+              Enter or scan the barcode from your inventory item to automatically add it to billing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Package className="h-5 w-5 text-green-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-green-800">How it works</h4>
+                  <p className="text-sm text-green-700 mt-1">
+                    Enter the barcode value (e.g., INV-1234567890-ITEMNAME) and click "Scan" to fetch the item details from inventory.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="barcode-input">Barcode Value</Label>
+              <Input
+                id="barcode-input"
+                placeholder="INV-1234567890-ITEMNAME"
+                value={barcodeInput}
+                onChange={(e) => setBarcodeInput(e.target.value)}
+                className="font-mono"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isScanning) {
+                    scanBarcodeAndAddProduct();
+                  }
+                }}
+              />
+              <p className="text-xs text-gray-500">
+                Press Enter or click Scan to search
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowBarcodeScanner(false);
+                setBarcodeInput('');
+              }}
+              disabled={isScanning}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={scanBarcodeAndAddProduct}
+              disabled={!barcodeInput.trim() || isScanning}
+              className="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
+            >
+              {isScanning ? (
+                <>
+                  <div className="h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <Scan className="h-4 w-4 mr-2" />
+                  Scan
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
