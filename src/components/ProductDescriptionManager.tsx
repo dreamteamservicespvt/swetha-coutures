@@ -247,7 +247,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
             showZoomSliderIfSupported: true,
             defaultZoomValueIfSupported: 2,
             showTorchButtonIfSupported: true, // Flashlight for mobile
-            supportedScanTypes: [1], // Only camera scan, no file upload
+            supportedScanTypes: [0], // Only camera scan (0 = camera, 1 = file)
             rememberLastUsedCamera: true,
             formatsToSupport: [2, 8, 9, 10, 11], // CODE128, EAN13, EAN8, ITF, UPC (common barcode formats)
           },
