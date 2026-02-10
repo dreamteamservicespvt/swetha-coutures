@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Package, AlertTriangle, Star, Trash2, Calendar, Minus, Barcode, Edit, Download, Printer, RefreshCw } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Star, Trash2, Calendar, Minus, Barcode, Edit, Download, Printer, RefreshCw, Scan } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import jsPDF from 'jspdf';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where, Timestamp } from 'firebase/firestore';
@@ -109,6 +109,7 @@ const Inventory = () => {
     supplierEmail: '',
     location: '',
     notes: '',
+    externalBarcode: '', // For scanning existing product barcodes
     broughtAt: new Date(),
     usedAt: undefined as Date | undefined
   });
@@ -117,6 +118,7 @@ const Inventory = () => {
   const [newCategory, setNewCategory] = useState('');
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [isAddingNewType, setIsAddingNewType] = useState(false);
+  const [showExternalBarcodeField, setShowExternalBarcodeField] = useState(false);
   const [barcodeValue, setBarcodeValue] = useState('');
   const barcodeTimestampRef = useRef<number | null>(null);
   const barcodeRef = useRef<SVGSVGElement>(null);
@@ -310,7 +312,7 @@ const Inventory = () => {
         notes: formData.notes,
         broughtAt: Timestamp.fromDate(formData.broughtAt),
         ...(formData.usedAt && { usedAt: Timestamp.fromDate(formData.usedAt) }),
-        ...(barcodeValue && { barcodeValue }), // Always save barcode value
+        ...(barcodeValue && { barcodeValue }), // Save auto-generated barcode
         ...(barcodeURL && { barcodeURL }), // Save barcode URL if available
         lastUpdated: serverTimestamp(),
         ...(editingItem ? {} : { createdAt: serverTimestamp() })
@@ -360,6 +362,7 @@ const Inventory = () => {
       supplierEmail: '',
       location: '',
       notes: '',
+      externalBarcode: '',
       broughtAt: new Date(),
       usedAt: undefined
     });
@@ -571,6 +574,7 @@ const Inventory = () => {
 
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
+    
     setFormData({
       name: item.name || '',
       category: item.category || '',
@@ -584,6 +588,7 @@ const Inventory = () => {
       supplierEmail: item.supplier?.email || '',
       location: item.location || '',
       notes: item.notes || '',
+      externalBarcode: '',
       broughtAt: item.broughtAt?.toDate() || new Date(),
       usedAt: item.usedAt?.toDate() || undefined
     });
@@ -1174,38 +1179,36 @@ const Inventory = () => {
                   />
                 </div>
 
-                {/* Barcode Section */}
+                {/* Barcode Section - Auto-Generated for Scanning */}
                 {barcodeValue && (
-                  <div className="space-y-4 p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700">
+                  <div className="space-y-4 p-4 border-2 border-purple-200 rounded-lg bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-800 dark:to-gray-700">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Barcode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        <Label className="text-lg font-semibold">Generated Barcode</Label>
+                        <Barcode className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        <Label className="text-lg font-semibold">Barcode for Scanning</Label>
                       </div>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200">
                         Auto-generated
                       </Badge>
                     </div>
                     
-                    <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-900 p-6 rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-600">
-                      <svg 
-                        ref={barcodeRef} 
-                        className="max-w-full h-auto"
-                        style={{ minHeight: '100px' }}
-                      ></svg>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-mono">{barcodeValue}</p>
+                    <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border-2 border-dashed border-purple-300 dark:border-purple-600">
+                      <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-4 font-medium">
+                        📱 Scan this barcode in billing to add this product
+                      </p>
+                      <div className="flex flex-col items-center justify-center">
+                        <svg 
+                          ref={barcodeRef} 
+                          className="max-w-full h-auto"
+                          style={{ minHeight: '100px' }}
+                        ></svg>
+                        <p className="text-base text-gray-700 dark:text-gray-300 mt-3 font-mono font-bold bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded">
+                          {barcodeValue}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-3 justify-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={regenerateBarcode}
-                        className="flex items-center gap-2 bg-white hover:bg-green-50 dark:bg-gray-800 dark:hover:bg-gray-700"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        Regenerate
-                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -1226,8 +1229,8 @@ const Inventory = () => {
                       </Button>
                     </div>
 
-                    <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                      This unique barcode will be saved with the item
+                    <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                      💡 Print or download this barcode to scan it later in billing
                     </p>
                   </div>
                 )}
