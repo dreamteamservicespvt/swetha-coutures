@@ -242,10 +242,14 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
           'barcode-scanner-container',
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
+            qrbox: { width: 300, height: 120 }, // Barcode rectangular shape
+            aspectRatio: 1.777778, // 16:9 for better mobile camera view
             showZoomSliderIfSupported: true,
             defaultZoomValueIfSupported: 2,
+            showTorchButtonIfSupported: true, // Flashlight for mobile
+            supportedScanTypes: [1], // Only camera scan, no file upload
+            rememberLastUsedCamera: true,
+            formatsToSupport: [2, 8, 9, 10, 11], // CODE128, EAN13, EAN8, ITF, UPC (common barcode formats)
           },
           false
         );
