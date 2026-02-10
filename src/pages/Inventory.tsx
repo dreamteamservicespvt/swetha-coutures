@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Package, AlertTriangle, Star, Trash2, Calendar, Minus, Barcode, Edit } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Star, Trash2, Calendar, Minus, Barcode, Edit, Download, Printer, RefreshCw } from 'lucide-react';
+import JsBarcode from 'jsbarcode';
+import jsPDF from 'jspdf';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -53,6 +55,7 @@ interface InventoryItem {
   broughtAt?: any;
   usedAt?: any;
   barcodeURL?: string;
+  barcodeValue?: string;
   usageCount?: number;
 }
 
@@ -112,6 +115,11 @@ const Inventory = () => {
 
   const [newType, setNewType] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [isAddingNewType, setIsAddingNewType] = useState(false);
+  const [barcodeValue, setBarcodeValue] = useState('');
+  const barcodeTimestampRef = useRef<number | null>(null);
+  const barcodeRef = useRef<SVGSVGElement>(null);
 
   const units = ['pieces', 'meters', 'yards', 'kg', 'grams', 'rolls', 'sets'];
 
@@ -202,7 +210,12 @@ const Inventory = () => {
         ...doc.data()
       })) as InventoryCategory[];
       
-      setCategories(categoriesData || []);
+      // Remove duplicates based on category name (keep first occurrence)
+      const uniqueCategories = categoriesData.filter((cat, index, self) => 
+        index === self.findIndex(c => c.name.toLowerCase() === cat.name.toLowerCase())
+      );
+      
+      setCategories(uniqueCategories || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
       setCategories([]);
@@ -221,7 +234,12 @@ const Inventory = () => {
         ...doc.data()
       })) as InventoryType[];
       
-      setTypes(typesData || []);
+      // Remove duplicates based on type name (keep first occurrence)
+      const uniqueTypes = typesData.filter((type, index, self) => 
+        index === self.findIndex(t => t.name.toLowerCase() === type.name.toLowerCase())
+      );
+      
+      setTypes(uniqueTypes || []);
     } catch (error) {
       console.error('Error fetching types:', error);
       setTypes([]);
@@ -231,9 +249,48 @@ const Inventory = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Add new category if user is creating one
+      if (isAddingNewCategory && newCategory.trim()) {
+        // Check if category already exists
+        const existingCategory = categories.find(
+          cat => cat.name.toLowerCase() === newCategory.trim().toLowerCase()
+        );
+        if (!existingCategory) {
+          await addDoc(collection(db, 'inventoryCategories'), {
+            name: newCategory.trim(),
+            usageCount: 0,
+            createdAt: serverTimestamp()
+          });
+          await fetchCategories();
+        }
+      }
+
+      // Add new type if user is creating one
+      if (isAddingNewType && newType.trim()) {
+        // Check if type already exists
+        const existingType = types.find(
+          t => t.name.toLowerCase() === newType.trim().toLowerCase()
+        );
+        if (!existingType) {
+          await addDoc(collection(db, 'inventoryTypes'), {
+            name: newType.trim(),
+            usageCount: 0,
+            createdAt: serverTimestamp()
+          });
+          await fetchTypes();
+        }
+      }
+
       const quantity = parseFloat(formData.quantity) || 0;
       const costPerUnit = parseFloat(formData.costPerUnit) || 0;
       const totalValue = quantity * costPerUnit; // This will always be a valid number
+      
+      // Generate barcode URL from SVG if available
+      let barcodeURL = '';
+      if (barcodeRef.current && barcodeValue) {
+        const svgData = new XMLSerializer().serializeToString(barcodeRef.current);
+        barcodeURL = 'data:image/svg+xml;base64,' + btoa(svgData);
+      }
       
       const itemData = {
         name: formData.name,
@@ -253,6 +310,7 @@ const Inventory = () => {
         notes: formData.notes,
         broughtAt: Timestamp.fromDate(formData.broughtAt),
         ...(formData.usedAt && { usedAt: Timestamp.fromDate(formData.usedAt) }),
+        ...(barcodeURL && { barcodeURL, barcodeValue }),
         lastUpdated: serverTimestamp(),
         ...(editingItem ? {} : { createdAt: serverTimestamp() })
       };
@@ -302,6 +360,209 @@ const Inventory = () => {
       broughtAt: new Date(),
       usedAt: undefined
     });
+    setIsAddingNewCategory(false);
+    setIsAddingNewType(false);
+    setNewCategory('');
+    setNewType('');
+    setBarcodeValue('');
+    barcodeTimestampRef.current = null;
+  };
+
+  // Generate barcode when item name changes
+  useEffect(() => {
+    if (formData.name.trim()) {
+      const cleanName = formData.name.replace(/[^A-Za-z0-9]/g, '').substring(0, 10).toUpperCase();
+      
+      // Only generate new barcode if name changed or we don't have one yet
+      if (!barcodeValue || !barcodeValue.includes(cleanName)) {
+        // Generate or reuse timestamp
+        if (!barcodeTimestampRef.current) {
+          barcodeTimestampRef.current = Date.now();
+        }
+        
+        const uniqueId = `INV-${barcodeTimestampRef.current}-${cleanName}`;
+        setBarcodeValue(uniqueId);
+      }
+    } else {
+      setBarcodeValue('');
+      barcodeTimestampRef.current = null;
+    }
+  }, [formData.name]);
+
+  // Render barcode when barcodeValue and ref are available
+  useEffect(() => {
+    if (barcodeValue && barcodeRef.current) {
+      try {
+        // Clear existing barcode
+        barcodeRef.current.innerHTML = '';
+        
+        JsBarcode(barcodeRef.current, barcodeValue, {
+          format: 'CODE128',
+          width: 2,
+          height: 80,
+          displayValue: true,
+          fontSize: 14,
+          margin: 10,
+          background: '#ffffff',
+          lineColor: '#000000',
+        });
+        
+        console.log('Barcode generated successfully:', barcodeValue);
+      } catch (error) {
+        console.error('Error generating barcode:', error);
+      }
+    } else if (!barcodeValue && barcodeRef.current) {
+      barcodeRef.current.innerHTML = '';
+    }
+  }, [barcodeValue]);
+
+  // Download barcode as PNG
+  const downloadBarcode = () => {
+    if (!barcodeRef.current) return;
+    
+    const svg = barcodeRef.current;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `barcode-${formData.name || 'item'}.png`;
+          link.click();
+          URL.revokeObjectURL(url);
+          
+          toast({
+            title: 'Success',
+            description: 'Barcode downloaded successfully',
+          });
+        }
+      });
+    };
+    
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+  };
+
+  // Print barcode
+  const printBarcode = () => {
+    if (!barcodeRef.current) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const svg = barcodeRef.current;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Barcode - ${formData.name}</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+            }
+            .barcode-container {
+              text-align: center;
+              page-break-after: avoid;
+            }
+            .item-info {
+              margin-top: 20px;
+              font-family: Arial, sans-serif;
+            }
+            h2 { margin: 10px 0; }
+            @media print {
+              body { padding: 0; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="barcode-container">
+            ${svgData}
+            <div class="item-info">
+              <h2>${formData.name}</h2>
+              <p><strong>Category:</strong> ${formData.category || 'N/A'}</p>
+              <p><strong>Type:</strong> ${formData.type || 'N/A'}</p>
+              <p><strong>Location:</strong> ${formData.location || 'N/A'}</p>
+            </div>
+          </div>
+          <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; cursor: pointer;">Print</button>
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    
+    toast({
+      title: 'Print Ready',
+      description: 'Barcode ready to print',
+    });
+  };
+
+  // Manually regenerate barcode
+  const regenerateBarcode = () => {
+    if (!formData.name.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter an item name first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Generate new timestamp for regeneration
+    const newTimestamp = Date.now();
+    barcodeTimestampRef.current = newTimestamp;
+    
+    const uniqueId = `INV-${newTimestamp}-${formData.name.replace(/[^A-Za-z0-9]/g, '').substring(0, 10).toUpperCase()}`;
+    setBarcodeValue(uniqueId);
+    
+    if (barcodeRef.current) {
+      try {
+        barcodeRef.current.innerHTML = '';
+        JsBarcode(barcodeRef.current, uniqueId, {
+          format: 'CODE128',
+          width: 2,
+          height: 80,
+          displayValue: true,
+          fontSize: 14,
+          margin: 10,
+          background: '#ffffff',
+          lineColor: '#000000',
+        });
+        
+        toast({
+          title: 'Success',
+          description: 'Barcode regenerated successfully',
+        });
+      } catch (error) {
+        console.error('Error regenerating barcode:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to generate barcode',
+          variant: 'destructive',
+        });
+      }
+    }
   };
 
   const handleEdit = (item: InventoryItem) => {
@@ -322,6 +583,21 @@ const Inventory = () => {
       broughtAt: item.broughtAt?.toDate() || new Date(),
       usedAt: item.usedAt?.toDate() || undefined
     });
+    setIsAddingNewCategory(false);
+    setIsAddingNewType(false);
+    setNewCategory('');
+    setNewType('');
+    // Set existing barcode value if available
+    if (item.barcodeValue) {
+      setBarcodeValue(item.barcodeValue);
+      // Extract timestamp from existing barcode (format: INV-[timestamp]-[name])
+      const timestampMatch = item.barcodeValue.match(/INV-(\d+)-/);
+      if (timestampMatch) {
+        barcodeTimestampRef.current = parseInt(timestampMatch[1]);
+      }
+    } else {
+      barcodeTimestampRef.current = null;
+    }
     setIsDialogOpen(true);
   };
 
@@ -590,7 +866,16 @@ const Inventory = () => {
           >
             Manage Types
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog 
+            open={isDialogOpen} 
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setEditingItem(null);
+                resetForm();
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button 
                 className="btn-responsive bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600 shadow-lg hover:shadow-xl transition-all duration-200"
@@ -626,7 +911,18 @@ const Inventory = () => {
                   </div>
                   <div>
                     <Label htmlFor="category">Category</Label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                    <Select 
+                      value={isAddingNewCategory ? '__add_new__' : formData.category} 
+                      onValueChange={(value) => {
+                        if (value === '__add_new__') {
+                          setIsAddingNewCategory(true);
+                          setFormData({...formData, category: ''});
+                        } else {
+                          setIsAddingNewCategory(false);
+                          setFormData({...formData, category: value});
+                        }
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -639,13 +935,38 @@ const Inventory = () => {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    {isAddingNewCategory && (
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Enter new category name"
+                          value={newCategory}
+                          onChange={(e) => {
+                            setNewCategory(e.target.value);
+                            setFormData({...formData, category: e.target.value});
+                          }}
+                          className="border-blue-500 focus:border-blue-600"
+                        />
+                        <p className="text-xs text-blue-600 mt-1">Creating new category: {newCategory || '...'}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="form-grid-responsive">
                   <div>
                     <Label htmlFor="type">Type</Label>
-                    <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
+                    <Select 
+                      value={isAddingNewType ? '__add_new__' : formData.type} 
+                      onValueChange={(value) => {
+                        if (value === '__add_new__') {
+                          setIsAddingNewType(true);
+                          setFormData({...formData, type: ''});
+                        } else {
+                          setIsAddingNewType(false);
+                          setFormData({...formData, type: value});
+                        }
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -658,6 +979,20 @@ const Inventory = () => {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    {isAddingNewType && (
+                      <div className="mt-2">
+                        <Input
+                          placeholder="Enter new type name"
+                          value={newType}
+                          onChange={(e) => {
+                            setNewType(e.target.value);
+                            setFormData({...formData, type: e.target.value});
+                          }}
+                          className="border-blue-500 focus:border-blue-600"
+                        />
+                        <p className="text-xs text-blue-600 mt-1">Creating new type: {newType || '...'}</p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="location">Location</Label>
@@ -834,6 +1169,64 @@ const Inventory = () => {
                     rows={3}
                   />
                 </div>
+
+                {/* Barcode Section */}
+                {barcodeValue && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Barcode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <Label className="text-lg font-semibold">Generated Barcode</Label>
+                      </div>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                        Auto-generated
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-900 p-6 rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-600">
+                      <svg 
+                        ref={barcodeRef} 
+                        className="max-w-full h-auto"
+                        style={{ minHeight: '100px' }}
+                      ></svg>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-mono">{barcodeValue}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={regenerateBarcode}
+                        className="flex items-center gap-2 bg-white hover:bg-green-50 dark:bg-gray-800 dark:hover:bg-gray-700"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Regenerate
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={downloadBarcode}
+                        className="flex items-center gap-2 bg-white hover:bg-blue-50 dark:bg-gray-800 dark:hover:bg-gray-700"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={printBarcode}
+                        className="flex items-center gap-2 bg-white hover:bg-purple-50 dark:bg-gray-800 dark:hover:bg-gray-700"
+                      >
+                        <Printer className="h-4 w-4" />
+                        Print
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                      This unique barcode will be saved with the item
+                    </p>
+                  </div>
+                )}
 
                 <div className="responsive-actions">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="btn-responsive">
