@@ -13,7 +13,6 @@ import { toast } from '@/hooks/use-toast';
 import ProductNameInput from '@/components/ProductNameInput';
 import SubItemDescriptionInput from '@/components/SubItemDescriptionInput';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface ProductDescriptionManagerProps {
   products: Product[];
@@ -33,7 +32,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<any>(null);
   const scannerInitialized = useRef(false);
 
   // Track new entries that haven't been saved yet
@@ -237,35 +236,48 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
       scannerInitialized.current = true;
       
       // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        const scanner = new Html5QrcodeScanner(
-          'barcode-scanner-container',
-          {
-            fps: 10,
-            qrbox: { width: 300, height: 120 }, // Barcode rectangular shape
-            aspectRatio: 1.777778, // 16:9 for better mobile camera view
-            showZoomSliderIfSupported: true,
-            defaultZoomValueIfSupported: 2,
-            showTorchButtonIfSupported: true, // Flashlight for mobile
-            supportedScanTypes: [0], // Only camera scan (0 = camera, 1 = file)
-            rememberLastUsedCamera: true,
-            formatsToSupport: [2, 8, 9, 10, 11], // CODE128, EAN13, EAN8, ITF, UPC (common barcode formats)
-          },
-          false
-        );
+      setTimeout(async () => {
+        try {
+          // Dynamically import Html5QrcodeScanner to avoid SSR issues
+          const { Html5QrcodeScanner } = await import('html5-qrcode');
+          
+          const scanner = new Html5QrcodeScanner(
+            'barcode-scanner-container',
+            {
+              fps: 10,
+              qrbox: { width: 300, height: 120 }, // Barcode rectangular shape
+              aspectRatio: 1.777778, // 16:9 for better mobile camera view
+              showZoomSliderIfSupported: true,
+              defaultZoomValueIfSupported: 2,
+              showTorchButtonIfSupported: true, // Flashlight for mobile
+              supportedScanTypes: [0], // Only camera scan (0 = camera, 1 = file)
+              rememberLastUsedCamera: true,
+              formatsToSupport: [2, 8, 9, 10, 11], // CODE128, EAN13, EAN8, ITF, UPC (common barcode formats)
+            },
+            false
+          );
 
-        scanner.render(
-          (decodedText) => {
-            // Success callback - barcode detected
-            handleBarcodeDetected(decodedText);
-          },
-          (error) => {
-            // Error callback - can be ignored for continuous scanning
-            // console.warn('Barcode scan error:', error);
-          }
-        );
+          scanner.render(
+            (decodedText) => {
+              // Success callback - barcode detected
+              handleBarcodeDetected(decodedText);
+            },
+            (error) => {
+              // Error callback - can be ignored for continuous scanning
+              // console.warn('Barcode scan error:', error);
+            }
+          );
 
-        scannerRef.current = scanner;
+          scannerRef.current = scanner;
+        } catch (error) {
+          console.error('Error initializing scanner:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to initialize barcode scanner',
+            variant: 'destructive',
+          });
+          setShowBarcodeScanner(false);
+        }
       }, 100);
     }
 
@@ -289,6 +301,8 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
     setIsScanning(true);
     
     try {
+      console.log('Barcode detected:', barcodeValue);
+      
       // Stop the scanner
       if (scannerRef.current) {
         await scannerRef.current.clear();
@@ -298,61 +312,102 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
 
       // Fetch inventory items from Firestore
       const inventorySnapshot = await getDocs(collection(db, 'inventory'));
+      console.log('Total inventory items:', inventorySnapshot.docs.length);
       
-      // Find item by barcode value
+      // Log all barcode values in inventory for debugging
+      const allBarcodes = inventorySnapshot.docs.map(doc => ({
+        name: doc.data().name,
+        barcodeValue: doc.data().barcodeValue
+      }));
+      console.log('All inventory barcodes:', allBarcodes);
+      
+      // Find item by barcode value - try both exact match and flexible matching
       const matchedItem = inventorySnapshot.docs.find(doc => {
         const data = doc.data();
-        return data.barcodeValue === barcodeValue.trim();
+        const storedBarcode = data.barcodeValue?.trim();
+        const scannedBarcode = barcodeValue.trim();
+        
+        // Try exact match first
+        if (storedBarcode === scannedBarcode) {
+          console.log('Exact match found:', data.name);
+          return true;
+        }
+        
+        // Try case-insensitive match
+        if (storedBarcode?.toLowerCase() === scannedBarcode.toLowerCase()) {
+          console.log('Case-insensitive match found:', data.name);
+          return true;
+        }
+        
+        return false;
       });
 
       if (matchedItem) {
         const itemData = matchedItem.data();
+        console.log('Matched item data:', itemData);
+        
+        // Get price from inventory - use sellingPrice first, then costPerUnit
+        const itemPrice = parseFloat(itemData.sellingPrice) || parseFloat(itemData.costPerUnit) || 0;
+        const itemName = itemData.name || 'Scanned Item';
+        
+        // Create description text from category and type
+        let descriptionText = itemName;
+        if (itemData.category && itemData.type) {
+          descriptionText = `${itemData.category} - ${itemData.type}`;
+        } else if (itemData.category) {
+          descriptionText = itemData.category;
+        } else if (itemData.type) {
+          descriptionText = itemData.type;
+        }
         
         // Create new product with inventory item details
         const newProduct: Product = {
           id: uuidv4(),
-          name: itemData.name || '',
-          total: 0,
+          name: itemName,
+          total: itemPrice,
           descriptions: [{
             id: uuidv4(),
-            description: `${itemData.category || ''} - ${itemData.type || ''}`.trim(),
+            description: descriptionText,
             qty: 1,
-            rate: itemData.costPerUnit || 0,
-            amount: itemData.costPerUnit || 0
+            rate: itemPrice,
+            amount: itemPrice
           }],
           expanded: true
         };
 
-        // Calculate product total
-        newProduct.total = newProduct.descriptions.reduce((sum, desc) => sum + desc.amount, 0);
-
+        console.log('Adding new product:', newProduct);
         onProductsChange([...products, newProduct]);
         
         toast({
-          title: 'Success',
-          description: `Added ${itemData.name} from barcode scan`,
+          title: '✅ Product Added',
+          description: `${itemName} - ₹${itemPrice.toFixed(2)}`,
         });
 
         // Close dialog
         setShowBarcodeScanner(false);
       } else {
+        console.log('No match found for barcode:', barcodeValue);
         toast({
           title: 'Not Found',
           description: `No inventory item found with barcode: ${barcodeValue}`,
           variant: 'destructive',
         });
         
-        // Close dialog even if not found
-        setShowBarcodeScanner(false);
+        // Don't close dialog immediately so user can try again
+        setTimeout(() => {
+          setShowBarcodeScanner(false);
+        }, 2000);
       }
     } catch (error) {
       console.error('Error processing barcode:', error);
       toast({
         title: 'Error',
-        description: 'Failed to process barcode',
+        description: `Failed to process barcode: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
-      setShowBarcodeScanner(false);
+      setTimeout(() => {
+        setShowBarcodeScanner(false);
+      }, 2000);
     } finally {
       setIsScanning(false);
     }

@@ -310,10 +310,13 @@ const Inventory = () => {
         notes: formData.notes,
         broughtAt: Timestamp.fromDate(formData.broughtAt),
         ...(formData.usedAt && { usedAt: Timestamp.fromDate(formData.usedAt) }),
-        ...(barcodeURL && { barcodeURL, barcodeValue }),
+        ...(barcodeValue && { barcodeValue }), // Always save barcode value
+        ...(barcodeURL && { barcodeURL }), // Save barcode URL if available
         lastUpdated: serverTimestamp(),
         ...(editingItem ? {} : { createdAt: serverTimestamp() })
       };
+
+      console.log('Saving inventory item with barcode:', { name: formData.name, barcodeValue, hasBarcodeURL: !!barcodeURL });
 
       if (editingItem) {
         await updateDoc(doc(db, 'inventory', editingItem.id), itemData);
@@ -381,6 +384,7 @@ const Inventory = () => {
         }
         
         const uniqueId = `INV-${barcodeTimestampRef.current}-${cleanName}`;
+        console.log('Generated barcode value:', uniqueId);
         setBarcodeValue(uniqueId);
       }
     } else {
