@@ -479,7 +479,7 @@ const Layout = ({ children }: LayoutProps) => {
           </header>
 
           {/* Page Content - Scrollable main content area */}
-          <main className="flex-1 p-6 lg:p-8 overflow-y-auto overflow-x-visible bg-background">
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden bg-background">
             <div className="min-h-full">
               {children}
             </div>

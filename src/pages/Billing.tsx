@@ -832,9 +832,9 @@ const Billing = () => {
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
-                              <div className="text-xl font-semibold text-gray-900 truncate">{bill.customerName || 'N/A'}</div>
+                              <div className="text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{bill.customerName || 'N/A'}</div>
                             </div>
-                            <div className="text-right text-sm text-gray-500 ml-2 flex-shrink-0">
+                            <div className="text-right text-sm text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
                               <div className="flex items-center">
                                 <Calendar className="h-3 w-3 mr-1" />
                                 <span className="text-xs">
@@ -1017,22 +1017,22 @@ const Billing = () => {
 
                           {/* Customer Info */}
                           <div className="min-w-0">
-                            <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{bill.customerName || 'N/A'}</p>
-                            <p className="text-xs sm:text-sm text-gray-500 truncate">{bill.customerPhone || 'N/A'}</p>
+                            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">{bill.customerName || 'N/A'}</p>
+                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{bill.customerPhone || 'N/A'}</p>
                           </div>
 
                           {/* Amount Info */}
                           <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 border-t border-gray-100 dark:border-gray-800">
                             <div className="text-center min-w-0">
-                              <p className="text-xs text-gray-500 truncate">Total</p>
-                              <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{formatCurrency(bill.totalAmount || 0)}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Total</p>
+                              <p className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate">{formatCurrency(bill.totalAmount || 0)}</p>
                             </div>
                             <div className="text-center min-w-0">
-                              <p className="text-xs text-gray-500 truncate">Paid</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Paid</p>
                               <p className="font-semibold text-green-600 text-xs sm:text-sm truncate">{formatCurrency(bill.paidAmount || 0)}</p>
                             </div>
                             <div className="text-center min-w-0">
-                              <p className="text-xs text-gray-500 truncate">Balance</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Balance</p>
                               <p className={`font-semibold text-xs sm:text-sm truncate ${(bill.balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {formatCurrency(bill.balance || 0)}
                               </p>

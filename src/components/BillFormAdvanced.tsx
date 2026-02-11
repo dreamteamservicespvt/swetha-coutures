@@ -1033,9 +1033,9 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
-      {/* Header - hidden on mobile since NewBill page shows its own header */}
-      <div className="hidden sm:block bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-2xl">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 sm:p-6 rounded-xl sm:rounded-2xl">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">
           {bill ? 'Edit Bill' : (isFromOrder ? 'Create Bill from Order' : 'Create New Bill')}
         </h1>
@@ -1056,7 +1056,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Customer & Order Section */}
         <Card>
           <CardHeader>

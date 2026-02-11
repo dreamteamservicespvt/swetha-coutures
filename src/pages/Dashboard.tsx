@@ -185,7 +185,7 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
+              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                 {stat.value}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">{stat.description}</p>
@@ -246,7 +246,7 @@ const Dashboard = () => {
             <div className="space-y-4">
               {recentOrders.length > 0 ? (
                 recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="flex-1">
                       <div className="font-medium text-gray-900 dark:text-gray-100">
                         {order.customerName}
@@ -261,10 +261,10 @@ const Dashboard = () => {
                           ₹{order.totalAmount?.toLocaleString()}
                         </div>
                         <div className={`text-xs px-2 py-1 rounded-full inline-block ${
-                          order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                          order.status === 'ready' ? 'bg-blue-100 text-blue-700' :
-                          order.status === 'in-progress' ? 'bg-orange-100 text-orange-700' :
-                          'bg-gray-100 text-gray-700 dark:text-gray-300'
+                          order.status === 'delivered' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                          order.status === 'ready' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                          order.status === 'in-progress' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                          'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                         }`}>
                           {order.status?.replace('-', ' ')}
                         </div>
