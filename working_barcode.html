@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Inventory & Billing System</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        /* Navigation */
+        .nav {
+            background: #3b82f6;
+            padding: 1rem;
+            display: flex;
+            gap: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .nav button {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav button.active {
+            background: white;
+            color: #3b82f6;
+        }
+
+        .nav button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .nav button.active:hover {
+            background: white;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            padding: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Header */
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 44px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        /* Form */
+        .form-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .success-message {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .form-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .form-buttons button {
+            flex: 1;
+        }
+
+        /* Product Grid */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .product-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .product-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-card .price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 1rem;
+        }
+
+        .product-card .barcode-container {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .product-card .barcode-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .product-card .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .product-card .actions button {
+            flex: 1;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+
+        /* Scanner */
+        .scanner-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #reader {
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .scanner-info {
+            background: #dbeafe;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        /* Bill Items */
+        .bill-items {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .bill-items table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .bill-items th {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 2px solid #e5e7eb;
+            font-weight: 600;
+        }
+
+        .bill-items td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .bill-items input[type="number"] {
+            width: 60px;
+            padding: 0.5rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .bill-total {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .bill-total .total-amount {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            text-align: right;
+        }
+
+        .bill-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .bill-actions button {
+            flex: 1;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 1rem;
+        }
+
+        .modal-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bill-items table {
+                font-size: 0.875rem;
+            }
+
+            .bill-items input[type="number"] {
+                width: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <div class="nav">
+        <button class="active" onclick="switchPage('inventory')">Inventory</button>
+        <button onclick="switchPage('billing')">Billing</button>
+    </div>
+
+    <!-- Inventory Page -->
+    <div id="inventoryPage" class="page active">
+        <div class="page-header">
+            <h1>Inventory Management</h1>
+        </div>
+
+        <div id="successMessage" class="success-message" style="display: none;"></div>
+
+        <div class="form-container">
+            <h2>Add New Product</h2>
+            <form id="productForm">
+                <div class="form-group">
+                    <label for="productName">Product Name *</label>
+                    <input type="text" id="productName" placeholder="e.g., Coca Cola" required>
+                    <div id="nameError" class="error"></div>
+                </div>
+                <div class="form-group">
+                    <label for="productPrice">Price Per Unit ($) *</label>
+                    <input type="number" id="productPrice" step="0.01" min="0.01" placeholder="0.00" required>
+                    <div id="priceError" class="error"></div>
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-primary">Add Product</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="productList" class="product-grid"></div>
+    </div>
+
+    <!-- Billing Page -->
+    <div id="billingPage" class="page">
+        <div class="page-header">
+            <h1>Billing</h1>
+        </div>
+
+        <div class="scanner-container">
+            <button id="startScanBtn" class="btn btn-primary" style="width: 100%;" onclick="startScanner()">
+                📷 Scan Barcode
+            </button>
+            <div id="scannerInfo" class="scanner-info" style="display: none;">
+                Point your camera at the barcode
+            </div>
+            <div id="reader" style="display: none;"></div>
+            <button id="stopScanBtn" class="btn btn-danger" style="width: 100%; margin-top: 1rem; display: none;" onclick="stopScanner()">
+                Stop Scanner
+            </button>
+        </div>
+
+        <div id="scanMessage" class="success-message" style="display: none;"></div>
+
+        <div class="bill-items">
+            <h2>Current Bill</h2>
+            <table id="billTable">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Qty</th>
+                        <th>Subtotal</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="billTableBody">
+                    <tr>
+                        <td colspan="5" class="empty-state">No items in bill. Scan a barcode to add products.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bill-total">
+            <div style="text-align: right; margin-bottom: 0.5rem; font-size: 1.25rem; font-weight: 600;">TOTAL</div>
+            <div class="total-amount" id="billTotal">$0.00</div>
+        </div>
+
+        <div class="bill-actions">
+            <button class="btn btn-secondary" onclick="clearBill()">Clear Bill</button>
+            <button class="btn btn-success" onclick="completeBill()">Complete Bill</button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Confirm Action</h3>
+            <p id="modalMessage">Are you sure?</p>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-danger" id="modalConfirmBtn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Storage
+        let products = JSON.parse(localStorage.getItem('products')) || [];
+        let currentBill = JSON.parse(localStorage.getItem('currentBill')) || [];
+        let html5QrCode = null;
+        let confirmCallback = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderProducts();
+            renderBill();
+            
+            document.getElementById('productForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addProduct();
+            });
+        });
+
+        // Page Navigation
+        function switchPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            
+            if (page === 'inventory') {
+                document.getElementById('inventoryPage').classList.add('active');
+                document.querySelectorAll('.nav button')[0].classList.add('active');
+                stopScanner();
+            } else {
+                document.getElementById('billingPage').classList.add('active');
+                document.querySelectorAll('.nav button')[1].classList.add('active');
+            }
+        }
+
+        // Product Management
+        function addProduct() {
+            const name = document.getElementById('productName').value.trim();
+            const price = parseFloat(document.getElementById('productPrice').value);
+            
+            // Clear errors
+            document.getElementById('nameError').textContent = '';
+            document.getElementById('priceError').textContent = '';
+            
+            // Validation
+            let valid = true;
+            if (name.length < 2) {
+                document.getElementById('nameError').textContent = 'Product name must be at least 2 characters';
+                valid = false;
+            }
+            if (isNaN(price) || price < 0.01) {
+                document.getElementById('priceError').textContent = 'Price must be at least $0.01';
+                valid = false;
+            }
+            
+            if (!valid) return;
+            
+            // Create product
+            const product = {
+                id: Date.now().toString(),
+                name: name,
+                price: price,
+                barcode: Date.now().toString(),
+                createdAt: new Date().toISOString()
+            };
+            
+            products.push(product);
+            localStorage.setItem('products', JSON.stringify(products));
+            
+            clearForm();
+            renderProducts();
+            showSuccess('Product added successfully!');
+        }
+
+        function clearForm() {
+            document.getElementById('productForm').reset();
+            document.getElementById('nameError').textContent = '';
+            document.getElementById('priceError').textContent = '';
+        }
+
+        function deleteProduct(id) {
+            showConfirmModal('Delete Product', 'Are you sure you want to delete this product?', function() {
+                products = products.filter(p => p.id !== id);
+                localStorage.setItem('products', JSON.stringify(products));
+                renderProducts();
+                showSuccess('Product deleted successfully!');
+            });
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('productList');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<div class="empty-state"><h2>No Products Yet</h2><p>Add your first product using the form above!</p></div>';
+                return;
+            }
+            
+            container.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <h3>${product.name}</h3>
+                    <div class="price">$${product.price.toFixed(2)}</div>
+                    <div class="barcode-container">
+                        <svg id="barcode-${product.id}"></svg>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-danger btn-small" onclick="deleteProduct('${product.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Generate barcodes
+            products.forEach(product => {
+                try {
+                    JsBarcode(`#barcode-${product.id}`, product.barcode, {
+                        format: "CODE128",
+                        width: 2,
+                        height: 60,
+                        displayValue: true,
+                        fontSize: 14
+                    });
+                } catch (e) {
+                    console.error('Barcode generation error:', e);
+                }
+            });
+        }
+
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 3000);
+        }
+
+        // Barcode Scanner
+        function startScanner() {
+            if (products.length === 0) {
+                alert('Please add products to inventory first!');
+                return;
+            }
+
+            document.getElementById('startScanBtn').style.display = 'none';
+            document.getElementById('reader').style.display = 'block';
+            document.getElementById('stopScanBtn').style.display = 'block';
+            document.getElementById('scannerInfo').style.display = 'block';
+            
+            html5QrCode = new Html5Qrcode("reader");
+            
+            html5QrCode.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 150 }
+                },
+                onScanSuccess
+            ).catch(err => {
+                console.error('Camera error:', err);
+                alert('Unable to access camera. Please check permissions and make sure you are using HTTPS.');
+                stopScanner();
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('startScanBtn').style.display = 'block';
+                    document.getElementById('reader').style.display = 'none';
+                    document.getElementById('stopScanBtn').style.display = 'none';
+                    document.getElementById('scannerInfo').style.display = 'none';
+                    html5QrCode = null;
+                }).catch(err => {
+                    console.error('Stop scanner error:', err);
+                });
+            }
+        }
+
+        function onScanSuccess(decodedText) {
+            const product = products.find(p => p.barcode === decodedText);
+            
+            if (product) {
+                addToBill(product);
+                stopScanner();
+                
+                const el = document.getElementById('scanMessage');
+                el.textContent = `✓ Added ${product.name} to bill!`;
+                el.style.display = 'block';
+                setTimeout(() => {
+                    el.style.display = 'none';
+                }, 3000);
+            } else {
+                alert('Product not found in inventory!');
+            }
+        }
+
+        // Bill Management
+        function addToBill(product) {
+            const existingItem = currentBill.find(item => item.productId === product.id);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+                existingItem.subtotal = existingItem.quantity * existingItem.pricePerUnit;
+            } else {
+                currentBill.push({
+                    productId: product.id,
+                    productName: product.name,
+                    pricePerUnit: product.price,
+                    quantity: 1,
+                    subtotal: product.price
+                });
+            }
+            
+            localStorage.setItem('currentBill', JSON.stringify(currentBill));
+            renderBill();
+        }
+
+        function updateQuantity(productId, quantity) {
+            const item = currentBill.find(i => i.productId === productId);
+            if (item) {
+                item.quantity = Math.max(1, parseInt(quantity));
+                item.subtotal = item.quantity * item.pricePerUnit;
+                localStorage.setItem('currentBill', JSON.stringify(currentBill));
+                renderBill();
+            }
+        }
+
+        function removeFromBill(productId) {
+            currentBill = currentBill.filter(i => i.productId !== productId);
+            localStorage.setItem('currentBill', JSON.stringify(currentBill));
+            renderBill();
+        }
+
+        function renderBill() {
+            const tbody = document.getElementById('billTableBody');
+            
+            if (currentBill.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No items in bill. Scan a barcode to add products.</td></tr>';
+                document.getElementById('billTotal').textContent = '$0.00';
+                return;
+            }
+            
+            tbody.innerHTML = currentBill.map(item => `
+                <tr>
+                    <td>${item.productName}</td>
+                    <td>$${item.pricePerUnit.toFixed(2)}</td>
+                    <td>
+                        <input type="number" value="${item.quantity}" min="1" 
+                               onchange="updateQuantity('${item.productId}', this.value)">
+                    </td>
+                    <td>$${item.subtotal.toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-danger btn-small" onclick="removeFromBill('${item.productId}')">Remove</button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            const total = currentBill.reduce((sum, item) => sum + item.subtotal, 0);
+            document.getElementById('billTotal').textContent = '$' + total.toFixed(2);
+        }
+
+        function clearBill() {
+            if (currentBill.length === 0) return;
+            
+            showConfirmModal('Clear Bill', 'Clear all items from bill?', function() {
+                currentBill = [];
+                localStorage.setItem('currentBill', JSON.stringify(currentBill));
+                renderBill();
+            });
+        }
+
+        function completeBill() {
+            if (currentBill.length === 0) {
+                alert('Bill is empty! Add items first.');
+                return;
+            }
+            
+            const total = currentBill.reduce((sum, item) => sum + item.subtotal, 0);
+            
+            showConfirmModal('Complete Bill', `Complete bill with total $${total.toFixed(2)}?`, function() {
+                // Save to history (optional)
+                const billHistory = JSON.parse(localStorage.getItem('billHistory')) || [];
+                billHistory.push({
+                    id: Date.now().toString(),
+                    items: [...currentBill],
+                    total: total,
+                    createdAt: new Date().toISOString(),
+                    status: 'completed'
+                });
+                localStorage.setItem('billHistory', JSON.stringify(billHistory));
+                
+                // Clear current bill
+                currentBill = [];
+                localStorage.setItem('currentBill', JSON.stringify(currentBill));
+                renderBill();
+                
+                alert(`✓ Bill completed successfully! Total: $${total.toFixed(2)}`);
+            });
+        }
+
+        // Modal
+        function showConfirmModal(title, message, callback) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('confirmModal').classList.add('active');
+            confirmCallback = callback;
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            confirmCallback = null;
+        }
+
+        function confirmAction() {
+            if (confirmCallback) {
+                confirmCallback();
+                confirmCallback = null;
+            }
+            closeModal();
+        }
+    </script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Minus, Edit, Trash2, Barcode, Package2, TrendingUp, AlertTriangle, MapPin, X } from 'lucide-react';
 import ContactActions from '@/components/ContactActions';
+import BarcodeDisplay from '@/components/BarcodeDisplay';
 
 interface InventoryItem {
   id: string;
@@ -179,11 +180,8 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                     <Badge variant="secondary" className="text-xs">Scannable</Badge>
                   </div>
                   <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-900 rounded-lg p-4">
-                    {selectedItem.barcodeURL && (
-                      <img src={selectedItem.barcodeURL} alt="Barcode" className="h-24 object-contain" />
-                    )}
                     {selectedItem.barcodeValue && (
-                      <p className="text-sm font-mono text-gray-600 dark:text-gray-400 mt-3">{selectedItem.barcodeValue}</p>
+                      <BarcodeDisplay value={selectedItem.barcodeValue} height={60} className="max-w-full" />
                     )}
                   </div>
                 </div>

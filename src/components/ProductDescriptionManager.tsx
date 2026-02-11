@@ -249,7 +249,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
             showTorchButtonIfSupported: true, // Flashlight for mobile
             supportedScanTypes: [0], // Only camera scan (0 = camera, 1 = file)
             rememberLastUsedCamera: true,
-            formatsToSupport: [2, 8, 9, 10, 11], // CODE128, EAN13, EAN8, ITF, UPC (common barcode formats)
+            formatsToSupport: [5, 3, 4, 9, 10, 14, 15], // CODE_128(5), CODE_39(3), CODE_93(4), EAN_13(9), EAN_8(10), UPC_A(14), UPC_E(15)
           },
           false
         );
@@ -315,10 +315,10 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
           total: 0,
           descriptions: [{
             id: uuidv4(),
-            description: `${itemData.category || ''} - ${itemData.type || ''}`.trim(),
+            description: `${itemData.category || ''} - ${itemData.type || ''}`.trim().replace(/^-\s*|-\s*$/g, '') || 'Item',
             qty: 1,
-            rate: itemData.costPerUnit || 0,
-            amount: itemData.costPerUnit || 0
+            rate: itemData.sellingPrice || itemData.costPerUnit || 0,
+            amount: itemData.sellingPrice || itemData.costPerUnit || 0
           }],
           expanded: true
         };

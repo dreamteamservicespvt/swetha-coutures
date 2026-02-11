@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Minus, Edit, Trash2, Barcode } from 'lucide-react';
 import ContactActions from '@/components/ContactActions';
+import BarcodeDisplay from '@/components/BarcodeDisplay';
 
 interface InventoryItem {
   id: string;
@@ -23,6 +24,7 @@ interface InventoryItem {
   location: string;
   notes?: string;
   barcodeURL?: string;
+  barcodeValue?: string;
 }
 
 interface InventoryTableViewProps {
@@ -66,8 +68,8 @@ const InventoryTableView: React.FC<InventoryTableViewProps> = ({
                     <div>
                       <div className="font-medium text-dark-fix">{item.name || 'N/A'}</div>
                       <div className="text-sm text-muted-dark-fix">{item.location || 'N/A'}</div>
-                      {item.barcodeURL && (
-                        <img src={item.barcodeURL} alt="Barcode" className="w-16 h-8 mt-1" />
+                      {item.barcodeValue && (
+                        <BarcodeDisplay value={item.barcodeValue} width={1} height={30} showText={false} className="w-20 h-8 mt-1" />
                       )}
                     </div>
                   </TableCell>

@@ -11,14 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Package, AlertTriangle, Star, Trash2, Calendar, Minus, Barcode, Edit, Download, Printer, RefreshCw } from 'lucide-react';
-import JsBarcode from 'jsbarcode';
 import jsPDF from 'jspdf';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { generateBarcode } from '@/utils/barcodeUtils';
-import { uploadToCloudinary } from '@/utils/cloudinaryConfig';
+import { generateBarcodeValue } from '@/utils/barcodeUtils';
+import BarcodeDisplay from '@/components/BarcodeDisplay';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -118,8 +117,6 @@ const Inventory = () => {
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [isAddingNewType, setIsAddingNewType] = useState(false);
   const [barcodeValue, setBarcodeValue] = useState('');
-  const barcodeTimestampRef = useRef<number | null>(null);
-  const barcodeRef = useRef<SVGSVGElement>(null);
 
   const units = ['pieces', 'meters', 'yards', 'kg', 'grams', 'rolls', 'sets'];
 
@@ -285,21 +282,14 @@ const Inventory = () => {
       const costPerUnit = parseFloat(formData.costPerUnit) || 0;
       const totalValue = quantity * costPerUnit; // This will always be a valid number
       
-      // Generate barcode URL from SVG if available
-      let barcodeURL = '';
-      if (barcodeRef.current && barcodeValue) {
-        const svgData = new XMLSerializer().serializeToString(barcodeRef.current);
-        barcodeURL = 'data:image/svg+xml;base64,' + btoa(svgData);
-      }
-      
-      const itemData = {
+      const itemData: any = {
         name: formData.name,
         category: formData.category,
         type: formData.type,
         quantity,
         unit: formData.unit,
         costPerUnit,
-        totalValue, // Ensure this is always a valid number
+        totalValue,
         reorderLevel: parseFloat(formData.reorderLevel) || 0,
         supplier: {
           name: formData.supplierName,
@@ -310,10 +300,14 @@ const Inventory = () => {
         notes: formData.notes,
         broughtAt: Timestamp.fromDate(formData.broughtAt),
         ...(formData.usedAt && { usedAt: Timestamp.fromDate(formData.usedAt) }),
-        ...(barcodeURL && { barcodeURL, barcodeValue }),
         lastUpdated: serverTimestamp(),
         ...(editingItem ? {} : { createdAt: serverTimestamp() })
       };
+
+      // Always save barcodeValue — this is what the scanner matches against
+      if (barcodeValue) {
+        itemData.barcodeValue = barcodeValue;
+      }
 
       if (editingItem) {
         await updateDoc(doc(db, 'inventory', editingItem.id), itemData);
@@ -365,204 +359,25 @@ const Inventory = () => {
     setNewCategory('');
     setNewType('');
     setBarcodeValue('');
-    barcodeTimestampRef.current = null;
   };
 
-  // Generate barcode when item name changes
+  // Auto-generate barcode value when item name changes
   useEffect(() => {
-    if (formData.name.trim()) {
-      const cleanName = formData.name.replace(/[^A-Za-z0-9]/g, '').substring(0, 10).toUpperCase();
-      
-      // Only generate new barcode if name changed or we don't have one yet
-      if (!barcodeValue || !barcodeValue.includes(cleanName)) {
-        // Generate or reuse timestamp
-        if (!barcodeTimestampRef.current) {
-          barcodeTimestampRef.current = Date.now();
-        }
-        
-        const uniqueId = `INV-${barcodeTimestampRef.current}-${cleanName}`;
-        setBarcodeValue(uniqueId);
-      }
-    } else {
+    if (formData.name.trim() && !barcodeValue) {
+      setBarcodeValue(generateBarcodeValue(formData.name));
+    } else if (!formData.name.trim()) {
       setBarcodeValue('');
-      barcodeTimestampRef.current = null;
     }
   }, [formData.name]);
 
-  // Render barcode when barcodeValue and ref are available
-  useEffect(() => {
-    if (barcodeValue && barcodeRef.current) {
-      try {
-        // Clear existing barcode
-        barcodeRef.current.innerHTML = '';
-        
-        JsBarcode(barcodeRef.current, barcodeValue, {
-          format: 'CODE128',
-          width: 2,
-          height: 80,
-          displayValue: true,
-          fontSize: 14,
-          margin: 10,
-          background: '#ffffff',
-          lineColor: '#000000',
-        });
-        
-        console.log('Barcode generated successfully:', barcodeValue);
-      } catch (error) {
-        console.error('Error generating barcode:', error);
-      }
-    } else if (!barcodeValue && barcodeRef.current) {
-      barcodeRef.current.innerHTML = '';
-    }
-  }, [barcodeValue]);
-
-  // Download barcode as PNG
-  const downloadBarcode = () => {
-    if (!barcodeRef.current) return;
-    
-    const svg = barcodeRef.current;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const img = new Image();
-    
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `barcode-${formData.name || 'item'}.png`;
-          link.click();
-          URL.revokeObjectURL(url);
-          
-          toast({
-            title: 'Success',
-            description: 'Barcode downloaded successfully',
-          });
-        }
-      });
-    };
-    
-    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-  };
-
-  // Print barcode
-  const printBarcode = () => {
-    if (!barcodeRef.current) return;
-    
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    
-    const svg = barcodeRef.current;
-    const svgData = new XMLSerializer().serializeToString(svg);
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Print Barcode - ${formData.name}</title>
-          <style>
-            body {
-              margin: 0;
-              padding: 20px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              min-height: 100vh;
-            }
-            .barcode-container {
-              text-align: center;
-              page-break-after: avoid;
-            }
-            .item-info {
-              margin-top: 20px;
-              font-family: Arial, sans-serif;
-            }
-            h2 { margin: 10px 0; }
-            @media print {
-              body { padding: 0; }
-              button { display: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="barcode-container">
-            ${svgData}
-            <div class="item-info">
-              <h2>${formData.name}</h2>
-              <p><strong>Category:</strong> ${formData.category || 'N/A'}</p>
-              <p><strong>Type:</strong> ${formData.type || 'N/A'}</p>
-              <p><strong>Location:</strong> ${formData.location || 'N/A'}</p>
-            </div>
-          </div>
-          <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; cursor: pointer;">Print</button>
-        </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    
-    toast({
-      title: 'Print Ready',
-      description: 'Barcode ready to print',
-    });
-  };
-
-  // Manually regenerate barcode
+  // Regenerate barcode with new value
   const regenerateBarcode = () => {
     if (!formData.name.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter an item name first',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Please enter an item name first', variant: 'destructive' });
       return;
     }
-
-    // Generate new timestamp for regeneration
-    const newTimestamp = Date.now();
-    barcodeTimestampRef.current = newTimestamp;
-    
-    const uniqueId = `INV-${newTimestamp}-${formData.name.replace(/[^A-Za-z0-9]/g, '').substring(0, 10).toUpperCase()}`;
-    setBarcodeValue(uniqueId);
-    
-    if (barcodeRef.current) {
-      try {
-        barcodeRef.current.innerHTML = '';
-        JsBarcode(barcodeRef.current, uniqueId, {
-          format: 'CODE128',
-          width: 2,
-          height: 80,
-          displayValue: true,
-          fontSize: 14,
-          margin: 10,
-          background: '#ffffff',
-          lineColor: '#000000',
-        });
-        
-        toast({
-          title: 'Success',
-          description: 'Barcode regenerated successfully',
-        });
-      } catch (error) {
-        console.error('Error regenerating barcode:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to generate barcode',
-          variant: 'destructive',
-        });
-      }
-    }
+    setBarcodeValue(generateBarcodeValue(formData.name));
+    toast({ title: 'Success', description: 'Barcode regenerated' });
   };
 
   const handleEdit = (item: InventoryItem) => {
@@ -590,13 +405,6 @@ const Inventory = () => {
     // Set existing barcode value if available
     if (item.barcodeValue) {
       setBarcodeValue(item.barcodeValue);
-      // Extract timestamp from existing barcode (format: INV-[timestamp]-[name])
-      const timestampMatch = item.barcodeValue.match(/INV-(\d+)-/);
-      if (timestampMatch) {
-        barcodeTimestampRef.current = parseInt(timestampMatch[1]);
-      }
-    } else {
-      barcodeTimestampRef.current = null;
     }
     setIsDialogOpen(true);
   };
@@ -654,23 +462,17 @@ const Inventory = () => {
 
   const generateItemBarcode = async (itemId: string, itemName: string) => {
     try {
-      const barcodeUrl = await generateBarcode(itemId);
+      const barcodeVal = generateBarcodeValue(itemName);
       
-      // Convert data URL to blob and upload to Cloudinary
-      const response = await fetch(barcodeUrl);
-      const blob = await response.blob();
-      
-      const cloudinaryUrl = await uploadToCloudinary(new File([blob], `barcode-${itemId}.png`, { type: 'image/png' }));
-      
-      // Update item with barcode URL
+      // Save barcode value to Firestore — BarcodeDisplay component handles rendering
       await updateDoc(doc(db, 'inventory', itemId), {
-        barcodeURL: cloudinaryUrl,
+        barcodeValue: barcodeVal,
         lastUpdated: serverTimestamp()
       });
 
       toast({
         title: "Barcode Generated",
-        description: `Barcode generated for ${itemName}`,
+        description: `Scannable barcode generated for ${itemName}`,
       });
 
       fetchItems();
@@ -1184,12 +986,7 @@ const Inventory = () => {
                     </div>
                     
                     <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-900 p-6 rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-600">
-                      <svg 
-                        ref={barcodeRef} 
-                        className="max-w-full h-auto"
-                        style={{ minHeight: '100px' }}
-                      ></svg>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-mono">{barcodeValue}</p>
+                      <BarcodeDisplay value={barcodeValue} height={80} className="max-w-full" />
                     </div>
 
                     <div className="flex flex-wrap gap-3 justify-center">
@@ -1201,24 +998,6 @@ const Inventory = () => {
                       >
                         <RefreshCw className="h-4 w-4" />
                         Regenerate
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={downloadBarcode}
-                        className="flex items-center gap-2 bg-white hover:bg-blue-50 dark:bg-gray-800 dark:hover:bg-gray-700"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={printBarcode}
-                        className="flex items-center gap-2 bg-white hover:bg-purple-50 dark:bg-gray-800 dark:hover:bg-gray-700"
-                      >
-                        <Printer className="h-4 w-4" />
-                        Print
                       </Button>
                     </div>
 
