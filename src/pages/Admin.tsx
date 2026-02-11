@@ -54,53 +54,53 @@ const Admin = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-600">Overview of your business operations</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Admin Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-400">Overview of your business operations</p>
       </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Orders</CardTitle>
             <Package className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{stats.totalOrders}</div>
-            <p className="text-xs text-gray-500">Active: {stats.activeOrders}</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalOrders}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Active: {stats.activeOrders}</p>
           </CardContent>
         </Card>
         
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Customers</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Customers</CardTitle>
             <Users className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{stats.totalCustomers}</div>
-            <p className="text-xs text-gray-500">Registered customers</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalCustomers}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Registered customers</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</CardTitle>
             <TrendingUp className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{stats.totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">From completed orders</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{stats.totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">From completed orders</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Today's Appointments</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Today's Appointments</CardTitle>
             <Clock className="h-5 w-5 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{stats.todaysAppointments}</div>
-            <p className="text-xs text-gray-500">Scheduled for today</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.todaysAppointments}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Scheduled for today</p>
           </CardContent>
         </Card>
       </div>
@@ -123,15 +123,15 @@ const Admin = () => {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Pending:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Pending:</span>
                     <span className="font-medium">{stats.pendingOrders}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">In Progress:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">In Progress:</span>
                     <span className="font-medium">{stats.activeOrders}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Completed:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Completed:</span>
                     <span className="font-medium">{stats.completedOrders}</span>
                   </div>
                 </div>
@@ -145,10 +145,10 @@ const Admin = () => {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Low Stock Items:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Low Stock Items:</span>
                     <span className="font-medium text-red-600">{stats.lowStockItems}</span>
                   </div>
-                  <p className="text-xs text-gray-500">Items requiring reorder</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Items requiring reorder</p>
                 </div>
               </CardContent>
             </Card>
@@ -175,7 +175,7 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 Advanced reporting features coming soon...
               </div>
             </CardContent>

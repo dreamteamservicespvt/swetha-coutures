@@ -173,7 +173,7 @@ const OrderCalendar: React.FC<OrderCalendarProps> = ({ orders, onDateSelect }) =
                       </div>
                     ))}
                     {selectedDateData.placed.length > 3 && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         +{selectedDateData.placed.length - 3} more
                       </div>
                     )}

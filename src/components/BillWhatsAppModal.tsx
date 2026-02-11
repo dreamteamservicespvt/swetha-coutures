@@ -70,7 +70,7 @@ const BillWhatsAppModal: React.FC<BillWhatsAppModalProps> = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Send WhatsApp Message</DialogTitle>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
             <span>To: {customerName}</span>
             <Badge variant="outline">{customerPhone}</Badge>
           </div>

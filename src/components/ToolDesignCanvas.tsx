@@ -1666,7 +1666,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'select' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('select')}
-              className={`w-10 h-10 p-0 ${activeTool === 'select' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'select' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Select Tool (V)"
             >
               <MousePointer2 className="h-4 w-4" />
@@ -1676,7 +1676,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'pencil' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('pencil')}
-              className={`w-10 h-10 p-0 ${activeTool === 'pencil' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'pencil' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Pencil Tool (P)"
             >
               <Pen className="h-4 w-4" />
@@ -1686,7 +1686,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'rectangle' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('rectangle')}
-              className={`w-10 h-10 p-0 ${activeTool === 'rectangle' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'rectangle' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Rectangle Tool (R)"
             >
               <Square className="h-4 w-4" />
@@ -1696,7 +1696,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'circle' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('circle')}
-              className={`w-10 h-10 p-0 ${activeTool === 'circle' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'circle' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Circle Tool (C)"
             >
               <CircleIcon className="h-4 w-4" />
@@ -1706,7 +1706,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'line' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('line')}
-              className={`w-10 h-10 p-0 ${activeTool === 'line' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'line' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Line Tool (L)"
             >
               <Minus className="h-4 w-4" />
@@ -1716,7 +1716,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'arrow' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('arrow')}
-              className={`w-10 h-10 p-0 ${activeTool === 'arrow' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'arrow' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Arrow Tool (A)"
             >
               <ArrowRight className="h-4 w-4" />
@@ -1726,7 +1726,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
               variant={activeTool === 'text' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTool('text')}
-              className={`w-10 h-10 p-0 ${activeTool === 'text' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'text' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Text Tool (T)"
             >
               <Type className="h-4 w-4" />
@@ -1739,7 +1739,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
                 setActiveTool('image');
                 fileInputRef.current?.click();
               }}
-              className={`w-10 h-10 p-0 ${activeTool === 'image' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+              className={`w-10 h-10 p-0 ${activeTool === 'image' ? 'bg-blue-600 text-white' : 'hover:bg-gray-200 dark:bg-gray-700'}`}
               title="Upload Image (I)"
             >
               <ImageIcon className="h-4 w-4" />
@@ -1986,7 +1986,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
             </div>
 
             {/* Status Bar */}
-            <div className="h-8 bg-gray-100 border-t flex items-center px-4 text-xs text-gray-600">
+            <div className="h-8 bg-gray-100 border-t flex items-center px-4 text-xs text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-4">
                 <span>Tool: <strong className="capitalize">{activeTool}</strong></span>
                 {selectedObject && (
@@ -2033,7 +2033,7 @@ const ToolDesignCanvas: React.FC<ToolDesignCanvasProps> = ({
                     {activeTool === 'image' && '(I)'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   {activeTool === 'select' && 'Click and drag to select objects. Use handles to resize.'}
                   {activeTool === 'pencil' && 'Click and drag to draw freehand lines.'}
                   {activeTool === 'rectangle' && 'Click and drag to draw rectangles.'}

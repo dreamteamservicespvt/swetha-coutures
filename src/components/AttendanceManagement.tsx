@@ -132,7 +132,7 @@ const AttendanceManagement = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="font-medium">{record.staffName}</h3>
-                    <p className="text-sm text-gray-600">{record.date}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{record.date}</p>
                   </div>
                   <Badge variant="outline" className="bg-yellow-100 text-yellow-700">
                     {record.status}
@@ -184,7 +184,7 @@ const AttendanceManagement = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             No pending attendance records to review.
           </div>
         )}

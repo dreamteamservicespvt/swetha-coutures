@@ -390,7 +390,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
           {billId || bill ? 'Edit Bill' : 'Create New Bill'}
         </h2>
-        <p className="text-sm sm:text-base text-gray-600">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Manage your billing details and customer information here.
         </p>
         
@@ -421,7 +421,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
             <Label htmlFor="customer" className="text-sm sm:text-base">Select Customer *</Label>
             {isCustomerLocked && !showChangeCustomer ? (
               <div className="space-y-2">
-                <Input value={customerName} readOnly className="bg-gray-100" />
+                <Input value={customerName} readOnly className="bg-gray-100 dark:bg-gray-800" />
                 <Input value={customerPhone} readOnly className="bg-gray-100 text-sm" />
                 {customerEmail && <Input value={customerEmail} readOnly className="bg-gray-100 text-sm" />}
               </div>
@@ -456,7 +456,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
         {/* Items Section */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className="text-lg font-semibold text-gray-900">Bill Items</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Bill Items</h3>
             <Button
               type="button"
               onClick={addItem}
@@ -474,7 +474,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
             {items.map((item, index) => {
               const stockWarning = getStockWarning(item.description, item.quantity);
               return (
-                <div key={item.id} className="border rounded-lg p-4 space-y-4 bg-gray-50">
+                <div key={item.id} className="border rounded-lg p-4 space-y-4 bg-gray-50 dark:bg-gray-800/50">
                   {/* Mobile Layout */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="lg:col-span-2">
@@ -570,7 +570,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Calculations */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Calculations</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Calculations</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm">GST (%)</Label>
@@ -630,7 +630,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
 
           {/* Summary and QR Payment */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Bill Summary</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Bill Summary</h3>
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
@@ -683,7 +683,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
                   Regenerate QR
                 </Button>
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Amount encoded in QR: ₹{qrAmount.toFixed(2)}. Edit if you need a partial-payment QR.
               </p>
               

@@ -1203,7 +1203,7 @@ const Inventory = () => {
                 >
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{item.name}</h3>
-                    <p className="text-sm text-gray-600">{item.category} • {item.type}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{item.category} • {item.type}</p>
                     <div className="flex items-center space-x-4 mt-2">
                       <span className="font-medium">{item.quantity} {item.unit}</span>
                       <Badge 
@@ -1226,7 +1226,7 @@ const Inventory = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">₹{(item.totalValue || 0).toLocaleString()}</p>
-                    <p className="text-sm text-gray-600">₹{(item.costPerUnit || 0).toFixed(2)}/unit</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">₹{(item.costPerUnit || 0).toFixed(2)}/unit</p>
                   </div>
                 </div>
                 
@@ -1234,13 +1234,13 @@ const Inventory = () => {
                   <div className="mt-4 pt-4 border-t space-y-3">
                     <div>
                       <p className="text-sm font-medium">Location: {item.location}</p>
-                      {item.notes && <p className="text-sm text-gray-600">Notes: {item.notes}</p>}
+                      {item.notes && <p className="text-sm text-gray-600 dark:text-gray-400">Notes: {item.notes}</p>}
                     </div>
                     
                     <div>
                       <p className="text-sm font-medium">Supplier: {item.supplier?.name}</p>
                       <div className="flex items-center space-x-2 mt-1">
-                        <p className="text-sm text-gray-600">{item.supplier?.phone}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{item.supplier?.phone}</p>
                         {item.supplier?.phone && (
                           <ContactActions 
                             phone={item.supplier.phone}

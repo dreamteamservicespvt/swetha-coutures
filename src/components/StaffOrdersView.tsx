@@ -119,7 +119,7 @@ const StaffOrdersView = () => {
       case 'delivered':
         return 'bg-purple-100 text-purple-700';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 text-gray-700 dark:text-gray-300';
     }
   };
 
@@ -210,7 +210,7 @@ const StaffOrdersView = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <User className="h-5 w-5 text-gray-500" />
+                    <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                     <div>
                       <CardTitle className="text-lg">Customer: {order.customerName}</CardTitle>
                       <CardDescription>
@@ -229,26 +229,26 @@ const StaffOrdersView = () => {
               <CardContent>
                 <div className="space-y-4">
                   {order.items.map((item, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                    <div key={index} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Item Description</label>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Item Description</label>
                           <p className="font-medium">{item.description}</p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Category</label>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Category</label>
                           <p>{item.category}</p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Quantity</label>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Quantity</label>
                           <p>{item.quantity}</p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Order Date</label>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Order Date</label>
                           <p>{item.orderDate ? new Date(item.orderDate).toLocaleDateString() : 'Not set'}</p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Delivery Date</label>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Delivery Date</label>
                           <p className={
                             item.deliveryDate && new Date(item.deliveryDate) < new Date() 
                               ? 'text-red-600 font-medium' 
@@ -258,15 +258,15 @@ const StaffOrdersView = () => {
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Item Status</label>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Item Status</label>
                           <Badge className={getStatusColor(item.status)}>
                             {item.status}
                           </Badge>
                         </div>
                       </div>
                       {item.notes && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <label className="text-sm font-medium text-gray-600">Notes</label>
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</label>
                           <p className="text-sm text-gray-700 mt-1">{item.notes}</p>
                         </div>
                       )}
@@ -312,7 +312,7 @@ const StaffOrdersView = () => {
             <CardContent className="text-center py-12">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Assigned Orders</h3>
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-gray-400">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'No orders match your current filters.' 
                   : 'You have no orders assigned to you at the moment.'}

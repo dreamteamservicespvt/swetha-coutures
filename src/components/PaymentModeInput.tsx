@@ -149,7 +149,7 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
       case 'cash': return 'bg-green-100 text-green-800';
       case 'online': return 'bg-blue-100 text-blue-800';
       case 'split': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800 dark:text-gray-200';
     }
   };
 
@@ -165,15 +165,15 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
         {/* Payment Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
           <div className="text-center">
-            <p className="text-sm text-gray-600">Total Amount</p>
-            <p className="text-lg font-bold text-gray-900">{formatCurrency(totalAmount)}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Amount</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCurrency(totalAmount)}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Total Paid</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Paid</p>
             <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Balance</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Balance</p>
             <p className="text-lg font-bold text-red-600">{formatCurrency(totalAmount - totalPaid)}</p>
           </div>
         </div>
@@ -199,7 +199,7 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
         {/* Add New Payment */}
         {!disabled && (
           <div className="border rounded-lg p-4 space-y-4">
-            <h4 className="font-semibold text-gray-900">Add Payment</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100">Add Payment</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -282,10 +282,10 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
         {/* Payment History */}
         {paymentRecords.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-semibold text-gray-900">Payment History</h4>
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100">Payment History</h4>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {paymentRecords.map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg bg-white">
+                <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg bg-white dark:bg-gray-900">
                   <div className="flex items-center gap-3">
                     <Badge className={getPaymentColor(record.type)}>
                       <div className="flex items-center gap-1">
@@ -298,7 +298,7 @@ const PaymentModeInput: React.FC<PaymentModeInputProps> = ({
                     </Badge>
                     <div>
                       <p className="font-medium">{formatCurrency(record.amount)}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {record.paymentDate instanceof Date 
                           ? record.paymentDate.toLocaleDateString()
                           : new Date(record.paymentDate).toLocaleDateString()

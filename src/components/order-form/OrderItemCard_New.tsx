@@ -258,7 +258,7 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                           onClick={() => selectMadeForSuggestion(suggestion.name)}
                         >
                           <div className="font-medium">{suggestion.name}</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             Used {suggestion.frequency} time{suggestion.frequency !== 1 ? 's' : ''}
                           </div>
                         </div>
@@ -365,7 +365,7 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={dismissSizeSuggestions}
-                        className="text-gray-500"
+                        className="text-gray-500 dark:text-gray-400"
                       >
                         ×
                       </Button>
@@ -488,7 +488,7 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             {/* Design Images - Simple display only */}
             <div>
               <Label className="text-base font-medium mb-2 block">Design Images</Label>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
                 {item.designImages && item.designImages.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {item.designImages.map((image, imgIndex) => (

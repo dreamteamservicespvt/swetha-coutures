@@ -385,13 +385,13 @@ const EditableCombobox: React.FC<EditableComboboxProps> = ({
               )}
 
               {filteredOptions.length === 0 && !searchValue && (
-                <div className="px-3 py-4 text-center text-sm text-gray-500">
+                <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No options available
                 </div>
               )}
 
               {filteredOptions.length === 0 && searchValue && !exactMatch && (
-                <div className="px-3 py-4 text-center text-sm text-gray-500">
+                <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No options match your search
                 </div>
               )}

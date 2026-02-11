@@ -262,12 +262,12 @@ Swetha's Couture Team`
           <div className="space-y-4">
             <Card>
               <CardContent className="p-4">
-                <Label className="text-sm font-medium text-gray-700">Selected Phone Numbers</Label>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Selected Phone Numbers</Label>
                 <Textarea
                   value={numbersText}
                   readOnly
                   rows={8}
-                  className="mt-2 bg-gray-50"
+                  className="mt-2 bg-gray-50 dark:bg-gray-800/50"
                   placeholder="Phone numbers will appear here..."
                 />
                 <div className="flex flex-wrap gap-2 mt-3">
@@ -295,7 +295,7 @@ Swetha's Couture Team`
                 <div className="space-y-4">
                   {/* Template Selection */}
                   <div>
-                    <Label className="text-sm font-medium text-gray-700">Choose Message Template</Label>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Choose Message Template</Label>
                     <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                       <SelectTrigger className="mt-2">
                         <SelectValue placeholder="Select a message template" />
@@ -343,7 +343,7 @@ Swetha's Couture Team`
 
                   {/* Message Editor */}
                   <div>
-                    <Label className="text-sm font-medium text-gray-700">Message Content</Label>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Message Content</Label>
                     <Textarea
                       value={presetMessage}
                       onChange={(e) => setPresetMessage(e.target.value)}

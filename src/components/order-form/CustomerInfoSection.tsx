@@ -80,7 +80,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     <div className="font-medium text-gray-900 dark:text-gray-100">{customer.name}</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">{customer.phone}</div>
                     {customer.email && (
-                      <div className="text-xs text-gray-500 dark:text-gray-500">{customer.email}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">{customer.email}</div>
                     )}
                     {customer.address && (
                       <div className="text-xs text-gray-500 dark:text-gray-500 truncate">{customer.address}</div>

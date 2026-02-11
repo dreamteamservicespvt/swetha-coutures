@@ -131,7 +131,7 @@ const MultipleItemsSection: React.FC<MultipleItemsSectionProps> = ({
                         <div className="flex items-center space-x-2">
                           <span className="font-medium">Item {index + 1}</span>
                           {item.category && (
-                            <span className="text-sm text-gray-500">- {item.category}</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">- {item.category}</span>
                           )}
                         </div>
                         <div className="flex items-center space-x-2">
@@ -237,7 +237,7 @@ const MultipleItemsSection: React.FC<MultipleItemsSectionProps> = ({
               </Button>
               
               <div className="text-right">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
                   Total Quantity: {getTotalQuantity()}
                 </div>
                 <div className="text-lg font-semibold">
@@ -247,7 +247,7 @@ const MultipleItemsSection: React.FC<MultipleItemsSectionProps> = ({
             </div>
           </div>
         ) : (
-          <div className="text-center py-4 text-gray-500">
+          <div className="text-center py-4 text-gray-500 dark:text-gray-400">
             <p>Enable "Multiple Items" to add multiple items to this order</p>
           </div>
         )}

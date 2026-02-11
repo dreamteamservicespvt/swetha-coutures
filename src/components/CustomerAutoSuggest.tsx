@@ -237,10 +237,10 @@ const CustomerAutoSuggest: React.FC<CustomerAutoSuggestProps> = ({
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">{customer.name}</div>
-                  <div className="text-sm text-gray-600">{customer.phone}</div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">{customer.name}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{customer.phone}</div>
                   {customer.email && (
-                    <div className="text-sm text-gray-500">{customer.email}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{customer.email}</div>
                   )}
                 </div>
                 <div className="text-right text-xs text-gray-400">

@@ -60,7 +60,7 @@ const StaffAssignment: React.FC<StaffAssignmentProps> = ({
     return (
       <div className="space-y-2">
         <Label>Assign Staff</Label>
-        <div className="text-sm text-gray-500">Loading staff...</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Loading staff...</div>
       </div>
     );
   }
@@ -88,7 +88,7 @@ const StaffAssignment: React.FC<StaffAssignmentProps> = ({
                   className={`p-3 transition-all duration-200 hover:shadow-md ${
                     isSelected 
                       ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200' 
-                      : 'hover:bg-gray-50'
+                      : 'hover:bg-gray-50 dark:bg-gray-800/50'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
@@ -103,7 +103,7 @@ const StaffAssignment: React.FC<StaffAssignmentProps> = ({
                     </Avatar>
                     <div className="flex-1">
                       <div className="font-medium text-sm">{member.name}</div>
-                      <div className="text-xs text-gray-500">{member.designation}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{member.designation}</div>
                       <div className="text-xs text-gray-400">{member.phone}</div>
                     </div>
                   </div>

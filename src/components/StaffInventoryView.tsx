@@ -130,7 +130,7 @@ const StaffInventoryView = () => {
             <div className="flex items-center">
               <Package className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Items</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Items</p>
                 <p className="text-2xl font-bold">{items.length}</p>
               </div>
             </div>
@@ -142,7 +142,7 @@ const StaffInventoryView = () => {
             <div className="flex items-center">
               <CheckCircle className="h-8 w-8 text-green-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">In Stock</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">In Stock</p>
                 <p className="text-2xl font-bold">
                   {items.filter(item => getStockStatus(item).status === 'in-stock').length}
                 </p>
@@ -156,7 +156,7 @@ const StaffInventoryView = () => {
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-yellow-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Low Stock</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Low Stock</p>
                 <p className="text-2xl font-bold">
                   {items.filter(item => getStockStatus(item).status === 'low-stock').length}
                 </p>
@@ -170,7 +170,7 @@ const StaffInventoryView = () => {
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-red-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Out of Stock</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Out of Stock</p>
                 <p className="text-2xl font-bold">
                   {items.filter(item => getStockStatus(item).status === 'out-of-stock').length}
                 </p>
@@ -257,14 +257,14 @@ const StaffInventoryView = () => {
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Available Quantity</label>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Available Quantity</label>
                           <p className="text-lg font-bold">
                             {item.quantity} {item.unit}
                           </p>
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Reorder Level</label>
-                          <p className="text-sm text-gray-700">
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Reorder Level</label>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
                             {item.reorderLevel} {item.unit}
                           </p>
                         </div>
@@ -272,21 +272,21 @@ const StaffInventoryView = () => {
                       
                       {item.location && (
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Location</label>
-                          <p className="text-sm text-gray-700">{item.location}</p>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Location</label>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{item.location}</p>
                         </div>
                       )}
                       
                       {item.notes && (
                         <div>
-                          <label className="text-sm font-medium text-gray-600">Notes</label>
-                          <p className="text-sm text-gray-700">{item.notes}</p>
+                          <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</label>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{item.notes}</p>
                         </div>
                       )}
                       
                       {/* Progress bar for stock level */}
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Stock Level</label>
+                        <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Stock Level</label>
                         <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                           <div 
                             className={`h-2 rounded-full ${
@@ -311,7 +311,7 @@ const StaffInventoryView = () => {
             <CardContent className="text-center py-12">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Items Found</h3>
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-gray-400">
                 {searchTerm || categoryFilter !== 'all' || stockFilter !== 'all'
                   ? 'No items match your current filters.' 
                   : 'No inventory items available.'}

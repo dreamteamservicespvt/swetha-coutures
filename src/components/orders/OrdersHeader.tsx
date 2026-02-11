@@ -34,14 +34,14 @@ const OrdersHeader: React.FC<OrdersHeaderProps> = ({
           </Button>
         )}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-600">Manage customer orders and track progress</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage customer orders and track progress</p>
         </div>
       </div>
       <div className="flex items-center space-x-3">
         {/* Manual View Toggle - only show when not in calendar view */}
         {view !== 'calendar' && (
-          <div className="flex rounded-lg border bg-white">
+          <div className="flex rounded-lg border bg-white dark:bg-gray-900">
             <Button
               variant={view === 'list' && adaptiveView === 'list' ? 'default' : 'ghost'}
               size="sm"

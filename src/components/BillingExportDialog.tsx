@@ -245,7 +245,7 @@ const BillingExportDialog: React.FC<BillingExportDialogProps> = ({ bills, open, 
 
         <div className="flex-1 overflow-auto p-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {columns.filter(col => col.enabled).length} of {columns.length} columns selected
             </div>
             <div className="flex gap-2">
@@ -276,7 +276,7 @@ const BillingExportDialog: React.FC<BillingExportDialogProps> = ({ bills, open, 
                 <div className="p-2 min-w-max">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-100">
+                      <tr className="bg-gray-100 dark:bg-gray-800">
                         {columns.filter(col => col.enabled).map(col => (
                           <th key={col.id} className="text-left p-2 border-b whitespace-nowrap">{col.title}</th>
                         ))}
@@ -297,7 +297,7 @@ const BillingExportDialog: React.FC<BillingExportDialogProps> = ({ bills, open, 
                       ))}
                       {bills.length > 5 && (
                         <tr>
-                          <td colSpan={columns.filter(col => col.enabled).length} className="p-2 text-center text-gray-500">
+                          <td colSpan={columns.filter(col => col.enabled).length} className="p-2 text-center text-gray-500 dark:text-gray-400">
                             ... and {bills.length - 5} more records
                           </td>
                         </tr>

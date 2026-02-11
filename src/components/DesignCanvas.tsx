@@ -398,10 +398,10 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({
         </DialogHeader>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+        <div className="flex items-center justify-between p-4 border-b bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center space-x-4">
             {/* Tools */}
-            <div className="flex space-x-1 border rounded-lg p-1 bg-white">
+            <div className="flex space-x-1 border rounded-lg p-1 bg-white dark:bg-gray-900">
               <Button
                 variant={activeTool === 'select' ? 'default' : 'ghost'}
                 size="sm"
@@ -476,7 +476,7 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({
                   <button
                     key={color}
                     className={`w-6 h-6 rounded border-2 ${
-                      activeColor === color ? 'border-gray-800' : 'border-gray-300'
+                      activeColor === color ? 'border-gray-800' : 'border-gray-300 dark:border-gray-600'
                     }`}
                     style={{ backgroundColor: color }}
                     onClick={() => setActiveColor(color)}
@@ -584,7 +584,7 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({
 
         {/* Canvas */}
         <div className="flex-1 flex justify-center items-center bg-gray-50 p-4 min-h-[600px]">
-          <div className="border border-gray-300 shadow-lg bg-white">
+          <div className="border border-gray-300 shadow-lg bg-white dark:bg-gray-900">
             <canvas 
               ref={canvasRef}
               style={{ 
@@ -596,8 +596,8 @@ const DesignCanvas: React.FC<DesignCanvasProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center p-4 border-t bg-gray-50">
-          <div className="text-sm text-gray-600">
+        <div className="flex justify-between items-center p-4 border-t bg-gray-50 dark:bg-gray-800/50">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             {canvasEmpty ? 'Canvas is empty - draw something first' : 'Ready to save'}
           </div>
           <div className="flex space-x-3">

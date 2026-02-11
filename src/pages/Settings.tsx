@@ -217,8 +217,8 @@ const Settings = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600">Manage your business settings and preferences</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+        <p className="text-gray-600 dark:text-gray-400">Manage your business settings and preferences</p>
       </div>
 
       <Tabs defaultValue="business" className="space-y-6">
@@ -392,7 +392,7 @@ const Settings = () => {
                               onChange={(e) => updateBusinessHours(day, 'open', e.target.value)}
                               className="w-32"
                             />
-                            <span className="text-sm text-gray-500">to</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">to</span>
                             <Input
                               type="time"
                               value={daySettings.close}
@@ -402,7 +402,7 @@ const Settings = () => {
                           </>
                         )}
                         {daySettings.closed && (
-                          <span className="text-sm text-gray-500">Closed</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Closed</span>
                         )}
                       </div>
                     );
@@ -471,7 +471,7 @@ const Settings = () => {
                     id="userRole"
                     value={userProfile.role}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-gray-50 dark:bg-gray-800/50"
                   />
                 </div>
               </div>
@@ -502,7 +502,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">Email Notifications</h4>
-                    <p className="text-sm text-gray-600">Receive notifications via email</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Receive notifications via email</p>
                   </div>
                   <Switch
                     checked={notificationSettings.emailNotifications}
@@ -513,7 +513,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">SMS Notifications</h4>
-                    <p className="text-sm text-gray-600">Receive notifications via SMS</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Receive notifications via SMS</p>
                   </div>
                   <Switch
                     checked={notificationSettings.smsNotifications}
@@ -526,7 +526,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">Order Updates</h4>
-                    <p className="text-sm text-gray-600">Get notified about order status changes</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Get notified about order status changes</p>
                   </div>
                   <Switch
                     checked={notificationSettings.orderUpdates}
@@ -537,7 +537,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">Appointment Reminders</h4>
-                    <p className="text-sm text-gray-600">Receive reminders for upcoming appointments</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Receive reminders for upcoming appointments</p>
                   </div>
                   <Switch
                     checked={notificationSettings.appointmentReminders}
@@ -548,7 +548,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">Low Stock Alerts</h4>
-                    <p className="text-sm text-gray-600">Get alerted when inventory is running low</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Get alerted when inventory is running low</p>
                   </div>
                   <Switch
                     checked={notificationSettings.lowStockAlerts}
@@ -559,7 +559,7 @@ const Settings = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium">Payment Reminders</h4>
-                    <p className="text-sm text-gray-600">Send reminders for pending payments</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Send reminders for pending payments</p>
                   </div>
                   <Switch
                     checked={notificationSettings.paymentReminders}

@@ -157,7 +157,7 @@ const DesignContextMenu: React.FC<ContextMenuProps> = ({
           <button
             key={index}
             className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-3 transition-colors ${
-              item.destructive ? 'text-red-600 hover:bg-red-50' : 'text-gray-700'
+              item.destructive ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 dark:text-gray-300'
             }`}
             onClick={() => handleAction(item.action)}
             disabled={!item.enabled}

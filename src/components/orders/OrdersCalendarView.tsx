@@ -217,16 +217,16 @@ const OrdersCalendarView: React.FC<OrdersCalendarViewProps> = ({ orders, onDateS
                         {dayData && (
                           <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex space-x-0.5">
                             {dayData.placed.length > 0 && (
-                              <div key={`placed-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-teal-500'}`}></div>
+                              <div key={`placed-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white dark:bg-gray-900' : 'bg-teal-500'}`}></div>
                             )}
                             {dayData.due.length > 0 && (
-                              <div key={`due-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-orange-500'}`}></div>
+                              <div key={`due-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white dark:bg-gray-900' : 'bg-orange-500'}`}></div>
                             )}
                             {dayData.overdue.length > 0 && (
-                              <div key={`overdue-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-red-500'}`}></div>
+                              <div key={`overdue-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white dark:bg-gray-900' : 'bg-red-500'}`}></div>
                             )}
                             {dayData.ready.length > 0 && (
-                              <div key={`ready-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-green-500'}`}></div>
+                              <div key={`ready-${dateKey}`} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white dark:bg-gray-900' : 'bg-green-500'}`}></div>
                             )}
                           </div>
                         )}
@@ -261,7 +261,7 @@ const OrdersCalendarView: React.FC<OrdersCalendarViewProps> = ({ orders, onDateS
                       </div>
                     ))}
                     {selectedDateData.placed.length > 3 && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         +{selectedDateData.placed.length - 3} more
                       </div>
                     )}

@@ -80,7 +80,7 @@ const MostlyUsedFilters = ({
               variant="outline" 
               size="sm" 
               onClick={onClearFilters}
-              className="text-gray-600"
+              className="text-gray-600 dark:text-gray-400"
             >
               Clear Filters
             </Button>
@@ -93,7 +93,7 @@ const MostlyUsedFilters = ({
           <div>
             <div className="flex items-center space-x-2 mb-2">
               <Tag className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-gray-700">Categories</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Categories</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {categories.map(({ category, count }) => (
@@ -111,7 +111,7 @@ const MostlyUsedFilters = ({
                   {category}
                   <Badge 
                     variant="secondary" 
-                    className="ml-2 h-4 text-xs bg-white/20 text-current border-0"
+                    className="ml-2 h-4 text-xs bg-white dark:bg-gray-900/20 text-current border-0"
                   >
                     {count}
                   </Badge>
@@ -126,7 +126,7 @@ const MostlyUsedFilters = ({
           <div>
             <div className="flex items-center space-x-2 mb-2">
               <Package className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-gray-700">Types</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Types</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {types.map(({ type, count }) => (
@@ -144,7 +144,7 @@ const MostlyUsedFilters = ({
                   {type}
                   <Badge 
                     variant="secondary" 
-                    className="ml-2 h-4 text-xs bg-white/20 text-current border-0"
+                    className="ml-2 h-4 text-xs bg-white dark:bg-gray-900/20 text-current border-0"
                   >
                     {count}
                   </Badge>
@@ -157,8 +157,8 @@ const MostlyUsedFilters = ({
         {categories.length === 0 && types.length === 0 && (
           <div className="text-center py-4">
             <Package className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">No usage data available yet</p>
-            <p className="text-xs text-gray-500">Start taking orders to see popular items</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">No usage data available yet</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Start taking orders to see popular items</p>
           </div>
         )}
       </CardContent>

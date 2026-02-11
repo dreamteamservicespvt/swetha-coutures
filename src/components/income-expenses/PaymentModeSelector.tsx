@@ -112,7 +112,7 @@ const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
       case 'cash': return 'bg-green-100 text-green-800';
       case 'online': return 'bg-blue-100 text-blue-800';
       case 'split': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800 dark:text-gray-200';
     }
   };
 
@@ -123,7 +123,7 @@ const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
           {getPaymentIcon(paymentType)}
           {title}
         </CardTitle>
-        <p className="text-xs text-gray-600">{description}</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400">{description}</p>
       </CardHeader>
       <CardContent className="space-y-3 sm:space-y-4">
         {/* Payment Type Selection */}
@@ -209,7 +209,7 @@ const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({
           )}
 
           {/* Payment Summary */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between p-2 bg-green-50 rounded text-xs sm:text-sm">
               <div className="flex items-center gap-1">
                 <Banknote className="h-3 w-3 text-green-600" />

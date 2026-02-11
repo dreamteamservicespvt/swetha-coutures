@@ -300,7 +300,7 @@ const PublicBillView = () => {
           <CardContent className="p-6">
             <div className="flex flex-col items-center space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-              <p className="text-gray-600">Loading your bill...</p>
+              <p className="text-gray-600 dark:text-gray-400">Loading your bill...</p>
             </div>
           </CardContent>
         </Card>
@@ -373,22 +373,22 @@ const PublicBillView = () => {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Name</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
                 <p className="font-semibold">{bill.customerName}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Phone</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
                 <p className="font-semibold">{bill.customerPhone}</p>
               </div>
               {bill.customerEmail && (
                 <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
                   <p className="font-semibold">{bill.customerEmail}</p>
                 </div>
               )}
               {bill.customerAddress && (
                 <div>
-                  <p className="text-sm text-gray-500">Address</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
                   <p className="font-semibold">{bill.customerAddress}</p>
                 </div>
               )}
@@ -396,12 +396,12 @@ const PublicBillView = () => {
             <Separator />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Bill Date</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Bill Date</p>
                 <p className="font-semibold">{formatDateForDisplay(bill.date)}</p>
               </div>
               {bill.dueDate && (
                 <div>
-                  <p className="text-sm text-gray-500">Due Date</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Due Date</p>
                   <p className="font-semibold">{formatDateForDisplay(bill.dueDate)}</p>
                 </div>
               )}
@@ -507,7 +507,7 @@ const PublicBillView = () => {
                       );
                     })()
                   )}
-                  <TableRow className="font-semibold bg-gray-100">
+                  <TableRow className="font-semibold bg-gray-100 dark:bg-gray-800">
                     <TableCell colSpan={5}>Items Subtotal</TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(
@@ -667,19 +667,19 @@ const PublicBillView = () => {
             <CardContent className="space-y-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Account Name</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Account Name</p>
                   <p className="font-semibold">{bill.bankDetails.accountName}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Account Number</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Account Number</p>
                   <p className="font-semibold">{bill.bankDetails.accountNumber}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">IFSC Code</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">IFSC Code</p>
                   <p className="font-semibold">{bill.bankDetails.ifsc}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Bank Name</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Bank Name</p>
                   <p className="font-semibold">{bill.bankDetails.bankName}</p>
                 </div>
               </div>
@@ -770,7 +770,7 @@ const PublicBillView = () => {
             </DialogHeader>
             <div className="space-y-4">
               {imagePreviewUrl && (
-                <div className="relative bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
+                <div className="relative bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-gray-600">
                   <img
                     src={imagePreviewUrl}
                     alt="Payment Screenshot Preview"

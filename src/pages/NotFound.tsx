@@ -13,7 +13,7 @@ const NotFound = () => {
       <Card className="max-w-md w-full text-center">
         <CardHeader>
           <div className="text-6xl font-bold text-gray-400 mb-4">404</div>
-          <CardTitle className="text-2xl font-bold text-gray-900">Page Not Found</CardTitle>
+          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">Page Not Found</CardTitle>
           <CardDescription>
             The page you're looking for doesn't exist or has been moved.
           </CardDescription>

@@ -40,7 +40,7 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
       case 'ready': return 'bg-green-100 text-green-700 border-green-200';
       case 'delivered': return 'bg-purple-100 text-purple-700 border-purple-200';
       case 'cancelled': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -152,7 +152,7 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
           {/* Horizontal scroll wrapper with enhanced scrolling */}
           <div className="table-horizontal-scroll">
             <table className="w-full min-w-[1200px]">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-gray-800/50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
@@ -163,21 +163,21 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredOrders.map(order => {
                   const madeForItems = getMadeForItems(order);
                   return (
-                    <tr key={order.id} className="hover:bg-gray-50">
+                    <tr key={order.id} className="hover:bg-gray-50 dark:bg-gray-800/50">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             #{order.orderNumber.slice(-4)}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{order.customerName}</div>
-                        <div className="text-sm text-gray-500">{order.customerPhone}</div>
+                        <div className="text-sm text-gray-900 dark:text-gray-100">{order.customerName}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{order.customerPhone}</div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -187,7 +187,7 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
                               {order.itemType}
                             </div>
                             {order.quantity > 1 && (
-                              <div className="text-xs text-gray-500">Qty: {order.quantity}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">Qty: {order.quantity}</div>
                             )}
                           </div>
                         </div>
@@ -206,7 +206,7 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
                           {order.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         <div className="flex items-center mb-1">
                           <Calendar className="h-3 w-3 mr-1" />
                           <span className="truncate">Order: {order.orderDate}</span>
@@ -264,7 +264,7 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
                               size="sm"
                               variant="outline"
                               onClick={() => window.open(`tel:${order.customerPhone}`)}
-                              className="text-xs px-2 py-1.5 h-8 hover:bg-gray-50 hover:border-gray-200 text-gray-600"
+                              className="text-xs px-2 py-1.5 h-8 hover:bg-gray-50 hover:border-gray-200 text-gray-600 dark:text-gray-400"
                               title="Call Customer"
                             >
                               <Phone className="h-3 w-3" />

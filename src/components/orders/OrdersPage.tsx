@@ -364,7 +364,7 @@ const OrdersPage = () => {
         <div className="text-center p-8">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Error rendering content</h3>
-          <p className="text-gray-600">Please try refreshing the page</p>
+          <p className="text-gray-600 dark:text-gray-400">Please try refreshing the page</p>
         </div>
       );
     }
@@ -375,12 +375,12 @@ const OrdersPage = () => {
       {/* Header with view toggle */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-600">Manage customer orders and track progress</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Orders</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage customer orders and track progress</p>
         </div>
         <div className="flex items-center space-x-3">
           {/* View Toggle */}
-          <div className="flex rounded-lg border bg-white">
+          <div className="flex rounded-lg border bg-white dark:bg-gray-900">
             <Button
               variant={view === 'list' ? 'default' : 'ghost'}
               size="sm"

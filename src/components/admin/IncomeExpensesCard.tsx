@@ -238,7 +238,7 @@ const IncomeExpensesCard: React.FC<IncomeExpensesCardProps> = ({ onClick }) => {
     } else if (financialData.trend === 'down') {
       return <TrendingDown className="h-5 w-5 text-red-600" />;
     } else {
-      return <ArrowRight className="h-5 w-5 text-gray-600" />;
+      return <ArrowRight className="h-5 w-5 text-gray-600 dark:text-gray-400" />;
     }
   };
 
@@ -264,7 +264,7 @@ const IncomeExpensesCard: React.FC<IncomeExpensesCardProps> = ({ onClick }) => {
       onClick={handleClick}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">
+        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
           Income & Expenses
         </CardTitle>
         <div className={`p-3 rounded-lg ${getBgColorClass()} group-hover:scale-110 transition-transform duration-300`}>
@@ -277,9 +277,9 @@ const IncomeExpensesCard: React.FC<IncomeExpensesCardProps> = ({ onClick }) => {
             <div className={`text-2xl font-bold ${getColorClass()} mb-1`}>
               {loading ? '...' : formatCurrency(financialData.netProfit)}
             </div>
-            <p className="text-xs text-gray-500">Net profit this month</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Net profit this month</p>
           </div>
-          <div className={`flex items-center gap-1 ${financialData.trend === 'up' ? 'text-green-600' : financialData.trend === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
+          <div className={`flex items-center gap-1 ${financialData.trend === 'up' ? 'text-green-600' : financialData.trend === 'down' ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'}`}>
             {getTrendIcon()}
             <span className="text-sm font-medium">
               {loading ? '...' : `${financialData.profitMargin >= 0 ? '' : '-'}${Math.abs(financialData.profitMargin).toFixed(1)}%`}
@@ -289,13 +289,13 @@ const IncomeExpensesCard: React.FC<IncomeExpensesCardProps> = ({ onClick }) => {
         
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
           <div className="flex flex-col">
-            <span className="text-gray-500">Income</span>
+            <span className="text-gray-500 dark:text-gray-400">Income</span>
             <span className="font-medium text-green-600">
               {loading ? '...' : formatCurrency(financialData.totalIncome)}
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-gray-500">Expenses</span>
+            <span className="text-gray-500 dark:text-gray-400">Expenses</span>
             <span className="font-medium text-red-600">
               {loading ? '...' : formatCurrency(financialData.totalExpenses)}
             </span>

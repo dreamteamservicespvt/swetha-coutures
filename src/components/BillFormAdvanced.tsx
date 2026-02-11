@@ -718,7 +718,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         const inputs = firstInvalidElement.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
           const element = input as HTMLElement;
-          if (element.classList.contains('bg-white') || element.classList.contains('border-input')) {
+          if (element.classList.contains('bg-white dark:bg-gray-900') || element.classList.contains('border-input')) {
             element.classList.add('border-red-500', 'border-2');
             element.style.borderColor = '#ef4444';
             
@@ -1033,9 +1033,9 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-2xl">
+    <div className="max-w-6xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Header - hidden on mobile since NewBill page shows its own header */}
+      <div className="hidden sm:block bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-2xl">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">
           {bill ? 'Edit Bill' : (isFromOrder ? 'Create Bill from Order' : 'Create New Bill')}
         </h1>
@@ -1056,7 +1056,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Customer & Order Section */}
         <Card>
           <CardHeader>
@@ -1074,7 +1074,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
               )}
             </CardTitle>
             {bill && !isEditingCustomer && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 You are editing Bill #{formData.billId}. Customer details are locked.
               </p>
             )}
@@ -1153,19 +1153,19 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
                   <Label>Customer Name</Label>
-                  <Input value={formData.customerName} readOnly className="bg-gray-50" />
+                  <Input value={formData.customerName} readOnly className="bg-gray-50 dark:bg-gray-800/50" />
                 </div>
                 <div>
                   <Label>Phone</Label>
-                  <Input value={formData.customerPhone} readOnly className="bg-gray-50" />
+                  <Input value={formData.customerPhone} readOnly className="bg-gray-50 dark:bg-gray-800/50" />
                 </div>
                 <div>
                   <Label>Email (Optional)</Label>
-                  <Input value={formData.customerEmail || ''} readOnly className="bg-gray-50" />
+                  <Input value={formData.customerEmail || ''} readOnly className="bg-gray-50 dark:bg-gray-800/50" />
                 </div>
                 <div>
                   <Label>Address (Optional)</Label>
-                  <Input value={formData.customerAddress || ''} readOnly className="bg-gray-50" />
+                  <Input value={formData.customerAddress || ''} readOnly className="bg-gray-50 dark:bg-gray-800/50" />
                 </div>
               </div>
             )}

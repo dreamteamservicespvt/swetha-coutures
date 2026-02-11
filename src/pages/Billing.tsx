@@ -494,7 +494,7 @@ const Billing = () => {
       <div className="space-y-6 animate-fade-in p-4 sm:p-6">
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading billing data...</p>
+          <p className="mt-4 text-gray-500 dark:text-gray-400">Loading billing data...</p>
         </div>
       </div>
     );
@@ -619,7 +619,7 @@ const Billing = () => {
               <div className="space-y-2">
                 <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Search Bills</label>
                 <div className="relative">
-                  <Search className="absolute left-2 sm:left-3 top-2 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+                  <Search className="absolute left-2 sm:left-3 top-2 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />
                   <Input
                     placeholder="Search by bill ID, customer, phone..."
                     value={searchTerm}
@@ -845,17 +845,17 @@ const Billing = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <div className="flex items-center text-sm text-gray-600">
+                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                               <span className="truncate flex-1">{bill.customerPhone || 'N/A'}</span>
                             </div>
                             
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">Total Amount:</span>
+                              <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
                               <span className="font-medium text-xs">{formatCurrency(bill.totalAmount || 0)}</span>
                             </div>
                             
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">Balance:</span>
+                              <span className="text-gray-600 dark:text-gray-400">Balance:</span>
                               <span className={`font-medium text-xs ${(bill.balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {formatCurrency(bill.balance || 0)}
                               </span>
@@ -863,7 +863,7 @@ const Billing = () => {
                           </div>
 
                           {/* Action Buttons - Following Orders Page Pattern */}
-                          <div className="pt-3 border-t border-gray-100">
+                          <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
                             {/* First Actions Row - 2 buttons */}
                             <div className="grid grid-cols-2 gap-2 mb-2">
                               <Button
@@ -965,7 +965,7 @@ const Billing = () => {
                   return (
                     <Card 
                       key={bill.id} 
-                      className="hover:shadow-lg transition-all duration-200 cursor-pointer border-gray-200"
+                      className="hover:shadow-lg transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700"
                       onClick={() => navigate(`/billing/${bill.id}`)}
                     >
                       <CardContent className="p-4">
@@ -1022,7 +1022,7 @@ const Billing = () => {
                           </div>
 
                           {/* Amount Info */}
-                          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 border-t border-gray-100">
+                          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-2 border-t border-gray-100 dark:border-gray-800">
                             <div className="text-center min-w-0">
                               <p className="text-xs text-gray-500 truncate">Total</p>
                               <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{formatCurrency(bill.totalAmount || 0)}</p>

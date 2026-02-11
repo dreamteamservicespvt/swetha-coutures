@@ -21,7 +21,7 @@ const OrdersStats: React.FC<OrdersStatsProps> = ({ stats, onStatsCardClick }) =>
       value: stats.total,
       icon: Package,
       description: "All time orders",
-      color: "text-gray-600",
+      color: "text-gray-600 dark:text-gray-400",
       status: "all"
     },
     {

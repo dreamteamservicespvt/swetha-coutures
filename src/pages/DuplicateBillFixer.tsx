@@ -160,7 +160,7 @@ const DuplicateBillFixer = () => {
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                   step === 'initial' ? 'bg-purple-600 text-white' : 
                   step === 'diagnosed' || step === 'fixed' ? 'bg-green-500 text-white' : 
-                  'bg-gray-300 text-gray-600'
+                  'bg-gray-300 text-gray-600 dark:text-gray-400'
                 }`}>
                   1
                 </div>
@@ -203,11 +203,11 @@ const DuplicateBillFixer = () => {
                         <div key={bill.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                           <div>
                             <p className="font-semibold">{bill.billId}</p>
-                            <p className="text-sm text-gray-600">{bill.customerName}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{bill.customerName}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-gray-600">Date: {formatDate(bill.date)}</p>
-                            <p className="text-xs text-gray-500">Bill #{bill.billNumber || 'N/A'}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Date: {formatDate(bill.date)}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Bill #{bill.billNumber || 'N/A'}</p>
                           </div>
                         </div>
                       ))}
@@ -221,7 +221,7 @@ const DuplicateBillFixer = () => {
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                   step === 'diagnosed' ? 'bg-purple-600 text-white' : 
                   step === 'fixed' ? 'bg-green-500 text-white' : 
-                  'bg-gray-300 text-gray-600'
+                  'bg-gray-300 text-gray-600 dark:text-gray-400'
                 }`}>
                   2
                 </div>
@@ -264,15 +264,15 @@ const DuplicateBillFixer = () => {
                         <div key={result.docId} className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
                           <div>
                             <p className="font-semibold text-green-700">{result.newBillId}</p>
-                            <p className="text-sm text-gray-600">{result.customerName}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{result.customerName}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
                               <span className="line-through text-red-500">{result.oldBillId}</span>
                               {' → '}
                               <span className="text-green-600">{result.newBillId}</span>
                             </p>
-                            <p className="text-xs text-gray-500">Bill #{result.newBillNumber}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Bill #{result.newBillNumber}</p>
                           </div>
                         </div>
                       ))}
@@ -285,7 +285,7 @@ const DuplicateBillFixer = () => {
               <div className="flex items-start gap-4">
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                   step === 'fixed' ? 'bg-purple-600 text-white' : 
-                  'bg-gray-300 text-gray-600'
+                  'bg-gray-300 text-gray-600 dark:text-gray-400'
                 }`}>
                   3
                 </div>
@@ -328,11 +328,11 @@ const DuplicateBillFixer = () => {
                         <div key={bill.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                           <div>
                             <p className="font-semibold">{bill.billId}</p>
-                            <p className="text-sm text-gray-600">{bill.customerName}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{bill.customerName}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-gray-600">Date: {formatDate(bill.date)}</p>
-                            <p className="text-xs text-gray-500">Bill #{bill.billNumber || 'N/A'}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Date: {formatDate(bill.date)}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Bill #{bill.billNumber || 'N/A'}</p>
                           </div>
                         </div>
                       ))}
@@ -353,7 +353,7 @@ const DuplicateBillFixer = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2 text-sm text-gray-700">
+            <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <li className="flex items-start gap-2">
                 <span className="text-purple-600">•</span>
                 <span><strong>Step 1:</strong> Scans all bills to find entries with "Bill096" ID</span>

@@ -477,7 +477,7 @@ const Alterations = () => {
       {/* Filters */}
       <div className="search-filter-container">
         <div className="relative flex-1">
-          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />
           <Input
             placeholder="Search alterations..."
             value={searchTerm}
@@ -640,7 +640,7 @@ const Alterations = () => {
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             {alteration?.garmentType || 'N/A'} • {alteration?.alterationType || 'N/A'}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">
                             Due: {alteration?.dueDate ? format(new Date(alteration.dueDate), 'PPP') : 'No date'} • ₹{(alteration?.estimatedCost || 0).toLocaleString()}
                           </p>
                         </div>
@@ -727,7 +727,7 @@ const Alterations = () => {
                       </div>
                     </div>
                     
-                    <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-500">
+                    <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">
                       <span>Due: {alteration?.dueDate ? format(new Date(alteration.dueDate), 'PPP') : 'No date'}</span>
                       <span className="font-medium">₹{(alteration?.estimatedCost || 0).toLocaleString()}</span>
                     </div>

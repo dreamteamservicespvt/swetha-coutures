@@ -56,7 +56,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
       <div className="absolute inset-0 bg-black/20"></div>
-      <Card className="w-full max-w-md relative z-10 bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+      <Card className="w-full max-w-md relative z-10 bg-white dark:bg-gray-900/95 backdrop-blur-sm border-0 shadow-2xl">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center items-center space-x-3">
             <Crown className="h-8 w-8 text-purple-600" />
@@ -65,7 +65,7 @@ const Login = () => {
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
             {businessSettings?.businessName || 'Business Management'}
           </CardTitle>
-          <CardDescription className="text-gray-600">
+          <CardDescription className="text-gray-600 dark:text-gray-400">
             Premium Business Management System
           </CardDescription>
         </CardHeader>
@@ -105,7 +105,7 @@ const Login = () => {
           </form>
           
           <div className="space-y-3">
-            <div className="text-center text-sm text-gray-500">Quick Login</div>
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400">Quick Login</div>
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"

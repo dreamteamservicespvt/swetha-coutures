@@ -383,7 +383,7 @@ export default function DateFormatFixer() {
                     <strong>Fix Complete!</strong>
                     <ul className="mt-2 list-disc list-inside">
                       <li className="text-green-600">Successfully fixed: {fixResult.success} bills</li>
-                      <li className="text-gray-600">Skipped (already correct): {fixResult.skipped} bills</li>
+                      <li className="text-gray-600 dark:text-gray-400">Skipped (already correct): {fixResult.skipped} bills</li>
                       {fixResult.failed > 0 && (
                         <li className="text-red-600">Failed: {fixResult.failed} bills</li>
                       )}

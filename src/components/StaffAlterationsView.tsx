@@ -119,7 +119,7 @@ const StaffAlterationsView = () => {
       case 'in-progress':
         return 'bg-blue-100 text-blue-700';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 text-gray-700 dark:text-gray-300';
     }
   };
 
@@ -176,7 +176,7 @@ const StaffAlterationsView = () => {
             <div className="flex items-center">
               <Scissors className="h-8 w-8 text-purple-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Tasks</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Tasks</p>
                 <p className="text-2xl font-bold">{alterations.length}</p>
               </div>
             </div>
@@ -186,9 +186,9 @@ const StaffAlterationsView = () => {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
-              <AlertTriangle className="h-8 w-8 text-gray-600" />
+              <AlertTriangle className="h-8 w-8 text-gray-600 dark:text-gray-400" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pending</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
                 <p className="text-2xl font-bold">
                   {alterations.filter(alt => alt.status === 'pending').length}
                 </p>
@@ -202,7 +202,7 @@ const StaffAlterationsView = () => {
             <div className="flex items-center">
               <Clock className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</p>
                 <p className="text-2xl font-bold">
                   {alterations.filter(alt => alt.status === 'in-progress').length}
                 </p>
@@ -216,7 +216,7 @@ const StaffAlterationsView = () => {
             <div className="flex items-center">
               <CheckCircle className="h-8 w-8 text-green-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</p>
                 <p className="text-2xl font-bold">
                   {alterations.filter(alt => alt.status === 'completed').length}
                 </p>
@@ -274,7 +274,7 @@ const StaffAlterationsView = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <User className="h-5 w-5 text-gray-500" />
+                    <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                     <div>
                       <CardTitle className="text-lg">Customer: {alteration.customerName}</CardTitle>
                       <CardDescription>
@@ -297,11 +297,11 @@ const StaffAlterationsView = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Description</label>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</label>
                       <p className="font-medium">{alteration.description}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Estimated Completion</label>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Estimated Completion</label>
                       <p className={
                         alteration.estimatedDate && new Date(alteration.estimatedDate) < new Date() 
                           ? 'text-red-600 font-medium' 
@@ -314,7 +314,7 @@ const StaffAlterationsView = () => {
                   
                   {alteration.notes && (
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Notes</label>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Notes</label>
                       <p className="text-sm text-gray-700 mt-1">{alteration.notes}</p>
                     </div>
                   )}
@@ -358,7 +358,7 @@ const StaffAlterationsView = () => {
             <CardContent className="text-center py-12">
               <Scissors className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Assigned Alterations</h3>
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-gray-400">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'No alterations match your current filters.' 
                   : 'You have no alterations assigned to you at the moment.'}

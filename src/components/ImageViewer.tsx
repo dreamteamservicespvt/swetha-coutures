@@ -124,7 +124,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white dark:bg-gray-900/20"
                 onClick={handleZoomOut}
                 disabled={zoom <= 0.5}
               >
@@ -136,7 +136,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white dark:bg-gray-900/20"
                 onClick={handleZoomIn}
                 disabled={zoom >= 5}
               >
@@ -145,7 +145,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white dark:bg-gray-900/20"
                 onClick={handleReset}
               >
                 <RotateCcw className="h-4 w-4" />
@@ -153,7 +153,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white dark:bg-gray-900/20"
                 onClick={downloadImage}
               >
                 <Download className="h-4 w-4" />
@@ -161,7 +161,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white dark:bg-gray-900/20"
                 onClick={onClose}
               >
                 <X className="h-4 w-4" />
@@ -197,7 +197,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-10"
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white dark:bg-gray-900/20 z-10"
                 onClick={goToPrevious}
               >
                 <ChevronLeft className="h-8 w-8" />
@@ -205,7 +205,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-10"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white dark:bg-gray-900/20 z-10"
                 onClick={goToNext}
               >
                 <ChevronRight className="h-8 w-8" />

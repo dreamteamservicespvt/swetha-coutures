@@ -441,7 +441,7 @@ const AdminDashboard = () => {
             onClick={() => handleCardClick(stat.cardType)}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 {stat.title}
               </CardTitle>
               <div className={`p-3 rounded-lg ${stat.bgColor} group-hover:scale-110 transition-transform duration-300`}>
@@ -454,10 +454,10 @@ const AdminDashboard = () => {
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {stat.value}
                   </div>
-                  <p className="text-xs text-gray-500">{stat.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{stat.description}</p>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <ArrowUpRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                  <ArrowUpRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:text-gray-400" />
                   {stat.trend && (
                     <span className="text-xs text-green-600 font-medium">{stat.trend}</span>
                   )}
@@ -478,7 +478,7 @@ const AdminDashboard = () => {
             onClick={() => handleCardClick(stat.cardType)}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 {stat.title}
               </CardTitle>
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>
@@ -489,7 +489,7 @@ const AdminDashboard = () => {
               <div className="text-xl font-bold text-gray-900 mb-1">
                 {stat.value}
               </div>
-              <p className="text-xs text-gray-500">{stat.description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
@@ -566,7 +566,7 @@ const AdminDashboard = () => {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Pending:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Pending:</span>
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
                         {extendedStats.pendingOrders}
@@ -574,7 +574,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Active:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Active:</span>
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-blue-50 text-blue-700">
                         {extendedStats.activeOrders}
@@ -582,7 +582,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Completed:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Completed:</span>
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-green-50 text-green-700">
                         {extendedStats.completedOrders}
@@ -604,17 +604,17 @@ const AdminDashboard = () => {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Staff:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Total Staff:</span>
                     <span className="font-medium text-lg">{staffData.length}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Present Today:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Present Today:</span>
                     <Badge className="bg-green-100 text-green-700">
                       {extendedStats.employeesPresentToday}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Active Staff:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Active Staff:</span>
                     <span className="font-medium">
                       {staffData.filter(s => s.status === 'active').length}
                     </span>
@@ -634,7 +634,7 @@ const AdminDashboard = () => {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Low Stock Items:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Low Stock Items:</span>
                     <Badge variant={extendedStats.lowStockItems > 0 ? "destructive" : "outline"}>
                       {extendedStats.lowStockItems}
                     </Badge>
@@ -676,10 +676,10 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900">Performance Metrics</h4>
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Performance Metrics</h4>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-600">Order Completion Rate:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Order Completion Rate:</span>
                       <span className="font-semibold text-green-600">
                         {extendedStats.totalOrders > 0 
                           ? Math.round((extendedStats.completedOrders / extendedStats.totalOrders) * 100)
@@ -687,7 +687,7 @@ const AdminDashboard = () => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-600">Average Order Value:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Average Order Value:</span>
                       <span className="font-semibold">
                         ₹{extendedStats.totalOrders > 0 
                           ? Math.round(extendedStats.totalRevenue / extendedStats.totalOrders).toLocaleString()
@@ -695,7 +695,7 @@ const AdminDashboard = () => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-600">Staff Attendance Rate:</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Staff Attendance Rate:</span>
                       <span className="font-semibold text-blue-600">
                         {staffData.length > 0 
                           ? Math.round((extendedStats.employeesPresentToday / staffData.length) * 100)
@@ -706,27 +706,27 @@ const AdminDashboard = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900">ROI Analysis</h4>
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">ROI Analysis</h4>
                   <div className="space-y-3">
                     <div className="p-4 border rounded-lg">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-gray-700">Employee ROI</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Employee ROI</span>
                         <span className={`font-bold ${extendedStats.employeeROI >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {extendedStats.employeeROI.toFixed(1)}%
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Return on staff investment
                       </p>
                     </div>
                     <div className="p-4 border rounded-lg">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-gray-700">Inventory ROI</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Inventory ROI</span>
                         <span className={`font-bold ${extendedStats.inventoryROI >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {extendedStats.inventoryROI.toFixed(1)}%
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Inventory turnover efficiency
                       </p>
                     </div>

@@ -184,7 +184,7 @@ Swetha's Couture Team`
 
         <div className="space-y-6">
           {/* Customer Info */}
-          <Card className="bg-gray-50">
+          <Card className="bg-gray-50 dark:bg-gray-800/50">
             <CardContent className="pt-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -260,7 +260,7 @@ Swetha's Couture Team`
                     rows={4}
                   />
                 ) : (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {customTemplates[selectedTemplate] || 'No custom template saved yet. Click Edit to create one.'}
                   </p>
                 )}
@@ -288,7 +288,7 @@ Swetha's Couture Team`
               placeholder="Type your message here..."
               className="resize-none"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Preview how this message will appear before sending
             </p>
           </div>

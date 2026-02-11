@@ -513,8 +513,8 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Products & Services</h2>
-            <span className="text-sm text-gray-500">({products.length} products)</span>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Products & Services</h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">({products.length} products)</span>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -550,7 +550,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                 }
               }}
               size="sm"
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800/50"
             >
               Back to Billing
             </Button>
@@ -567,7 +567,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           {products.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <Package className="h-12 w-12 mx-auto mb-3 text-gray-400" />
               <p>No products added yet. Click "Add Product" in the action bar above to get started.</p>
             </div>
@@ -601,7 +601,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                         </Button>
                       </div>                      {/* Product Name */}
                       <div className="sm:col-span-2 lg:col-span-5">
-                        <Label className="text-sm font-medium text-gray-700">Product Name *</Label>
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Product Name *</Label>
                         <ProductNameInput
                           value={product.name}
                           onChange={(value) => handleProductNameSelect(product.id, value)}
@@ -614,7 +614,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
 
                   {/* Total Amount */}
                   <div className="sm:col-span-1 lg:col-span-3">
-                    <Label className="text-sm font-medium text-gray-700">Total (₹)</Label>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Total (₹)</Label>
                     <div className="mt-1 p-2 bg-white border border-gray-200 rounded-md">
                       <span className="font-semibold text-purple-600">
                         ₹{product.total.toFixed(2)}
@@ -655,18 +655,18 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                     </div>
                   ) : (
                     product.descriptions.map((desc, descIndex) => (
-                      <div key={desc.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                      <div key={desc.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
                           {/* Sub-Item Serial Number */}
                           <div className="sm:col-span-1 lg:col-span-1 flex items-center justify-center">
-                            <div className="w-6 h-6 bg-gray-500 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                            <div className="w-6 h-6 bg-gray-50 dark:bg-gray-800/500 text-white rounded-full flex items-center justify-center text-xs font-medium">
                               {descIndex + 1}
                             </div>
                           </div>
 
                           {/* Description */}
                           <div className="sm:col-span-2 lg:col-span-4">
-                            <Label className="text-sm font-medium text-gray-700">Sub-Item Description *</Label>
+                            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sub-Item Description *</Label>
                             <SubItemDescriptionInput
                               value={desc.description}
                               onChange={(value) => handleDescriptionSelect(product.id, desc.id, value)}
@@ -679,7 +679,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
 
                           {/* Quantity */}
                           <div className="sm:col-span-1 lg:col-span-2">
-                            <Label className="text-sm font-medium text-gray-700">Qty *</Label>
+                            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Qty *</Label>
                             <NumberInput
                               value={desc.qty}
                               onChange={(value) => {
@@ -695,7 +695,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                               decimals={1}
                               allowEmpty={false}
                               emptyValue={1}
-                              className="mt-1 bg-white"
+                              className="mt-1 bg-white dark:bg-gray-900"
                               placeholder="1"
                               required
                             />
@@ -703,7 +703,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
 
                           {/* Rate */}
                           <div className="sm:col-span-1 lg:col-span-2">
-                            <Label className="text-sm font-medium text-gray-700">Rate (₹) *</Label>
+                            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Rate (₹) *</Label>
                             <NumberInput
                               value={desc.rate === 0 ? '' : desc.rate}
                               onChange={(value) => updateDescription(product.id, desc.id, 'rate', value || 0)}
@@ -712,7 +712,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                               decimals={2}
                               allowEmpty={false}
                               emptyValue={0}
-                              className="mt-1 bg-white"
+                              className="mt-1 bg-white dark:bg-gray-900"
                               placeholder="Rate"
                               required
                             />
@@ -720,7 +720,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
 
                           {/* Amount */}
                           <div className="sm:col-span-1 lg:col-span-2">
-                            <Label className="text-sm font-medium text-gray-700">Amount (₹)</Label>
+                            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Amount (₹)</Label>
                             <div className="mt-1 p-2 bg-white border border-gray-200 rounded-md">
                               <span className="font-semibold text-green-700">
                                 ₹{desc.amount.toFixed(2)}
@@ -791,7 +791,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                 </div>
               </div>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Type <strong>DELETE</strong> to confirm this action:
             </p>
             <Input
@@ -850,7 +850,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
               ></div>
               
               {isScanning && (
-                <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-lg">
+                <div className="absolute inset-0 bg-white dark:bg-gray-900/80 flex items-center justify-center rounded-lg">
                   <div className="text-center">
                     <div className="h-12 w-12 mx-auto mb-3 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-green-800 font-medium">Processing barcode...</p>

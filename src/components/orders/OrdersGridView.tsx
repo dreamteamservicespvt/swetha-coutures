@@ -40,7 +40,7 @@ const OrdersGridView: React.FC<OrdersGridViewProps> = ({
       case 'ready': return 'bg-green-100 text-green-700 border-green-200';
       case 'delivered': return 'bg-purple-100 text-purple-700 border-purple-200';
       case 'cancelled': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -174,7 +174,7 @@ const OrdersGridView: React.FC<OrdersGridViewProps> = ({
               
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex items-center text-sm text-gray-600">
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                     <Package className="h-4 w-4 mr-2 flex-shrink-0" />
                     <span className="truncate flex-1">{order.itemType}</span>
                     {order.quantity > 1 && (
@@ -198,12 +198,12 @@ const OrdersGridView: React.FC<OrdersGridViewProps> = ({
                   )}
                   
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Delivery:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Delivery:</span>
                     <span className="font-medium text-xs">{order.deliveryDate}</span>
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-gray-100">
+                <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
                   {/* First Actions Row - 2 buttons */}
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <Button

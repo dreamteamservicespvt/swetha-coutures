@@ -629,7 +629,7 @@ const Appointments = () => {
       {/* Filters */}
       <div className="search-filter-container">
         <div className="relative flex-1">
-          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />
           <Input
             placeholder="Search appointments..."
             value={searchTerm}
@@ -690,7 +690,7 @@ const Appointments = () => {
                                 appointment?.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' : 
                                 appointment?.status === 'confirmed' ? 'bg-blue-100 text-blue-700 border-blue-200' : 
                                 appointment?.status === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200' : 
-                                'bg-gray-100 text-gray-700 border-gray-200'
+                                'bg-gray-100 text-gray-700 border-gray-200 dark:border-gray-700'
                               }`}
                             >
                               {appointment?.status || 'Unknown'}
@@ -829,7 +829,7 @@ const Appointments = () => {
                               <p className="responsive-text-sm text-gray-600 dark:text-gray-400">
                                 {format(appointmentDate, 'PPP')} at {appointment?.appointmentTime || 'No time'} • {appointment?.purpose || 'No purpose'}
                               </p>
-                              <p className="responsive-text-xs text-gray-500 dark:text-gray-500">
+                              <p className="responsive-text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">
                                 Duration: {appointment?.duration || 0} minutes
                               </p>
                               {appointment?.gmeetUrl && (

@@ -35,7 +35,7 @@ function App() {
   return (
     <Router>
       <BusinessSettingsProvider>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-800/50">
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />

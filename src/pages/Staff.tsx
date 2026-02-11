@@ -795,7 +795,7 @@ const Staff = () => {
       {/* Search and Filters */}
       <div className="search-filter-container">
         <div className="relative flex-1">
-          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />
           <Input
             placeholder="Search staff..."
             value={searchTerm}
@@ -896,7 +896,7 @@ const Staff = () => {
                             <p className="text-xs text-green-600 dark:text-green-400">Password: {member.password}</p>
                           )}
                           {(calculateMonthlySalary(member) > 0) && (
-                            <p className="text-xs text-gray-500 dark:text-gray-500">
+                            <p className="text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">
                               Monthly Salary: ₹{calculateMonthlySalary(member).toLocaleString()}/{member.salaryMode}
                               {member.paidSalary && member.bonus && (
                                 <span className="text-green-600 dark:text-green-400 ml-1">
@@ -1001,7 +1001,7 @@ const Staff = () => {
                     )}
                     
                     {(calculateMonthlySalary(member) > 0) && (
-                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">
                         Monthly Salary: ₹{calculateMonthlySalary(member).toLocaleString()}/{member.salaryMode}
                         {member.paidSalary && member.bonus && (
                           <span className="text-green-600 dark:text-green-400 ml-1">

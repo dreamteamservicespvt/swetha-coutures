@@ -457,7 +457,7 @@ const NewBill = () => {
         </div>
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">
+          <p className="mt-4 text-gray-500 dark:text-gray-400">
             {isEditing ? 'Loading bill details...' : 'Loading order details...'}
           </p>
         </div>
@@ -471,19 +471,19 @@ const NewBill = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800/50">
       {/* Header Navigation */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/billing')} size="sm">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <Button variant="outline" onClick={() => navigate('/billing')} size="sm" className="w-fit">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Billing
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
               {isEditing ? '✏️ Edit Bill' : isFromOrder ? '📄 Create Bill from Order' : '📄 Create New Bill'}
             </h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               {isEditing 
                 ? 'Update bill details and recalculate totals' 
                 : isFromOrder 

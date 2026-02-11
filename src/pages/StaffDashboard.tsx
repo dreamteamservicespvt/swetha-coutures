@@ -351,7 +351,7 @@ const StaffDashboard = () => {
           <CardContent className="space-y-4">
             {attendance && (
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex items-center space-x-2">
                     <LogIn className="h-4 w-4 text-green-600" />
                     <span>Check-in: {attendance.checkIn || 'Not checked in'}</span>
@@ -422,29 +422,29 @@ const StaffDashboard = () => {
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Tasks Completed:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Tasks Completed:</span>
                 <Badge variant="outline" className="bg-green-100 text-green-700">
                   {earningsSummary.completedTasks}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Working Days:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Working Days:</span>
                 <Badge variant="outline" className="bg-blue-100 text-blue-700">
                   {earningsSummary.workingDays}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Actual Salary:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Actual Salary:</span>
                 <span className="font-medium">₹{earningsSummary.actualSalary.toLocaleString()}</span>
               </div>
               {(earningsSummary.paidSalary > 0 || earningsSummary.bonus > 0) && (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Paid Salary:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Paid Salary:</span>
                     <span className="font-medium text-blue-600">₹{earningsSummary.paidSalary.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Bonus:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Bonus:</span>
                     <span className="font-medium text-green-600">₹{earningsSummary.bonus.toLocaleString()}</span>
                   </div>
                 </>
@@ -476,17 +476,17 @@ const StaffDashboard = () => {
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Pending:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Pending:</span>
                 <Badge variant="outline">{pendingTasks.length}</Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">In Progress:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">In Progress:</span>
                 <Badge variant="outline" className="bg-blue-100 text-blue-700">
                   {inProgressTasks.length}
                 </Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Completed:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Completed:</span>
                 <Badge variant="outline" className="bg-green-100 text-green-700">
                   {completedTasks.length}
                 </Badge>
@@ -512,7 +512,7 @@ const StaffDashboard = () => {
                     <Badge className={
                       order.status === 'completed' ? 'bg-green-100 text-green-700' :
                       order.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
+                      'bg-gray-100 text-gray-700 dark:text-gray-300'
                     }>
                       {order.status}
                     </Badge>
@@ -526,13 +526,13 @@ const StaffDashboard = () => {
                 </div>
               ))}
               {assignedOrders.length > 5 && (
-                <div className="text-center text-sm text-gray-500">
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                   Showing 5 of {assignedOrders.length} assigned orders
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               No orders assigned yet.
             </div>
           )}
@@ -563,21 +563,21 @@ const StaffDashboard = () => {
                       <Badge className={
                         task.status === 'completed' ? 'bg-green-100 text-green-700' :
                         task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
-                        'bg-gray-100 text-gray-700'
+                        'bg-gray-100 text-gray-700 dark:text-gray-300'
                       }>
                         {task.status}
                       </Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     Due: {task.dueDate}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               No tasks assigned yet.
             </div>
           )}

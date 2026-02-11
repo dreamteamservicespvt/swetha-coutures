@@ -180,8 +180,8 @@ const Reports = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-gray-600">Business insights and performance metrics</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Reports & Analytics</h1>
+          <p className="text-gray-600 dark:text-gray-400">Business insights and performance metrics</p>
         </div>
         <Button className="bg-gradient-to-r from-blue-600 to-purple-600">
           <Download className="h-4 w-4 mr-2" />
@@ -223,47 +223,47 @@ const Reports = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</CardTitle>
             <DollarSign className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">From delivered orders</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">From delivered orders</p>
           </CardContent>
         </Card>
         
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses</CardTitle>
             <TrendingUp className="h-5 w-5 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{totalExpenses.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">Business expenses</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{totalExpenses.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Business expenses</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Net Profit</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Net Profit</CardTitle>
             <TrendingUp className={`h-5 w-5 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               ₹{netProfit.toLocaleString()}
             </div>
-            <p className="text-xs text-gray-500">Revenue - Expenses</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Revenue - Expenses</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Orders</CardTitle>
             <ShoppingCart className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{totalOrders}</div>
-            <p className="text-xs text-gray-500">In selected period</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalOrders}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">In selected period</p>
           </CardContent>
         </Card>
       </div>
@@ -362,47 +362,47 @@ const Reports = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">New Customers</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">New Customers</CardTitle>
             <Users className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{newCustomers}</div>
-            <p className="text-xs text-gray-500">In selected period</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{newCustomers}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">In selected period</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Appointments</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Appointments</CardTitle>
             <Calendar className="h-5 w-5 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{completedAppointments}</div>
-            <p className="text-xs text-gray-500">Completed appointments</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{completedAppointments}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Completed appointments</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Avg Order Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Order Value</CardTitle>
             <DollarSign className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               ₹{totalOrders > 0 ? Math.round(totalRevenue / totalOrders).toLocaleString() : '0'}
             </div>
-            <p className="text-xs text-gray-500">Per order</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Per order</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Staff Count</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Staff Count</CardTitle>
             <Users className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{data.staff.length}</div>
-            <p className="text-xs text-gray-500">Total staff members</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{data.staff.length}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Total staff members</p>
           </CardContent>
         </Card>
       </div>

@@ -469,7 +469,7 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-semibold">Expense Entries</h2>
-          <p className="text-gray-600">Total: ₹{totalExpenses.toLocaleString()}</p>
+          <p className="text-gray-600 dark:text-gray-400">Total: ₹{totalExpenses.toLocaleString()}</p>
         </div>
         <div className="flex space-x-2">
           <Button 
@@ -634,7 +634,7 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
             <div className="h-96 overflow-y-auto">
               <div className="space-y-3 pr-2">
                 {expenseEntries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex items-center space-x-4 flex-1">
                     <div className={`p-2 rounded-full ${getExpenseColor(entry.type)}`}>
                       {getExpenseIcon(entry.type)}

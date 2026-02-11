@@ -64,7 +64,7 @@ const InventoryMobileCard = ({
   };
 
   return (
-    <Card className={`border-0 shadow-md ${isLowStock ? 'ring-2 ring-red-200 bg-red-50' : 'bg-white'}`}>
+    <Card className={`border-0 shadow-md ${isLowStock ? 'ring-2 ring-red-200 bg-red-50' : 'bg-white dark:bg-gray-900'}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -120,21 +120,21 @@ const InventoryMobileCard = ({
         {/* Quick Info */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-gray-600">Unit Cost:</span>
+            <span className="text-gray-600 dark:text-gray-400">Unit Cost:</span>
             <p className="font-medium">₹{item.unitCost?.toFixed(2) || '0.00'}</p>
           </div>
           <div>
-            <span className="text-gray-600">Min Stock:</span>
+            <span className="text-gray-600 dark:text-gray-400">Min Stock:</span>
             <p className="font-medium">{item.minStock} {item.unit}</p>
           </div>
         </div>
 
         {/* Expanded Details */}
         {expanded && (
-          <div className="space-y-3 pt-3 border-t border-gray-200">
+          <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
             {item.supplier && (
               <div>
-                <span className="text-sm text-gray-600">Supplier:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Supplier:</span>
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{item.supplier}</p>
                   {item.supplierPhone && (
@@ -163,15 +163,15 @@ const InventoryMobileCard = ({
 
             {item.location && (
               <div>
-                <span className="text-sm text-gray-600">Location:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Location:</span>
                 <p className="font-medium">{item.location}</p>
               </div>
             )}
 
             {item.description && (
               <div>
-                <span className="text-sm text-gray-600">Description:</span>
-                <p className="text-sm text-gray-800">{item.description}</p>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Description:</span>
+                <p className="text-sm text-gray-800 dark:text-gray-200">{item.description}</p>
               </div>
             )}
 

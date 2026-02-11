@@ -258,7 +258,7 @@ const Billing = () => {
       <div className="space-y-6 animate-fade-in p-4 sm:p-6">
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading billing data...</p>
+          <p className="mt-4 text-gray-500 dark:text-gray-400">Loading billing data...</p>
         </div>
       </div>
     );
@@ -415,7 +415,7 @@ const Billing = () => {
           <CardTitle className="flex items-center justify-between">
             <span>Bills ({filteredBills.length})</span>
             {filteredBills.length > 0 && (
-              <Badge variant="outline" className="text-gray-600">
+              <Badge variant="outline" className="text-gray-600 dark:text-gray-400">
                 {filteredBills.length} of {bills.length}
               </Badge>
             )}
@@ -449,7 +449,7 @@ const Billing = () => {
                   return (
                     <Card 
                       key={bill.id} 
-                      className="hover:shadow-lg transition-all duration-200 cursor-pointer border-gray-200"
+                      className="hover:shadow-lg transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700"
                       onClick={() => navigate(`/billing/${bill.id}`)}
                     >
                       <CardContent className="p-4">
@@ -458,7 +458,7 @@ const Billing = () => {
                           <div className="flex justify-between items-start">
                             <div>
                               <h3 className="font-semibold text-purple-600 text-lg">{bill.billId || 'N/A'}</h3>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {formatDateForDisplay(bill.date)}
                               </p>
                             </div>
@@ -469,22 +469,22 @@ const Billing = () => {
 
                           {/* Customer Info */}
                           <div>
-                            <p className="font-medium text-gray-900">{bill.customerName || 'N/A'}</p>
-                            <p className="text-sm text-gray-500">{bill.customerPhone || 'N/A'}</p>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{bill.customerName || 'N/A'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{bill.customerPhone || 'N/A'}</p>
                           </div>
 
                           {/* Amount Info */}
-                          <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                          <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100 dark:border-gray-800">
                             <div className="text-center">
-                              <p className="text-xs text-gray-500">Total</p>
-                              <p className="font-semibold text-gray-900">{formatCurrency(bill.totalAmount || 0)}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
+                              <p className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(bill.totalAmount || 0)}</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-xs text-gray-500">Paid</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Paid</p>
                               <p className="font-semibold text-green-600">{formatCurrency(bill.paidAmount || 0)}</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-xs text-gray-500">Balance</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Balance</p>
                               <p className={`font-semibold ${(bill.balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {formatCurrency(bill.balance || 0)}
                               </p>
@@ -564,7 +564,7 @@ const Billing = () => {
                           <TableCell>
                             <div>
                               <div className="font-medium">{bill.customerName || 'N/A'}</div>
-                              <div className="text-sm text-gray-500">{bill.customerPhone || 'N/A'}</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">{bill.customerPhone || 'N/A'}</div>
                             </div>
                           </TableCell>
                           <TableCell>

@@ -161,13 +161,13 @@ const ROIDashboard = () => {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Income</span>
+                  <span className="text-gray-500 dark:text-gray-400">Income</span>
                   <div className="font-semibold text-green-600">
                     {formatCurrency(staff.totalIncome)}
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-500">Cost</span>
+                  <span className="text-gray-500 dark:text-gray-400">Cost</span>
                   <div className="font-semibold text-red-600">
                     {formatCurrency(staff.totalCost)}
                   </div>
@@ -182,7 +182,7 @@ const ROIDashboard = () => {
                 </div>
                 <Progress value={Math.min(staff.roiPercentage, 100)} className="h-2" />
               </div>
-              <div className="flex justify-between text-sm text-gray-500">
+              <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                 <span>Services: {staff.itemCount}</span>
                 <span>Profit: {formatCurrency(staff.netProfit)}</span>
               </div>
@@ -195,7 +195,7 @@ const ROIDashboard = () => {
         <Card className="border-0 shadow-md">
           <CardContent className="text-center py-8">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No staff ROI data available for the selected period</p>
+            <p className="text-gray-500 dark:text-gray-400">No staff ROI data available for the selected period</p>
           </CardContent>
         </Card>
       )}
@@ -222,13 +222,13 @@ const ROIDashboard = () => {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Sales</span>
+                  <span className="text-gray-500 dark:text-gray-400">Sales</span>
                   <div className="font-semibold text-green-600">
                     {formatCurrency(inventory.totalIncome)}
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-500">Cost</span>
+                  <span className="text-gray-500 dark:text-gray-400">Cost</span>
                   <div className="font-semibold text-red-600">
                     {formatCurrency(inventory.totalCost)}
                   </div>
@@ -243,7 +243,7 @@ const ROIDashboard = () => {
                 </div>
                 <Progress value={Math.min(inventory.roiPercentage, 100)} className="h-2" />
               </div>
-              <div className="flex justify-between text-sm text-gray-500">
+              <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                 <span>Units: {inventory.unitsSold}</span>
                 <span>Avg Price: {formatCurrency(inventory.avgSellingPrice)}</span>
               </div>
@@ -256,7 +256,7 @@ const ROIDashboard = () => {
         <Card className="border-0 shadow-md">
           <CardContent className="text-center py-8">
             <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No inventory ROI data available for the selected period</p>
+            <p className="text-gray-500 dark:text-gray-400">No inventory ROI data available for the selected period</p>
           </CardContent>
         </Card>
       )}
@@ -283,13 +283,13 @@ const ROIDashboard = () => {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Revenue</span>
+                  <span className="text-gray-500 dark:text-gray-400">Revenue</span>
                   <div className="font-semibold text-green-600">
                     {formatCurrency(service.totalIncome)}
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-500">Cost</span>
+                  <span className="text-gray-500 dark:text-gray-400">Cost</span>
                   <div className="font-semibold text-red-600">
                     {formatCurrency(service.totalCost)}
                   </div>
@@ -304,7 +304,7 @@ const ROIDashboard = () => {
                 </div>
                 <Progress value={Math.min(service.roiPercentage, 100)} className="h-2" />
               </div>
-              <div className="flex justify-between text-sm text-gray-500">
+              <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                 <span>Times: {service.timesProvided}</span>
                 <span>Avg Rate: {formatCurrency(service.avgRate)}</span>
               </div>
@@ -317,7 +317,7 @@ const ROIDashboard = () => {
         <Card className="border-0 shadow-md">
           <CardContent className="text-center py-8">
             <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No service ROI data available for the selected period</p>
+            <p className="text-gray-500 dark:text-gray-400">No service ROI data available for the selected period</p>
           </CardContent>
         </Card>
       )}
@@ -329,8 +329,8 @@ const ROIDashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">ROI Analytics</h1>
-          <p className="text-gray-600">Track return on investment for staff, inventory, and services</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">ROI Analytics</h1>
+          <p className="text-gray-600 dark:text-gray-400">Track return on investment for staff, inventory, and services</p>
         </div>
         <Button onClick={fetchROIData} disabled={loading}>
           {loading ? 'Loading...' : 'Refresh Data'}
@@ -374,7 +374,7 @@ const ROIDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="border-0 shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Income</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Income</CardTitle>
               <TrendingUp className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
@@ -386,7 +386,7 @@ const ROIDashboard = () => {
           
           <Card className="border-0 shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Cost</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Cost</CardTitle>
               <TrendingDown className="h-5 w-5 text-red-600" />
             </CardHeader>
             <CardContent>
@@ -398,7 +398,7 @@ const ROIDashboard = () => {
 
           <Card className="border-0 shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Net Profit</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Net Profit</CardTitle>
               <DollarSign className={`h-5 w-5 ${roiData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
             </CardHeader>
             <CardContent>
@@ -410,7 +410,7 @@ const ROIDashboard = () => {
 
           <Card className="border-0 shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Overall ROI</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Overall ROI</CardTitle>
               <Target className={`h-5 w-5 ${getROIColor(roiData.roiPercentage)}`} />
             </CardHeader>
             <CardContent>
@@ -484,14 +484,14 @@ const ROIDashboard = () => {
                     </div>
                     <div>
                       <div className="font-semibold">{staff.staffName}</div>
-                      <div className="text-sm text-gray-500">{staff.staffRole}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{staff.staffRole}</div>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className={`font-bold ${getROIColor(staff.roiPercentage)}`}>
                       {staff.roiPercentage.toFixed(1)}%
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {formatCurrency(staff.netProfit)}
                     </div>
                   </div>

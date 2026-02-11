@@ -50,7 +50,7 @@ const NetProfitChart = ({ financialData }: NetProfitChartProps) => {
       const data = payload[0].payload;
       
       // Determine color based on type and value
-      let textColor = 'text-gray-600';
+      let textColor = 'text-gray-600 dark:text-gray-400';
       if (data.type === 'income') {
         textColor = 'text-green-600';
       } else if (data.type === 'expense') {
@@ -128,19 +128,19 @@ const NetProfitChart = ({ financialData }: NetProfitChartProps) => {
         {/* Summary Cards Below Chart */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
           <div className="text-center">
-            <div className="text-sm text-gray-600">Total Income</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Total Income</div>
             <div className="text-lg font-bold text-green-600">
               ₹{financialData.totalIncome.toLocaleString()}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-gray-600">Total Expenses</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Total Expenses</div>
             <div className="text-lg font-bold text-red-600">
               ₹{financialData.totalExpenses.toLocaleString()}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-gray-600">Net Profit</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Net Profit</div>
             <div className={`text-lg font-bold ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {financialData.netProfit < 0 ? 
                 `-₹${Math.abs(financialData.netProfit).toLocaleString()}` : 

@@ -29,7 +29,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
         <div className="py-4">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             This action cannot be undone. The order and all associated data will be permanently deleted.
           </p>
         </div>

@@ -297,7 +297,7 @@ Swetha's Couture Team`
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Customer Name</Label>
-                    <Input value={order.customerName} readOnly className="bg-gray-50" />
+                    <Input value={order.customerName} readOnly className="bg-gray-50 dark:bg-gray-800/50" />
                   </div>
                   <div>
                     <Label>Phone Number</Label>
@@ -435,8 +435,8 @@ Swetha's Couture Team`
                   >
                     <div className="text-left">
                       <div className="font-mono text-xs text-blue-600">{variable.key}</div>
-                      <div className="text-xs text-gray-500">{variable.description}</div>
-                      <div className="text-xs font-medium text-gray-800">{variable.value}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{variable.description}</div>
+                      <div className="text-xs font-medium text-gray-800 dark:text-gray-200">{variable.value}</div>
                     </div>
                   </Button>
                 ))}

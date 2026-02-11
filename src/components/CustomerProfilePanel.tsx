@@ -306,10 +306,10 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
 
   const getCustomerTypeColor = (type: string) => {
     switch (type) {
-      case 'regular': return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'regular': return 'bg-gray-100 text-gray-700 border-gray-200 dark:border-gray-700';
       case 'premium': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'vip': return 'bg-purple-100 text-purple-700 border-purple-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -342,20 +342,20 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                 </Badge>
               </div>
               
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Phone className="h-4 w-4" />
                 <span>{customer.phone}</span>
               </div>
               
               {customer.email && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <Mail className="h-4 w-4" />
                   <span>{customer.email}</span>
                 </div>
               )}
               
               {customer.address && (
-                <div className="flex items-start gap-2 text-sm text-gray-600">
+                <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <MapPin className="h-4 w-4 mt-0.5" />
                   <div>
                     <div>{customer.address}</div>
@@ -401,7 +401,7 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     activeTab === 'orders'
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600'
                   }`}
                 >
                   Orders ({orders.length})
@@ -411,7 +411,7 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     activeTab === 'bills'
                       ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600'
                   }`}
                 >
                   Bills ({bills.length})
@@ -537,7 +537,7 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                   ))}
                 </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                         <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                         <p>No orders found for this customer</p>
                       </div>
@@ -577,7 +577,7 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                                   </span>
                                 </div>
                               </div>
-                              <div className="text-sm text-gray-500">
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
                                 {new Date(bill.date?.toDate ? bill.date.toDate() : bill.date).toLocaleDateString()}
                               </div>
                             </div>
@@ -585,21 +585,21 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                             {/* Bill Details */}
                             <div className="space-y-2">
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Total Amount:</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Total Amount:</span>
                                 <span className="font-medium flex items-center gap-1">
                                   <IndianRupee className="h-4 w-4" />
                                   {bill.totalAmount.toLocaleString()}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Paid Amount:</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Paid Amount:</span>
                                 <span className="font-medium flex items-center gap-1">
                                   <IndianRupee className="h-4 w-4" />
                                   {bill.paidAmount.toLocaleString()}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Balance:</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Balance:</span>
                                 <span className="font-medium flex items-center gap-1">
                                   <IndianRupee className="h-4 w-4" />
                                   {bill.balance.toLocaleString()}
@@ -616,7 +616,7 @@ const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, i
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                         <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                         <p>No bills found for this customer</p>
                       </div>

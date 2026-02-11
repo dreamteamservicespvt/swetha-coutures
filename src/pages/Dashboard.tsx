@@ -177,7 +177,7 @@ const Dashboard = () => {
         {statCards.map((stat, index) => (
           <Card key={index} className="hover:shadow-lg transition-all duration-300 border-0 shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 {stat.title}
               </CardTitle>
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>
@@ -188,7 +188,7 @@ const Dashboard = () => {
               <div className="text-2xl font-bold text-gray-900 mb-1">
                 {stat.value}
               </div>
-              <p className="text-xs text-gray-500">{stat.description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
@@ -214,8 +214,8 @@ const Dashboard = () => {
                 }`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-medium text-gray-900">{alert.title}</div>
-                      <div className="text-sm text-gray-600">{alert.description}</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{alert.title}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">{alert.description}</div>
                     </div>
                     <Badge variant={
                       alert.severity === 'high' ? 'destructive' :
@@ -248,23 +248,23 @@ const Dashboard = () => {
                 recentOrders.map((order) => (
                   <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
                         {order.customerName}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         Order #{order.id.slice(-6)}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className="text-right">
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-gray-900 dark:text-gray-100">
                           ₹{order.totalAmount?.toLocaleString()}
                         </div>
                         <div className={`text-xs px-2 py-1 rounded-full inline-block ${
                           order.status === 'delivered' ? 'bg-green-100 text-green-700' :
                           order.status === 'ready' ? 'bg-blue-100 text-blue-700' :
                           order.status === 'in-progress' ? 'bg-orange-100 text-orange-700' :
-                          'bg-gray-100 text-gray-700'
+                          'bg-gray-100 text-gray-700 dark:text-gray-300'
                         }`}>
                           {order.status?.replace('-', ' ')}
                         </div>
@@ -277,7 +277,7 @@ const Dashboard = () => {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   No recent orders found
                 </div>
               )}

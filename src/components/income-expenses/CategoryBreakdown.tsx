@@ -397,7 +397,7 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
             <h2 className="text-xl font-semibold">
               {type === 'income' ? 'Income' : 'Expense'} Categories Overview
             </h2>
-            <p className="text-gray-600">Total: ₹{totalAmount.toLocaleString()}</p>
+            <p className="text-gray-600 dark:text-gray-400">Total: ₹{totalAmount.toLocaleString()}</p>
           </div>
         </div>
       )}
@@ -407,7 +407,7 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
           <h3 className="text-lg font-semibold mb-2">
             {type === 'income' ? 'Income' : 'Expense'} Categories
           </h3>
-          <p className="text-gray-600">Total: ₹{totalAmount.toLocaleString()}</p>
+          <p className="text-gray-600 dark:text-gray-400">Total: ₹{totalAmount.toLocaleString()}</p>
         </div>
       )}
 
@@ -453,7 +453,7 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
                 <div className={`text-lg font-bold ${type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                   ₹{category.total.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   Avg: ₹{(category.total / category.count).toLocaleString()}
                 </div>
               </CardContent>
@@ -469,7 +469,7 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No {type} categories found
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Add some {type} entries to see category breakdown.
             </p>
           </div>
@@ -502,19 +502,19 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
                     <div className={`text-2xl font-bold ${type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       ₹{selectedCategory.total.toLocaleString()}
                     </div>
-                    <div className="text-sm text-gray-600">Total Amount</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Total Amount</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-blue-600">
                       {selectedCategory.count}
                     </div>
-                    <div className="text-sm text-gray-600">Total Entries</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Total Entries</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-purple-600">
                       ₹{(selectedCategory.total / selectedCategory.count).toLocaleString()}
                     </div>
-                    <div className="text-sm text-gray-600">Average</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Average</div>
                   </div>
                 </div>
               </div>

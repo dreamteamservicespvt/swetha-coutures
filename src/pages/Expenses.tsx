@@ -256,8 +256,8 @@ const Expenses = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Expense Management</h1>
-          <p className="text-gray-600">Track business and personal expenses</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Expense Management</h1>
+          <p className="text-gray-600 dark:text-gray-400">Track business and personal expenses</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -396,45 +396,45 @@ const Expenses = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses</CardTitle>
             <DollarSign className="h-5 w-5 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{totalExpenses.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">All time expenses</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{totalExpenses.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">All time expenses</p>
           </CardContent>
         </Card>
         
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Professional</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Professional</CardTitle>
             <DollarSign className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{professionalExpenses.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">Business expenses</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{professionalExpenses.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Business expenses</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Personal</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Personal</CardTitle>
             <DollarSign className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{personalExpenses.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">Personal expenses</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{personalExpenses.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Personal expenses</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">This Month</CardTitle>
             <DollarSign className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{thisMonthExpenses.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">Current month</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{thisMonthExpenses.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Current month</p>
           </CardContent>
         </Card>
       </div>
@@ -473,12 +473,12 @@ const Expenses = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {dateExpenses.map((expense) => (
-                    <Card key={expense.id} className="border border-gray-200">
+                    <Card key={expense.id} className="border border-gray-200 dark:border-gray-700">
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">{expense.title}</h3>
-                            <p className="text-sm text-gray-600">{expense.description}</p>
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100">{expense.title}</h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{expense.description}</p>
                           </div>
                           <div className="flex space-x-1">
                             <Button
@@ -524,7 +524,7 @@ const Expenses = () => {
                         )}
                         
                         <div className="flex items-center justify-between">
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             {expense.notes && (
                               <div className="truncate">{expense.notes}</div>
                             )}

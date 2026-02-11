@@ -317,8 +317,8 @@ const IncomeExpenses = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Income & Expenses</h1>
-          <p className="text-gray-600">Track your business financial performance</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Income & Expenses</h1>
+          <p className="text-gray-600 dark:text-gray-400">Track your business financial performance</p>
         </div>
       </div>
 
@@ -326,7 +326,7 @@ const IncomeExpenses = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Income</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Income</CardTitle>
             <TrendingUp className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -336,7 +336,7 @@ const IncomeExpenses = () => {
         
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses</CardTitle>
             <TrendingDown className="h-5 w-5 text-red-600" />
           </CardHeader>
           <CardContent>

@@ -329,7 +329,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
       <div key={item.id} className={`space-y-2 ${isSubItem ? 'ml-6' : ''}`}>
         <div className={`grid grid-cols-1 lg:grid-cols-7 gap-4 p-4 border rounded-lg ${
           isSubItem 
-            ? 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200' 
+            ? 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 dark:border-gray-700' 
             : 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200'
         }`}>
           
@@ -358,7 +358,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
                 <IndentIncrease className="h-4 w-4 text-gray-400" />
               )}
               
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {isSubItem ? 'Sub-Item Selection *' : 'Item Selection *'}
               </Label>
             </div>
@@ -396,7 +396,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
 
           {/* Quantity */}
           <div>
-            <Label htmlFor={`item-qty-${item.id}`} className="text-sm font-medium text-gray-700">
+            <Label htmlFor={`item-qty-${item.id}`} className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Quantity *
             </Label>
             <NumberInput
@@ -408,14 +408,14 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               decimals={1}
               allowEmpty={false}
               emptyValue={1}
-              className="mt-1 bg-white"
+              className="mt-1 bg-white dark:bg-gray-900"
               required
             />
           </div>
 
           {/* Rate */}
           <div>
-            <Label htmlFor={`item-rate-${item.id}`} className="text-sm font-medium text-gray-700">
+            <Label htmlFor={`item-rate-${item.id}`} className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Rate per unit (₹) *
             </Label>
             <NumberInput
@@ -427,7 +427,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
               decimals={2}
               allowEmpty={false}
               emptyValue={0}
-              className="mt-1 bg-white"
+              className="mt-1 bg-white dark:bg-gray-900"
               placeholder="Enter rate per unit"
               required
             />
@@ -435,7 +435,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
 
           {/* Amount */}
           <div>
-            <Label className="text-sm font-medium text-gray-700">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {hasSubItems ? 'Total (₹)' : 'Amount (₹)'}
             </Label>
             <div className="mt-1 p-2 bg-gray-100 border border-gray-200 rounded-md">
@@ -465,7 +465,7 @@ const BillWorkAndMaterials: React.FC<BillWorkAndMaterialsProps> = ({
           {/* ROI Display */}
           {item.cost > 0 && (
             <div>
-              <Label className="text-sm font-medium text-gray-700">ROI</Label>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">ROI</Label>
               <div className="mt-1 p-2 bg-green-50 border border-green-200 rounded-md">
                 <div className="text-xs text-green-800">
                   Profit: ₹{((item.rate - item.cost) * item.quantity).toFixed(2)}

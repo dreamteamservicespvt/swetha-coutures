@@ -183,7 +183,7 @@ const WorkDescriptionInput: React.FC<WorkDescriptionInputProps> = ({
             />
             <CommandList className="max-h-80">
               {loading ? (
-                <div className="p-4 text-center text-sm text-gray-500">
+                <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   Loading descriptions...
                 </div>
               ) : (

@@ -155,7 +155,7 @@ const RequiredMaterials: React.FC<RequiredMaterialsProps> = ({
     return (
       <div className="space-y-2">
         <Label>Required Materials</Label>
-        <div className="text-sm text-gray-500">Loading materials...</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Loading materials...</div>
       </div>
     );
   }
@@ -217,7 +217,7 @@ const RequiredMaterials: React.FC<RequiredMaterialsProps> = ({
                     />
                     <div>
                       <div className="font-medium text-sm">{item.name}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         Available: {item.quantity} {item.unit}
                       </div>
                     </div>

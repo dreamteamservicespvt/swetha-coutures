@@ -367,7 +367,7 @@ const AdminControlPanel = () => {
           <CardContent className="py-12 text-center">
             <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Admin Access Required</h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Only system administrators can access the control panel.
             </p>
           </CardContent>
@@ -407,7 +407,7 @@ const AdminControlPanel = () => {
             <Shield className="h-8 w-8 text-purple-600" />
             <span>System Control Panel</span>
           </h1>
-          <p className="text-gray-600">Real-time system monitoring and administration</p>
+          <p className="text-gray-600 dark:text-gray-400">Real-time system monitoring and administration</p>
         </div>
         <div className="flex space-x-3">
           <Dialog open={isBackupModalOpen} onOpenChange={setIsBackupModalOpen}>
@@ -471,84 +471,84 @@ const AdminControlPanel = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</CardTitle>
             <Users className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.totalUsers}</div>
-            <p className="text-xs text-gray-500">System users</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.totalUsers}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">System users</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</CardTitle>
             <Activity className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.activeUsers}</div>
-            <p className="text-xs text-gray-500">Last 7 days</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.activeUsers}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Last 7 days</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Orders</CardTitle>
             <Database className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.totalOrders}</div>
-            <p className="text-xs text-gray-500">All time orders</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.totalOrders}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">All time orders</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">System Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">System Revenue</CardTitle>
             <Monitor className="h-5 w-5 text-gold-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">₹{metrics.systemRevenue.toLocaleString()}</div>
-            <p className="text-xs text-gray-500">Total revenue</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{metrics.systemRevenue.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Total revenue</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Storage Used</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Storage Used</CardTitle>
             <HardDrive className="h-5 w-5 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.storageUsed.toFixed(1)} MB</div>
-            <p className="text-xs text-gray-500">Cloudinary storage</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.storageUsed.toFixed(1)} MB</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Cloudinary storage</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Database Size</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Database Size</CardTitle>
             <Database className="h-5 w-5 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.databaseSize.toFixed(1)} MB</div>
-            <p className="text-xs text-gray-500">Firebase storage</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.databaseSize.toFixed(1)} MB</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Firebase storage</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">System Uptime</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">System Uptime</CardTitle>
             <Clock className="h-5 w-5 text-cyan-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.systemUptime}</div>
-            <p className="text-xs text-gray-500">Continuous uptime</p>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.systemUptime}</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Continuous uptime</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">System Status</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">System Status</CardTitle>
             <Wifi className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -556,7 +556,7 @@ const AdminControlPanel = () => {
               <CheckCircle className="h-5 w-5 text-green-600" />
               <span className="text-lg font-bold text-green-600">Healthy</span>
             </div>
-            <p className="text-xs text-gray-500">All systems operational</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">All systems operational</p>
           </CardContent>
         </Card>
       </div>
@@ -624,7 +624,7 @@ const AdminControlPanel = () => {
                   <AlertTriangle className="h-5 w-5 text-yellow-600" />
                   <div className="flex-1">
                     <div className="font-medium text-sm">Storage at 75%</div>
-                    <div className="text-xs text-gray-600">Consider upgrading storage plan</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Consider upgrading storage plan</div>
                   </div>
                 </div>
                 
@@ -632,7 +632,7 @@ const AdminControlPanel = () => {
                   <Bell className="h-5 w-5 text-blue-600" />
                   <div className="flex-1">
                     <div className="font-medium text-sm">Backup completed</div>
-                    <div className="text-xs text-gray-600">Daily backup finished successfully</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Daily backup finished successfully</div>
                   </div>
                 </div>
                 
@@ -640,7 +640,7 @@ const AdminControlPanel = () => {
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   <div className="flex-1">
                     <div className="font-medium text-sm">System updated</div>
-                    <div className="text-xs text-gray-600">All modules are up to date</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">All modules are up to date</div>
                   </div>
                 </div>
               </CardContent>
@@ -703,7 +703,7 @@ const AdminControlPanel = () => {
                             {backup.status}
                           </Badge>
                           <span className="font-medium capitalize">{backup.type} Backup</span>
-                          <span className="text-sm text-gray-600">{backup.size.toFixed(1)} MB</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{backup.size.toFixed(1)} MB</span>
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
                           {new Date(backup.date).toLocaleString()}
@@ -741,7 +741,7 @@ const AdminControlPanel = () => {
                       <div className="flex items-center space-x-3">
                         <div>
                           <div className="font-medium">{user.name}</div>
-                          <div className="text-sm text-gray-600">{user.email}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">{user.email}</div>
                         </div>
                         <Badge variant={user.role === 'admin' ? 'default' : 'outline'}>
                           {user.role}
@@ -957,7 +957,7 @@ const AdminControlPanel = () => {
                           {log.action}
                         </Badge>
                         <span className="font-medium">{log.module}</span>
-                        <span className="text-gray-600">by {log.userName}</span>
+                        <span className="text-gray-600 dark:text-gray-400">by {log.userName}</span>
                       </div>
                       <div className="text-sm text-gray-600 mt-1">{log.details}</div>
                       <div className="text-xs text-gray-500 mt-1">

@@ -1274,7 +1274,7 @@ const ROIDashboard: React.FC = () => {
                                     <div className="font-medium text-green-600">
                                       {formatCurrency(bill.amount)}
                                     </div>
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
                                       {bill.date ? format(new Date(bill.date.toDate ? bill.date.toDate() : bill.date), 'MMM dd, yyyy') : 'No date'}
                                     </div>
                                   </div>
@@ -1289,7 +1289,7 @@ const ROIDashboard: React.FC = () => {
                           {/* Pagination for Bills */}
                           {totalPages > 1 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
                                 Showing {startIndex + 1}-{endIndex} of {totalBills} bills
                               </div>
                               <div className="flex items-center gap-2">
@@ -1353,7 +1353,7 @@ const ROIDashboard: React.FC = () => {
                                     <div className="font-medium text-blue-600">
                                       {formatCurrency(order.amount)}
                                     </div>
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
                                       {order.date ? format(new Date(order.date.toDate ? order.date.toDate() : order.date), 'MMM dd, yyyy') : 'No date'}
                                     </div>
                                   </div>
@@ -1368,7 +1368,7 @@ const ROIDashboard: React.FC = () => {
                           {/* Pagination for Orders */}
                           {totalPages > 1 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
                                 Showing {startIndex + 1}-{endIndex} of {totalOrders} orders
                               </div>
                               <div className="flex items-center gap-2">
@@ -1503,7 +1503,7 @@ const ROIDashboard: React.FC = () => {
                                     <div className="font-medium text-green-600">
                                       {formatCurrency(bill.amount)}
                                     </div>
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
                                       {bill.date ? format(new Date(bill.date.toDate ? bill.date.toDate() : bill.date), 'MMM dd, yyyy') : 'No date'}
                                     </div>
                                   </div>
@@ -1518,7 +1518,7 @@ const ROIDashboard: React.FC = () => {
                           {/* Pagination for Bills */}
                           {totalPages > 1 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
                                 Showing {startIndex + 1}-{endIndex} of {totalBills} bills
                               </div>
                               <div className="flex items-center gap-2">
@@ -1587,7 +1587,7 @@ const ROIDashboard: React.FC = () => {
                                     <div className="font-medium text-blue-600">
                                       {formatCurrency(order.amount)}
                                     </div>
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
                                       {order.date ? format(new Date(order.date.toDate ? order.date.toDate() : order.date), 'MMM dd, yyyy') : 'No date'}
                                     </div>
                                   </div>
@@ -1602,7 +1602,7 @@ const ROIDashboard: React.FC = () => {
                           {/* Pagination for Orders */}
                           {totalPages > 1 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
                                 Showing {startIndex + 1}-{endIndex} of {totalOrders} orders
                               </div>
                               <div className="flex items-center gap-2">

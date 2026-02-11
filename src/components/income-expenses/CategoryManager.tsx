@@ -139,13 +139,13 @@ const CategoryManager = ({ type, isOpen, onClose, onCategoryAdded }: CategoryMan
         </form>
 
         <div className="space-y-2 max-h-60 overflow-y-auto">
-          <h4 className="font-medium text-sm text-gray-700">Existing Categories:</h4>
+          <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300">Existing Categories:</h4>
           {categories.length > 0 ? (
             <div className="space-y-2">
               {categories.map((category) => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between p-2 border rounded-lg bg-gray-50"
+                  className="flex items-center justify-between p-2 border rounded-lg bg-gray-50 dark:bg-gray-800/50"
                 >
                   <span className="text-sm">{category.name}</span>
                   {!category.isDefault && (
@@ -162,7 +162,7 @@ const CategoryManager = ({ type, isOpen, onClose, onCategoryAdded }: CategoryMan
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No custom categories yet.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No custom categories yet.</p>
           )}
         </div>
 

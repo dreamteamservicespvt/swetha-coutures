@@ -366,8 +366,8 @@ const BillDetails = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Bill {bill.billId}</h1>
-            <div className="space-y-1 text-sm sm:text-base text-gray-500">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Bill {bill.billId}</h1>
+            <div className="space-y-1 text-sm sm:text-base text-gray-500 dark:text-gray-400">
               <p>Created: {formatDateForDisplay(bill.createdAt)}</p>
               {bill.updatedAt && (
                 <p>Last Updated: {formatDateForDisplay(bill.updatedAt)}</p>
@@ -484,7 +484,7 @@ const BillDetails = () => {
                 (() => {
                   let serialNumber = 1;
                   return bill.products.map((product, productIndex) => (
-                    <div key={productIndex} className="border rounded-lg bg-gray-50">
+                    <div key={productIndex} className="border rounded-lg bg-gray-50 dark:bg-gray-800/50">
                       <div className="font-semibold p-3 bg-purple-50 border-b flex items-center gap-2">
                         <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
                           {serialNumber++}
@@ -494,7 +494,7 @@ const BillDetails = () => {
                       {product.descriptions.map((desc, descIndex) => (
                         <div key={descIndex} className="p-3 border-b last:border-b-0">
                           <div className="flex items-center gap-2 font-medium">
-                            <div className="w-4 h-4 bg-gray-500 text-white rounded-full flex items-center justify-center text-xs">
+                            <div className="w-4 h-4 bg-gray-50 dark:bg-gray-800/500 text-white rounded-full flex items-center justify-center text-xs">
                               {descIndex + 1}
                             </div>
                             <span>{desc.description}</span>
@@ -515,7 +515,7 @@ const BillDetails = () => {
                 (() => {
                   let serialNumber = 1;
                   return bill.items.map((item, index) => (
-                    <div key={index} className="border rounded-lg p-3 bg-gray-50">
+                    <div key={index} className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
                       <div className="flex items-center gap-2 font-medium">
                         <div className="w-6 h-6 bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
                           {serialNumber++}
@@ -858,7 +858,7 @@ const BillDetails = () => {
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-gray-600 mb-2 text-sm sm:text-base">Thank you for choosing {businessSettings?.businessName || 'us'}!</p>
-            <p className="text-xs sm:text-sm text-gray-500">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               For any queries, please contact us. Payment due within 7 days.
             </p>
           </CardContent>

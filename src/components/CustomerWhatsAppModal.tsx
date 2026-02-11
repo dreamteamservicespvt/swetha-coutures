@@ -266,25 +266,25 @@ Swetha's Couture Team`
                 <h3 className="font-semibold mb-3">Customer Information</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Name:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Name:</span>
                     <span className="font-medium">{customer.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Phone:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Phone:</span>
                     <span className="font-medium">{customer.phone}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Type:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Type:</span>
                     <Badge variant="outline" className="capitalize">
                       {customer.customerType}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Total Orders:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Total Orders:</span>
                     <span className="font-medium">{customer.totalOrders || 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Total Spent:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Total Spent:</span>
                     <span className="font-medium">₹{(customer.totalSpent || 0).toLocaleString()}</span>
                   </div>
                 </div>
