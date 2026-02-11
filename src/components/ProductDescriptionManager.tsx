@@ -13,7 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import ProductNameInput from '@/components/ProductNameInput';
 import SubItemDescriptionInput from '@/components/SubItemDescriptionInput';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface ProductDescriptionManagerProps {
   products: Product[];
@@ -33,8 +33,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const scannerInitialized = useRef(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   // Track new entries that haven't been saved yet
   const [newProductNames, setNewProductNames] = useState<Set<string>>(new Set());
@@ -231,127 +230,124 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
     onProductsChange([...products, newProduct]);
   };
 
-  // Initialize barcode scanner when dialog opens
+  // Start camera when dialog opens, stop when it closes — same as working_barcode.html
   useEffect(() => {
-    if (showBarcodeScanner && !scannerInitialized.current) {
-      scannerInitialized.current = true;
-      
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        const scanner = new Html5QrcodeScanner(
-          'barcode-scanner-container',
-          {
-            fps: 10,
-            qrbox: { width: 300, height: 120 }, // Barcode rectangular shape
-            aspectRatio: 1.777778, // 16:9 for better mobile camera view
-            showZoomSliderIfSupported: true,
-            defaultZoomValueIfSupported: 2,
-            showTorchButtonIfSupported: true, // Flashlight for mobile
-            supportedScanTypes: [0], // Only camera scan (0 = camera, 1 = file)
-            rememberLastUsedCamera: true,
-            formatsToSupport: [5, 3, 4, 9, 10, 14, 15], // CODE_128(5), CODE_39(3), CODE_93(4), EAN_13(9), EAN_8(10), UPC_A(14), UPC_E(15)
-          },
-          false
-        );
+    if (showBarcodeScanner) {
+      // Small delay for Dialog DOM to mount
+      const timer = setTimeout(() => {
+        const html5Qrcode = new Html5Qrcode('barcode-scanner-container');
+        scannerRef.current = html5Qrcode;
 
-        scanner.render(
+        html5Qrcode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
           (decodedText) => {
-            // Success callback - barcode detected
             handleBarcodeDetected(decodedText);
           },
-          (error) => {
-            // Error callback - can be ignored for continuous scanning
-            // console.warn('Barcode scan error:', error);
+          (_errorMessage) => {
+            // Ignore continuous scan errors
           }
-        );
+        ).catch((err) => {
+          console.error('Camera error:', err);
+          toast({
+            title: 'Camera Error',
+            description: 'Unable to access camera. Check permissions and use HTTPS.',
+            variant: 'destructive',
+          });
+        });
+      }, 300);
 
-        scannerRef.current = scanner;
-      }, 100);
-    }
-
-    // Cleanup function
-    return () => {
-      if (!showBarcodeScanner && scannerRef.current) {
-        try {
-          scannerRef.current.clear();
+      return () => clearTimeout(timer);
+    } else {
+      // Stop camera when dialog closes
+      if (scannerRef.current) {
+        scannerRef.current.stop().then(() => {
+          scannerRef.current?.clear();
           scannerRef.current = null;
-          scannerInitialized.current = false;
-        } catch (error) {
-          console.error('Error cleaning up scanner:', error);
-        }
+        }).catch(console.error);
       }
-    };
+    }
   }, [showBarcodeScanner]);
 
   const handleBarcodeDetected = async (barcodeValue: string) => {
-    if (isScanning) return; // Prevent multiple scans
-    
+    if (isScanning) return;
     setIsScanning(true);
-    
+
     try {
-      // Stop the scanner
+      // Stop scanner after successful scan
       if (scannerRef.current) {
-        await scannerRef.current.clear();
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
         scannerRef.current = null;
-        scannerInitialized.current = false;
       }
 
-      // Fetch inventory items from Firestore
+      // Look up inventory item by barcode
       const inventorySnapshot = await getDocs(collection(db, 'inventory'));
-      
-      // Find item by barcode value
-      const matchedItem = inventorySnapshot.docs.find(doc => {
-        const data = doc.data();
-        return data.barcodeValue === barcodeValue.trim();
-      });
+      const matchedDoc = inventorySnapshot.docs.find(d => d.data().barcodeValue === barcodeValue.trim());
 
-      if (matchedItem) {
-        const itemData = matchedItem.data();
-        
-        // Create new product with inventory item details
-        const newProduct: Product = {
-          id: uuidv4(),
-          name: itemData.name || '',
-          total: 0,
-          descriptions: [{
-            id: uuidv4(),
-            description: `${itemData.category || ''} - ${itemData.type || ''}`.trim().replace(/^-\s*|-\s*$/g, '') || 'Item',
-            qty: 1,
-            rate: itemData.sellingPrice || itemData.costPerUnit || 0,
-            amount: itemData.sellingPrice || itemData.costPerUnit || 0
-          }],
-          expanded: true
-        };
-
-        // Calculate product total
-        newProduct.total = newProduct.descriptions.reduce((sum, desc) => sum + desc.amount, 0);
-
-        onProductsChange([...products, newProduct]);
-        
-        toast({
-          title: 'Success',
-          description: `Added ${itemData.name} from barcode scan`,
-        });
-
-        // Close dialog
+      if (!matchedDoc) {
+        toast({ title: 'Not Found', description: `No inventory item with barcode: ${barcodeValue}`, variant: 'destructive' });
         setShowBarcodeScanner(false);
-      } else {
-        toast({
-          title: 'Not Found',
-          description: `No inventory item found with barcode: ${barcodeValue}`,
-          variant: 'destructive',
-        });
-        
-        // Close dialog even if not found
-        setShowBarcodeScanner(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error processing barcode:', error);
+
+      const itemData = matchedDoc.data();
+      const inventoryId = matchedDoc.id;
+      const itemName = itemData.name || 'Item';
+      const itemRate = itemData.sellingPrice || itemData.costPerUnit || 0;
+      const descText = `${itemData.category || ''} - ${itemData.type || ''}`.trim().replace(/^-\s*|-\s*$/g, '') || itemName;
+
+      let updatedProducts = [...products];
+
+      // If no product exists yet, auto-create one
+      if (updatedProducts.length === 0) {
+        updatedProducts.push({
+          id: uuidv4(),
+          name: itemName,
+          total: 0,
+          descriptions: [],
+          expanded: true,
+        });
+      }
+
+      // Target the first product
+      const targetProduct = updatedProducts[0];
+
+      // Check if this barcode is already a sub-item (duplicate scan → increase qty)
+      const existingDesc = targetProduct.descriptions.find(d => (d as any).barcodeValue === barcodeValue.trim());
+
+      if (existingDesc) {
+        existingDesc.qty += 1;
+        existingDesc.amount = existingDesc.qty * existingDesc.rate;
+      } else {
+        // Add new sub-item
+        targetProduct.descriptions.push({
+          id: uuidv4(),
+          description: descText,
+          qty: 1,
+          rate: itemRate,
+          amount: itemRate,
+          inventoryId,
+          barcodeValue: barcodeValue.trim(),
+        });
+      }
+
+      // Recalculate product total
+      targetProduct.total = targetProduct.descriptions.reduce((sum, d) => sum + d.amount, 0);
+
+      onProductsChange(updatedProducts);
+
       toast({
-        title: 'Error',
-        description: 'Failed to process barcode',
-        variant: 'destructive',
+        title: 'Scanned!',
+        description: existingDesc
+          ? `Increased qty of ${descText} to ${existingDesc.qty}`
+          : `Added ${descText} (₹${itemRate})`,
       });
+
+      setShowBarcodeScanner(false);
+    } catch (error) {
+      console.error('Barcode processing error:', error);
+      toast({ title: 'Error', description: 'Failed to process barcode', variant: 'destructive' });
       setShowBarcodeScanner(false);
     } finally {
       setIsScanning(false);
@@ -829,10 +825,8 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
 
       {/* Barcode Scanner Dialog */}
       <Dialog open={showBarcodeScanner} onOpenChange={(open) => {
-        if (!open && scannerRef.current) {
-          scannerRef.current.clear().catch(console.error);
-          scannerRef.current = null;
-          scannerInitialized.current = false;
+        if (!open) {
+          // Camera stop is handled by the useEffect cleanup
         }
         setShowBarcodeScanner(open);
       }}>
@@ -843,27 +837,16 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
               Scan Inventory Barcode
             </DialogTitle>
             <DialogDescription>
-              Position the barcode in front of your camera to scan automatically.
+              Point the barcode at your camera. It will be detected automatically.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="p-4 bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Package className="h-5 w-5 text-green-600 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-green-800">How it works</h4>
-                  <p className="text-sm text-green-700 mt-1">
-                    Allow camera access, then hold the barcode steady in the camera view. The item will be added automatically when detected.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Scanner Container */}
+            {/* Scanner Container — camera renders here */}
             <div className="relative">
               <div 
                 id="barcode-scanner-container" 
                 className="w-full rounded-lg overflow-hidden border-2 border-green-300"
+                style={{ minHeight: '250px' }}
               ></div>
               
               {isScanning && (
@@ -879,14 +862,7 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                if (scannerRef.current) {
-                  scannerRef.current.clear().catch(console.error);
-                  scannerRef.current = null;
-                  scannerInitialized.current = false;
-                }
-                setShowBarcodeScanner(false);
-              }}
+              onClick={() => setShowBarcodeScanner(false)}
               disabled={isScanning}
             >
               Cancel

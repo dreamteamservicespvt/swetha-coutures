@@ -23,6 +23,8 @@ export interface ProductDescription {
   qty: number;
   rate: number;
   amount: number;
+  inventoryId?: string;   // Firestore doc id — set when added via barcode scan
+  barcodeValue?: string;  // barcode value — used to match duplicate scans
 }
 
 export interface Product {

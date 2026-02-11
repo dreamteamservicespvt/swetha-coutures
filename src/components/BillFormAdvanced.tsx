@@ -931,7 +931,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         return;
       }
       
-      // Handle inventory deduction for inventory items
+      // Handle inventory deduction for inventory items (from items list)
       if (billData.items && billData.items.length > 0) {
         const inventoryItems = billData.items.filter(item => item.type === 'inventory' && item.sourceId);
         
@@ -971,6 +971,43 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
               description: "Bill saved but inventory couldn't be updated. Please check manually.",
               variant: "destructive"
             });
+          }
+        }
+      }
+
+      // Handle inventory deduction for barcode-scanned sub-items in products
+      if (products.length > 0) {
+        const scannedItems: { inventoryId: string; materialName: string; quantity: number }[] = [];
+        products.forEach(product => {
+          product.descriptions.forEach(desc => {
+            if ((desc as any).inventoryId) {
+              scannedItems.push({
+                inventoryId: (desc as any).inventoryId,
+                materialName: desc.description,
+                quantity: desc.qty
+              });
+            }
+          });
+        });
+
+        if (scannedItems.length > 0) {
+          try {
+            const { deductInventoryForBillItems } = await import('@/utils/inventoryMaterialsHelper');
+            const result = await deductInventoryForBillItems(scannedItems);
+            if (!result.success) {
+              toast({
+                title: "Inventory Warning",
+                description: result.messages.join(', '),
+                variant: "destructive"
+              });
+            } else {
+              toast({
+                title: "Inventory Updated",
+                description: `Deducted ${scannedItems.length} scanned item(s) from inventory`,
+              });
+            }
+          } catch (err) {
+            console.error('Error deducting scanned inventory:', err);
           }
         }
       }
