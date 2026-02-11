@@ -211,7 +211,7 @@ export const formatDateForDisplay = (date: any, locale: string = 'en-IN'): strin
     });
   } catch (error) {
     console.error('Error formatting date for display:', error);
-    return 'Invalid Date';
+    return 'N/A';
   }
 };
 

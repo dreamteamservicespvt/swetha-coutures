@@ -166,7 +166,7 @@ const OrdersPage = () => {
           <CardContent className="pt-6">
             <div className="text-center">
               <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to load orders</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Unable to load orders</h3>
               <p className="text-gray-600 mb-4">{error}</p>
               <Button onClick={() => window.location.reload()}>
                 Try Again
@@ -363,7 +363,7 @@ const OrdersPage = () => {
       return (
         <div className="text-center p-8">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error rendering content</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error rendering content</h3>
           <p className="text-gray-600 dark:text-gray-400">Please try refreshing the page</p>
         </div>
       );

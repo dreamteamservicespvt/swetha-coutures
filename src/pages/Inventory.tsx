@@ -1170,7 +1170,7 @@ const Inventory = () => {
           ) : (
             <div className="text-center py-12">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No inventory items</h3>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No inventory items</h3>
               <p className="text-gray-600 mb-6">
                 {searchTerm || categoryFilter !== 'all' || typeFilter !== 'all' 
                   ? 'No items match your current filters.' 

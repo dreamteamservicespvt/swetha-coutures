@@ -318,7 +318,7 @@ const PublicBillView = () => {
                 <AlertCircle className="h-8 w-8 text-red-600" />
               </div>
               <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Bill Not Found</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Bill Not Found</h2>
                 <p className="text-gray-600 mb-4">
                   {error || 'The bill you are looking for could not be found.'}
                 </p>

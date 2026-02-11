@@ -269,7 +269,7 @@ const Billing = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Billing Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Billing Dashboard</h1>
           <p className="text-gray-600 text-sm sm:text-base">Manage bills, track payments, and generate professional invoices</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -425,7 +425,7 @@ const Billing = () => {
           {filteredBills.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No bills found</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No bills found</h3>
               <p className="text-gray-500 mb-6">
                 {bills.length === 0 
                   ? "Create your first professional bill to get started." 

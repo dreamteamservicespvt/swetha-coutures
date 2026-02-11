@@ -183,7 +183,7 @@ const OrdersListView: React.FC<OrdersListViewProps> = ({
                         <div className="flex items-center">
                           <Package className="h-4 w-4 mr-2 text-gray-400" />
                           <div>
-                            <div className="text-sm text-gray-900 truncate max-w-[120px]" title={order.itemType}>
+                            <div className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[120px]" title={order.itemType}>
                               {order.itemType}
                             </div>
                             {order.quantity > 1 && (

@@ -574,7 +574,7 @@ const Expenses = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="py-12 text-center">
             <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No expenses found</h3>
             <p className="text-gray-600 mb-4">
               {searchTerm ? 'No expenses match your search.' : 'Start by adding your first expense.'}
             </p>

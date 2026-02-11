@@ -387,7 +387,7 @@ const BillForm = ({ billId, bill, onSave, onCancel, onSuccess }: BillFormProps) 
     <div className="w-full max-w-6xl mx-auto p-3 sm:p-6 bg-white rounded-lg shadow-lg">
       {/* Header Section */}
       <div className="mb-6 sm:mb-8">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           {billId || bill ? 'Edit Bill' : 'Create New Bill'}
         </h2>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">

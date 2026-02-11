@@ -23,7 +23,7 @@ const Admin = () => {
         <Card className="w-96">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <Users className="h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Access Denied</h3>
             <p className="text-gray-600 text-center">
               You don't have permission to access the admin panel.
             </p>

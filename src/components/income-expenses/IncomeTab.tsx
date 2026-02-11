@@ -145,9 +145,15 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
       })) as IncomeEntry[];
       
       incomeData = [...billingEntries, ...billsEntries, ...customEntries].sort((a, b) => {
-        const dateA = a.date?.toDate?.() || new Date(a.date);
-        const dateB = b.date?.toDate?.() || new Date(b.date);
-        return dateB.getTime() - dateA.getTime();
+        const toDate = (d: any) => {
+          if (!d) return new Date(0);
+          if (typeof d?.toDate === 'function') return d.toDate();
+          if (d && typeof d === 'object' && 'seconds' in d) return new Date(d.seconds * 1000);
+          if (d instanceof Date) return d;
+          const parsed = new Date(d);
+          return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+        };
+        return toDate(b.date).getTime() - toDate(a.date).getTime();
       });
       
       setIncomeEntries(incomeData);
@@ -221,14 +227,33 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
 
   const formatDate = (date: any) => {
     try {
-      const dateObj = date?.toDate?.() || new Date(date);
+      let dateObj: Date;
+
+      if (!date) return 'N/A';
+
+      // Firebase Timestamp with toDate()
+      if (typeof date?.toDate === 'function') {
+        dateObj = date.toDate();
+      // Raw Firestore Timestamp {seconds, nanoseconds}
+      } else if (date && typeof date === 'object' && 'seconds' in date) {
+        dateObj = new Date(date.seconds * 1000);
+      // Already a Date
+      } else if (date instanceof Date) {
+        dateObj = date;
+      // String or number
+      } else {
+        dateObj = new Date(date);
+      }
+
+      if (isNaN(dateObj.getTime())) return 'N/A';
+
       return dateObj.toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'short', 
         day: 'numeric' 
       });
     } catch {
-      return 'Invalid Date';
+      return 'N/A';
     }
   };
 
@@ -247,7 +272,14 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
       sourceName: entry.sourceName || '',
       category: entry.category || '',
       amount: entry.amount,
-      date: entry.date?.toDate?.() || new Date(entry.date),
+      date: (() => {
+        const d = entry.date;
+        if (typeof d?.toDate === 'function') return d.toDate();
+        if (d && typeof d === 'object' && 'seconds' in d) return new Date(d.seconds * 1000);
+        if (d instanceof Date) return d;
+        const parsed = new Date(d);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+      })(),
       notes: entry.notes || '',
       paymentMode: entry.paymentMode || 'cash',
       cashAmount: entry.cashAmount || (entry.paymentMode === 'cash' ? entry.amount : 0),
@@ -599,7 +631,7 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
           ) : (
             <div className="text-center py-12">
               <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Income Entries</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Income Entries</h3>
               <p className="text-gray-600 mb-4">Start by adding your first income entry or wait for billing data.</p>
               <Button 
                 onClick={() => {

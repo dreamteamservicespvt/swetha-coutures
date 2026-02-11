@@ -297,7 +297,7 @@ const AdminDashboard = () => {
         <Card className="w-96">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <Users className="h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Access Denied</h3>
             <p className="text-gray-600 text-center">
               You don't have permission to access the admin dashboard.
             </p>
@@ -451,7 +451,7 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                     {stat.value}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{stat.description}</p>
@@ -486,7 +486,7 @@ const AdminDashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-xl font-bold text-gray-900 mb-1">
+              <div className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                 {stat.value}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">{stat.description}</p>

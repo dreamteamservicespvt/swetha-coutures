@@ -366,7 +366,7 @@ const AdminControlPanel = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="py-12 text-center">
             <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Admin Access Required</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Admin Access Required</h3>
             <p className="text-gray-600 dark:text-gray-400">
               Only system administrators can access the control panel.
             </p>
@@ -403,7 +403,7 @@ const AdminControlPanel = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center space-x-3">
             <Shield className="h-8 w-8 text-purple-600" />
             <span>System Control Panel</span>
           </h1>

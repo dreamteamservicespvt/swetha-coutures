@@ -161,7 +161,7 @@ const OrdersGridView: React.FC<OrdersGridViewProps> = ({
                         {order.status}
                       </Badge>
                     </div>
-                    <div className="text-xl font-semibold text-gray-900 truncate">{order.customerName}</div>
+                    <div className="text-xl font-semibold text-gray-900 dark:text-gray-100 truncate">{order.customerName}</div>
                   </div>
                   <div className="text-right text-sm text-gray-500 ml-2 flex-shrink-0">
                     <div className="flex items-center">
