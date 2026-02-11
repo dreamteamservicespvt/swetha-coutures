@@ -1199,7 +1199,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
               <CardTitle>Payment Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>GST % (Optional)</Label>
                   <NumberInput
@@ -1427,11 +1427,11 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         
         {/* Validation hints */}
         {(!formData.customerName?.trim() || !formData.customerPhone?.trim() || (products.length === 0 && workItems.length === 0)) && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-yellow-800 mb-2">
+          <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
               {isFromOrder ? 'Please complete the bill details:' : 'Required fields missing:'}
             </h3>
-            <ul className="text-sm text-yellow-700 space-y-1">
+            <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
               {!formData.customerName?.trim() && <li>• Customer name is required</li>}
               {!formData.customerPhone?.trim() && <li>• Customer phone is required</li>}
               {(products.length === 0 && workItems.length === 0) && <li>• {isFromOrder ? 'Add pricing to work items' : 'At least one product or work item is required'}</li>}

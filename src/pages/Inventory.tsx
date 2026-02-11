@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Package, AlertTriangle, Star, Trash2, Calendar, Minus, Barcode, Edit, Download, Printer, RefreshCw } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Star, Trash2, Calendar, Minus, Barcode, Edit, Download, Printer, RefreshCw, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -87,6 +87,7 @@ const Inventory = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
 
   // Date filter states
   const [dateFilterMode, setDateFilterMode] = useState<'single' | 'range'>('single');
@@ -1021,81 +1022,97 @@ const Inventory = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <InventoryStats
-        totalItems={totalItems}
-        totalValue={totalValue}
-        lowStockCount={lowStockItems.length}
-        categoriesCount={categories.length}
-      />
+      {/* Mobile: Collapsible filters toggle */}
+      <div className="sm:hidden">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className="w-full flex items-center justify-center gap-2"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>{showFilters ? 'Hide Filters & Stats' : 'Show Filters & Stats'}</span>
+          {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
 
-      {/* Date Filters */}
-      <InventoryDateFilters
-        dateField={dateField}
-        setDateField={setDateField}
-        dateFilterMode={dateFilterMode}
-        setDateFilterMode={setDateFilterMode}
-        singleDate={singleDate}
-        setSingleDate={setSingleDate}
-        startDate={startDate}
-        setStartDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
-        onDateChange={fetchItems}
-        onClearFilters={clearDateFilters}
-      />
+      {/* Stats, Date Filters, Mostly Used — always visible on desktop, collapsible on mobile */}
+      <div className={`space-y-6 ${showFilters ? 'block' : 'hidden sm:block'}`}>
+        {/* Stats Cards */}
+        <InventoryStats
+          totalItems={totalItems}
+          totalValue={totalValue}
+          lowStockCount={lowStockItems.length}
+          categoriesCount={categories.length}
+        />
 
-      {/* Mostly Used Filters */}
-      {(mostUsedCategories.length > 0 || mostUsedTypes.length > 0) && (
-        <Card className="border-0 shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Star className="h-5 w-5 text-yellow-600" />
-              <span>Mostly Used</span>
-            </CardTitle>
-            <CardDescription>Quick filters for your most frequently used categories and types</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {mostUsedCategories.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Top Categories</Label>
-                <div className="flex flex-wrap gap-2">
-                  {mostUsedCategories.map((category) => (
-                    <Button
-                      key={category.id}
-                      variant={categoryFilter === category.name ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCategoryFilter(categoryFilter === category.name ? 'all' : category.name)}
-                      className="text-xs"
-                    >
-                      {category.name} ({category.usageCount || 0})
-                    </Button>
-                  ))}
+        {/* Date Filters */}
+        <InventoryDateFilters
+          dateField={dateField}
+          setDateField={setDateField}
+          dateFilterMode={dateFilterMode}
+          setDateFilterMode={setDateFilterMode}
+          singleDate={singleDate}
+          setSingleDate={setSingleDate}
+          startDate={startDate}
+          setStartDate={setStartDate}
+          endDate={endDate}
+          setEndDate={setEndDate}
+          onDateChange={fetchItems}
+          onClearFilters={clearDateFilters}
+        />
+
+        {/* Mostly Used Filters */}
+        {(mostUsedCategories.length > 0 || mostUsedTypes.length > 0) && (
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center space-x-2 text-base">
+                <Star className="h-4 w-4 text-yellow-600" />
+                <span>Mostly Used</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {mostUsedCategories.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Top Categories</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {mostUsedCategories.map((category) => (
+                      <Button
+                        key={category.id}
+                        variant={categoryFilter === category.name ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCategoryFilter(categoryFilter === category.name ? 'all' : category.name)}
+                        className="text-xs"
+                      >
+                        {category.name} ({category.usageCount || 0})
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            
-            {mostUsedTypes.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">Top Types</Label>
-                <div className="flex flex-wrap gap-2">
-                  {mostUsedTypes.map((type) => (
-                    <Button
-                      key={type.id}
-                      variant={typeFilter === type.name ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setTypeFilter(typeFilter === type.name ? 'all' : type.name)}
-                      className="text-xs"
-                    >
-                      {type.name} ({type.usageCount || 0})
-                    </Button>
-                  ))}
+              )}
+              
+              {mostUsedTypes.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Top Types</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {mostUsedTypes.map((type) => (
+                      <Button
+                        key={type.id}
+                        variant={typeFilter === type.name ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setTypeFilter(typeFilter === type.name ? 'all' : type.name)}
+                        className="text-xs"
+                      >
+                        {type.name} ({type.usageCount || 0})
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Search, Filters, and View Toggle */}
       <InventorySearchFilters
@@ -1113,11 +1130,11 @@ const Inventory = () => {
 
       {/* Low Stock Alert */}
       {lowStockItems.length > 0 && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950">
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <span className="text-red-800 font-medium">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <span className="text-red-800 dark:text-red-300 font-medium">
                 {lowStockItems.length} item(s) are running low on stock
               </span>
             </div>

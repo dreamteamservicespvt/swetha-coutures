@@ -30,7 +30,7 @@ const ContactActions: React.FC<ContactActionsProps> = ({
       <Button
         size={size}
         variant={variant}
-        className="text-blue-600 hover:bg-blue-50"
+        className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
         onClick={handleCall}
       >
         <Phone className="h-3 w-3" />
@@ -38,7 +38,7 @@ const ContactActions: React.FC<ContactActionsProps> = ({
       <Button
         size={size}
         variant={variant}
-        className="text-green-600 hover:bg-green-50"
+        className="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950"
         onClick={handleWhatsApp}
       >
         <MessageCircle className="h-3 w-3" />

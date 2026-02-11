@@ -52,7 +52,7 @@ const InventorySearchFilters: React.FC<InventorySearchFiltersProps> = ({
         />
       </div>
       <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="w-full sm:w-48">
           <SelectValue placeholder="Filter by category" />
         </SelectTrigger>
         <SelectContent>
@@ -63,7 +63,7 @@ const InventorySearchFilters: React.FC<InventorySearchFiltersProps> = ({
         </SelectContent>
       </Select>
       <Select value={typeFilter} onValueChange={setTypeFilter}>
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="w-full sm:w-48">
           <SelectValue placeholder="Filter by type" />
         </SelectTrigger>
         <SelectContent>

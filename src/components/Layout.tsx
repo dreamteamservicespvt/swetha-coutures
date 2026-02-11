@@ -304,7 +304,7 @@ const Layout = ({ children }: LayoutProps) => {
                         <p className="text-xs text-muted-foreground">{userData?.email}</p>
                         <Badge 
                           variant="outline" 
-                          className={`mt-1 text-xs ${isAdmin ? 'text-purple-600 border-purple-200' : 'text-blue-600 border-blue-200'}`}
+                          className={`mt-1 text-xs ${isAdmin ? 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700' : 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'}`}
                         >
                           {isAdmin ? 'Administrator' : 'Staff Member'}
                         </Badge>
@@ -316,7 +316,7 @@ const Layout = ({ children }: LayoutProps) => {
                         <p className="text-xs text-muted-foreground">{userData?.email}</p>
                         <Badge 
                           variant="outline" 
-                          className={`mt-1 text-xs ${isAdmin ? 'text-purple-600 border-purple-200' : 'text-blue-600 border-blue-200'}`}
+                          className={`mt-1 text-xs ${isAdmin ? 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700' : 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'}`}
                         >
                           {isAdmin ? 'Administrator' : 'Staff Member'}
                         </Badge>
@@ -343,14 +343,14 @@ const Layout = ({ children }: LayoutProps) => {
         `}>
           <div className="flex flex-col h-full">
             {/* Mobile Logo Section */}
-            <div className="flex items-center justify-between h-16 px-6 border-b border-border">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+            <div className="flex items-center justify-between h-16 px-4 border-b border-border">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold text-sm">SC</span>
                 </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-foreground">{businessSettings?.businessName || 'Business Management'}</h1>
-                  <p className="text-xs text-muted-foreground">{isAdmin ? 'Admin Panel' : 'Staff Panel'}</p>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-base font-semibold text-foreground truncate">{businessSettings?.businessName || 'Business Management'}</h1>
+                  <p className="text-xs text-muted-foreground truncate">{isAdmin ? 'Admin Panel' : 'Staff Panel'}</p>
                 </div>
               </div>
               <Button 
@@ -426,14 +426,14 @@ const Layout = ({ children }: LayoutProps) => {
                       <p className="text-xs text-muted-foreground">{userData?.email}</p>
                       <Badge 
                         variant="outline" 
-                        className={`mt-1 text-xs ${isAdmin ? 'text-purple-600 border-purple-200' : 'text-blue-600 border-blue-200'}`}
+                        className={`mt-1 text-xs ${isAdmin ? 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700' : 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'}`}
                       >
                         {isAdmin ? 'Administrator' : 'Staff Member'}
                       </Badge>
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>Sign Out</span>
@@ -471,7 +471,7 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="flex items-center space-x-4">
               <Badge 
                 variant="outline" 
-                className={`${isAdmin ? 'text-purple-600 border-purple-200' : 'text-blue-600 border-blue-200'}`}
+                className={`${isAdmin ? 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700' : 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'}`}
               >
                 {isAdmin ? 'Admin' : 'Staff'}
               </Badge>

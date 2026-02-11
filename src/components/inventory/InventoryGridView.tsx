@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,6 +46,20 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
 }) => {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // Keep selectedItem in sync with items prop so stock adjustments reflect in realtime
+  useEffect(() => {
+    if (selectedItem) {
+      const updated = items.find(i => i.id === selectedItem.id);
+      if (updated) {
+        setSelectedItem(updated);
+      } else {
+        // Item was deleted
+        setSelectedItem(null);
+        setIsDetailsOpen(false);
+      }
+    }
+  }, [items]);
 
   const getStockStatus = (quantity: number, reorderLevel: number) => {
     if (quantity <= reorderLevel) return { status: 'critical', color: 'destructive', label: 'Reorder', icon: AlertTriangle };
@@ -98,6 +112,23 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                   </div>
                 </div>
 
+                {/* Supplier info with contact actions */}
+                {item.supplier?.name && (
+                  <div className="flex items-center justify-between mb-3 py-2 border-t" onClick={(e) => e.stopPropagation()}>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground">Supplier</p>
+                      <p className="text-sm font-medium truncate">{item.supplier.name}</p>
+                    </div>
+                    {item.supplier.phone && (
+                      <ContactActions
+                        phone={item.supplier.phone}
+                        message={`Hi ${item.supplier.name}, I would like to inquire about ${item.name} availability.`}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Action buttons */}
                 <div className="flex gap-2 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
                   <Button
@@ -107,7 +138,7 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                       e.stopPropagation();
                       onEdit(item);
                     }}
-                    className="flex-1 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
+                    className="flex-1 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-200 hover:text-blue-600 dark:hover:text-blue-400"
                   >
                     <Edit className="h-3 w-3" />
                   </Button>
@@ -118,7 +149,7 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                       e.stopPropagation();
                       onDelete(item.id);
                     }}
-                    className="flex-1 hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                    className="flex-1 hover:bg-red-50 dark:hover:bg-red-950 hover:border-red-200 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -196,7 +227,7 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                     variant="outline"
                     onClick={() => onStockAdjustment(selectedItem.id, -1)}
                     disabled={selectedItem.quantity <= 0}
-                    className="h-10 w-10 p-0 rounded-full hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                    className="h-10 w-10 p-0 rounded-full hover:bg-red-50 dark:hover:bg-red-950 hover:border-red-200 hover:text-red-600 dark:hover:text-red-400"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -208,7 +239,7 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                     size="sm"
                     variant="outline"
                     onClick={() => onStockAdjustment(selectedItem.id, 1)}
-                    className="h-10 w-10 p-0 rounded-full hover:bg-green-50 hover:border-green-200 hover:text-green-600"
+                    className="h-10 w-10 p-0 rounded-full hover:bg-green-50 dark:hover:bg-green-950 hover:border-green-200 hover:text-green-600 dark:hover:text-green-400"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -267,7 +298,7 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                     onEdit(selectedItem);
                     setIsDetailsOpen(false);
                   }}
-                  className="flex-1 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
+                  className="flex-1 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-200 hover:text-blue-600 dark:hover:text-blue-400"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Item
@@ -277,7 +308,7 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                   onClick={() => {
                     onGenerateBarcode(selectedItem.id, selectedItem.name);
                   }}
-                  className="hover:bg-purple-50 hover:border-purple-200 hover:text-purple-600"
+                  className="hover:bg-purple-50 dark:hover:bg-purple-950 hover:border-purple-200 hover:text-purple-600 dark:hover:text-purple-400"
                   title="Generate Barcode"
                 >
                   <Barcode className="h-4 w-4" />
@@ -288,7 +319,7 @@ const InventoryGridView: React.FC<InventoryGridViewProps> = ({
                     onDelete(selectedItem.id);
                     setIsDetailsOpen(false);
                   }}
-                  className="hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                  className="hover:bg-red-50 dark:hover:bg-red-950 hover:border-red-200 hover:text-red-600 dark:hover:text-red-400"
                   title="Delete Item"
                 >
                   <Trash2 className="h-4 w-4" />
