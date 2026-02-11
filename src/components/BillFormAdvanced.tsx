@@ -1060,7 +1060,7 @@ const BillFormAdvanced: React.FC<BillFormAdvancedProps> = ({
         {/* Customer & Order Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               Customer & Order Details
               {bill && !isEditingCustomer && (
                 <Button

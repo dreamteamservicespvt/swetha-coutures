@@ -509,14 +509,14 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   return (
     <div className="space-y-4">
       {/* Sticky Action Bar */}
-      <div className="sticky top-4 bg-white border-2 border-purple-200 rounded-lg p-4 shadow-lg">
+      <div className="sticky top-4 bg-white border-2 border-purple-200 rounded-lg p-4 shadow-lg z-10">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Package className="h-5 w-5 text-purple-600" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Products & Services</h2>
             <span className="text-sm text-gray-500 dark:text-gray-400">({products.length} products)</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-end w-full sm:w-auto">
             <Button
               type="button"
               onClick={addProduct}
