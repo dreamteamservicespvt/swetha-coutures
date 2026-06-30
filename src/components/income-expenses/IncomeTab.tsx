@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import CategoryBreakdown from './CategoryBreakdown';
 import CategoryInput from '../CategoryInput';
 import PaymentModeSelector, { PaymentBreakdown } from './PaymentModeSelector';
+import { isInRange } from '@/utils/financeReports';
 
 interface IncomeTabProps {
   dateRange: { start: Timestamp; end: Timestamp } | null;
@@ -65,86 +66,47 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
 
   const fetchIncomeData = async () => {
     try {
-      let incomeData: IncomeEntry[] = [];
-      
-      // Fetch legacy billing data
-      let billingQuery = collection(db, 'billing');
-      if (dateRange) {
-        billingQuery = query(
-          collection(db, 'billing'),
-          where('createdAt', '>=', dateRange.start),
-          where('createdAt', '<=', dateRange.end),
-          orderBy('createdAt', 'desc')
-        ) as any;
-      } else {
-        billingQuery = query(
-          collection(db, 'billing'),
-          orderBy('createdAt', 'desc')
-        ) as any;
-      }
-      
-      const billingSnapshot = await getDocs(billingQuery);
-      const billingEntries = billingSnapshot.docs.map(doc => ({
-        id: doc.id,
-        amount: doc.data().totalAmount || 0,
-        date: doc.data().createdAt,
-        customerName: doc.data().customerName || 'Unknown Customer',
-        billId: doc.id,
-        category: 'Sales & Billing (Legacy)',
-        type: 'billing' as const
-      }));
+      // Fetch all, then filter client-side so string-dated and Timestamp-dated records are
+      // both included (consistent with the rest of the app — see utils/financeReports).
+      const [billingSnapshot, billsSnapshot, incomeSnapshot] = await Promise.all([
+        getDocs(collection(db, 'billing')),
+        getDocs(collection(db, 'bills')),
+        getDocs(collection(db, 'income')),
+      ]);
 
-      // Fetch new bills data
-      let billsQuery = collection(db, 'bills');
-      if (dateRange) {
-        billsQuery = query(
-          collection(db, 'bills'),
-          where('date', '>=', dateRange.start),
-          where('date', '<=', dateRange.end),
-          orderBy('date', 'desc')
-        ) as any;
-      } else {
-        billsQuery = query(
-          collection(db, 'bills'),
-          orderBy('date', 'desc')
-        ) as any;
-      }
-      
-      const billsSnapshot = await getDocs(billsQuery);
-      const billsEntries = billsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        amount: doc.data().totalAmount || 0,
-        date: doc.data().date,
-        customerName: doc.data().customerName || 'Unknown Customer',
-        billId: doc.id,
-        category: 'Sales & Billing',
-        type: 'billing' as const
-      }));
-      
-      // Fetch custom income
-      let incomeQuery = collection(db, 'income');
-      if (dateRange) {
-        incomeQuery = query(
-          collection(db, 'income'),
-          where('date', '>=', dateRange.start),
-          where('date', '<=', dateRange.end),
-          orderBy('date', 'desc')
-        ) as any;
-      } else {
-        incomeQuery = query(
-          collection(db, 'income'),
-          orderBy('date', 'desc')
-        ) as any;
-      }
-      
-      const incomeSnapshot = await getDocs(incomeQuery);
-      const customEntries = incomeSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        type: 'custom' as const
-      })) as IncomeEntry[];
-      
-      incomeData = [...billingEntries, ...billsEntries, ...customEntries].sort((a, b) => {
+      const billingEntries = billingSnapshot.docs
+        .filter(doc => isInRange(doc.data().createdAt, dateRange))
+        .map(doc => ({
+          id: doc.id,
+          amount: doc.data().totalAmount || 0,
+          date: doc.data().createdAt,
+          customerName: doc.data().customerName || 'Unknown Customer',
+          billId: doc.id,
+          category: 'Sales & Billing (Legacy)',
+          type: 'billing' as const
+        }));
+
+      const billsEntries = billsSnapshot.docs
+        .filter(doc => isInRange(doc.data().date, dateRange))
+        .map(doc => ({
+          id: doc.id,
+          amount: doc.data().totalAmount || 0,
+          date: doc.data().date,
+          customerName: doc.data().customerName || 'Unknown Customer',
+          billId: doc.id,
+          category: 'Sales & Billing',
+          type: 'billing' as const
+        }));
+
+      const customEntries = incomeSnapshot.docs
+        .filter(doc => isInRange(doc.data().date || doc.data().createdAt, dateRange))
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          type: 'custom' as const
+        })) as IncomeEntry[];
+
+      const incomeData = [...billingEntries, ...billsEntries, ...customEntries].sort((a, b) => {
         const toDate = (d: any) => {
           if (!d) return new Date(0);
           if (typeof d?.toDate === 'function') return d.toDate();

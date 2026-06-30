@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatCurrency } from '@/utils/billingUtils';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { CalendarIcon, TrendingUp, TrendingDown, Users, Package, DollarSign, BarChart3, Download, Filter, RefreshCw, FileText } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
+import { CalendarIcon, TrendingUp, Package, DollarSign, RefreshCw, FileText, Plus, Pencil, GitMerge, Trash2, X } from 'lucide-react';
+import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import QuickRangeToggle, { QuickRange } from '@/components/QuickRangeToggle';
+import { isInRange, getTotalBilling, FinanceDateRange } from '@/utils/financeReports';
+import CatalogManageDialog, { CatalogMode } from '@/components/roi/CatalogManageDialog';
+import { CatalogKind } from '@/utils/catalogManagement';
 
 // Staff interface for ROI calculations
 interface StaffMember {
@@ -126,61 +128,68 @@ interface ROIMetrics {
 const ROIDashboard: React.FC = () => {
   const { userData } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [dateRange, setDateRange] = useState({
-    start: startOfMonth(subMonths(new Date(), 1)),
-    end: endOfMonth(new Date())
-  });
-  const [selectedTab, setSelectedTab] = useState<'staff' | 'inventory' | 'services' | 'products' | 'overview'>('products');
-  const [staffFilter, setStaffFilter] = useState<string>('all');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  
+
+  // Quick date range — Career / This Month / Today, defaults to This Month
+  const [quickRange, setQuickRange] = useState<QuickRange>('month');
+  const [customStart, setCustomStart] = useState<Date | undefined>();
+  const [customEnd, setCustomEnd] = useState<Date | undefined>();
+  const hasCustom = !!(customStart && customEnd);
+
+  // Date range as JS Dates (custom overrides the toggle)
+  const dateRange = useMemo(() => {
+    if (hasCustom) return { start: startOfDay(customStart!), end: endOfDay(customEnd!) };
+    const now = new Date();
+    if (quickRange === 'today') return { start: startOfDay(now), end: endOfDay(now) };
+    if (quickRange === 'month') return { start: startOfMonth(now), end: endOfMonth(now) };
+    return { start: new Date(0), end: endOfDay(now) }; // career = all-time
+  }, [quickRange, customStart, customEnd, hasCustom]);
+
+  // FinanceDateRange (Timestamps | null) for the shared client-side date filter
+  const fdRange = useMemo<FinanceDateRange>(() => {
+    if (quickRange === 'career' && !hasCustom) return null;
+    return { start: Timestamp.fromDate(dateRange.start), end: Timestamp.fromDate(dateRange.end) };
+  }, [quickRange, hasCustom, dateRange]);
+
+  const periodLabel = hasCustom
+    ? 'Selected dates'
+    : quickRange === 'career' ? 'Career (all time)' : quickRange === 'today' ? 'Today' : 'This Month';
+
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'services' | 'products'>('products');
+
   // Data states
-  const [staffROI, setStaffROI] = useState<StaffROI[]>([]);
-  const [inventoryROI, setInventoryROI] = useState<InventoryROI[]>([]);
   const [servicesROI, setServicesROI] = useState<ServiceROI[]>([]);
   const [productsROI, setProductsROI] = useState<ProductROI[]>([]);
+  const [totalBilling, setTotalBilling] = useState(0);
   const [selectedService, setSelectedService] = useState<ServiceROI | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductROI | null>(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
-  
+
   // Pagination states for drill-down modals
   const [serviceBillsPage, setServiceBillsPage] = useState(1);
   const [serviceOrdersPage, setServiceOrdersPage] = useState(1);
   const [productBillsPage, setProductBillsPage] = useState(1);
   const [productOrdersPage, setProductOrdersPage] = useState(1);
   const itemsPerPage = 50;
-  const [metrics, setMetrics] = useState<ROIMetrics>({
-    totalStaffROI: 0,
-    totalInventoryROI: 0,
-    totalRevenue: 0,
-    totalCosts: 0,
-    netProfit: 0,
-    profitMargin: 0
-  });
 
-  // Helper function to calculate monthly salary based on new logic
-  const calculateMonthlySalary = (staff: StaffMember) => {
-    const paidSalary = staff.paidSalary || 0;
-    const bonus = staff.bonus || 0;
-    const actualSalary = staff.salaryAmount || staff.salary || 0;
-    
-    // If both paid salary and bonus are entered, use their sum
-    if (paidSalary > 0 && bonus > 0) {
-      return paidSalary + bonus;
-    }
-    // If only paid salary is entered, use it
-    if (paidSalary > 0) {
-      return paidSalary;
-    }
-    // Otherwise, use actual salary
-    return actualSalary;
+  // Catalog management dialog state
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageKind, setManageKind] = useState<CatalogKind>('service');
+  const [manageMode, setManageMode] = useState<CatalogMode>('create');
+  const [manageSource, setManageSource] = useState<string>('');
+
+  const openManage = (kind: CatalogKind, mode: CatalogMode, source = '') => {
+    setManageKind(kind);
+    setManageMode(mode);
+    setManageSource(source);
+    setManageOpen(true);
   };
 
-  const [staffList, setStaffList] = useState<StaffMember[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const clearAllFilters = () => {
+    setQuickRange('month');
+    setCustomStart(undefined);
+    setCustomEnd(undefined);
+  };
 
   if (userData?.role !== 'admin') {
     return (
@@ -200,13 +209,12 @@ const ROIDashboard: React.FC = () => {
   const fetchROIData = async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        calculateStaffROI(),
-        calculateInventoryROI(),
+      const [, , billing] = await Promise.all([
         calculateServicesROI(),
         calculateProductsROI(),
-        fetchFiltersData()
+        getTotalBilling(fdRange),
       ]);
+      setTotalBilling(billing);
     } catch (error) {
       console.error('Error fetching ROI data:', error);
       toast({
@@ -219,142 +227,18 @@ const ROIDashboard: React.FC = () => {
     }
   };
 
-  const calculateStaffROI = async () => {
-    try {
-      // Fetch staff data
-      const staffSnapshot = await getDocs(collection(db, 'staff'));
-      const staff: StaffMember[] = staffSnapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      } as StaffMember));
-      
-      // Fetch bills in date range
-      const billsQuery = query(
-        collection(db, 'bills'),
-        where('createdAt', '>=', dateRange.start),
-        where('createdAt', '<=', dateRange.end)
-      );
-      const billsSnapshot = await getDocs(billsQuery);
-      const bills = billsSnapshot.docs.map(doc => doc.data());
-
-      const staffROIData: StaffROI[] = [];
-      
-      for (const staffMember of staff) {
-        let totalBilled = 0;
-        let ordersCount = 0;
-
-        // Calculate billing from bills where staff was involved
-        bills.forEach(bill => {
-          if (bill.items) {
-            bill.items.forEach((item: any) => {
-              if (item.type === 'staff' && item.sourceId === staffMember.id) {
-                totalBilled += item.amount || 0;
-                ordersCount++;
-              }
-            });
-          }
-        });
-
-        const salaryAmount = calculateMonthlySalary(staffMember);
-        const netROI = totalBilled - salaryAmount;
-        const roiPercentage = salaryAmount > 0 ? (netROI / salaryAmount) * 100 : 0;
-
-        if (totalBilled > 0 || salaryAmount > 0) {
-          staffROIData.push({
-            staffId: staffMember.id,
-            staffName: staffMember.name || 'Unknown',
-            staffRole: staffMember.role || 'Staff',
-            totalBilled,
-            salaryAmount,
-            netROI,
-            roiPercentage,
-            ordersCount,
-            billingRate: staffMember.billingRate || 0
-          });
-        }
-      }
-
-      setStaffROI(staffROIData.sort((a, b) => b.roiPercentage - a.roiPercentage));
-    } catch (error) {
-      console.error('Error calculating staff ROI:', error);
-    }
-  };
-
-  const calculateInventoryROI = async () => {
-    try {
-      // Fetch bills in date range
-      const billsQuery = query(
-        collection(db, 'bills'),
-        where('createdAt', '>=', dateRange.start),
-        where('createdAt', '<=', dateRange.end)
-      );
-      const billsSnapshot = await getDocs(billsQuery);
-      const bills = billsSnapshot.docs.map(doc => doc.data());
-
-      const inventoryMap = new Map<string, any>();
-
-      // Calculate inventory ROI from bills
-      bills.forEach(bill => {
-        if (bill.items) {
-          bill.items.forEach((item: any) => {
-            if (item.type === 'inventory' && item.sourceId) {
-              const existing = inventoryMap.get(item.sourceId) || {
-                itemId: item.sourceId,
-                itemName: item.description || 'Unknown Item',
-                category: item.category || 'Uncategorized',
-                totalCost: 0,
-                totalSold: 0,
-                unitsSold: 0
-              };
-
-              existing.totalCost += (item.cost || 0) * (item.quantity || 1);
-              existing.totalSold += item.amount || 0;
-              existing.unitsSold += item.quantity || 1;
-
-              inventoryMap.set(item.sourceId, existing);
-            }
-          });
-        }
-      });
-
-      const inventoryROIData: InventoryROI[] = Array.from(inventoryMap.values()).map(item => {
-        const netROI = item.totalSold - item.totalCost;
-        const roiPercentage = item.totalCost > 0 ? (netROI / item.totalCost) * 100 : 0;
-        const avgSellingPrice = item.unitsSold > 0 ? item.totalSold / item.unitsSold : 0;
-
-        return {
-          ...item,
-          netROI,
-          roiPercentage,
-          avgSellingPrice
-        };
-      }).sort((a, b) => b.roiPercentage - a.roiPercentage);
-
-      setInventoryROI(inventoryROIData);
-    } catch (error) {
-      console.error('Error calculating inventory ROI:', error);
-    }
-  };
-
   const calculateServicesROI = async () => {
     try {
-      // Fetch bills in date range
-      const billsQuery = query(
-        collection(db, 'bills'),
-        where('createdAt', '>=', dateRange.start),
-        where('createdAt', '<=', dateRange.end)
-      );
-      const billsSnapshot = await getDocs(billsQuery);
-      const bills = billsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      // Fetch all, filter client-side so string + Timestamp dates are both counted
+      const billsSnapshot = await getDocs(collection(db, 'bills'));
+      const bills = billsSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((b: any) => isInRange(b.date || b.createdAt, fdRange)) as any[];
 
-      // Fetch orders in date range
-      const ordersQuery = query(
-        collection(db, 'orders'),
-        where('createdAt', '>=', dateRange.start),
-        where('createdAt', '<=', dateRange.end)
-      );
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      const ordersSnapshot = await getDocs(collection(db, 'orders'));
+      const orders = ordersSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((o: any) => isInRange(o.createdAt || o.date, fdRange)) as any[];
 
       const servicesMap = new Map<string, ServiceROI>();
 
@@ -480,30 +364,17 @@ const ROIDashboard: React.FC = () => {
 
   const calculateProductsROI = async () => {
     try {
-      // Fetch bills data
-      const billsSnapshot = await getDocs(
-        query(
-          collection(db, 'bills'),
-          where('date', '>=', dateRange.start),
-          where('date', '<=', dateRange.end),
-          orderBy('date', 'desc')
-        )
-      );
+      // Fetch all, filter client-side so string + Timestamp dates are both counted
+      const billsSnapshot = await getDocs(collection(db, 'bills'));
+      const billDocs = billsSnapshot.docs.filter(d => isInRange(d.data().date || d.data().createdAt, fdRange));
 
-      // Fetch orders data
-      const ordersSnapshot = await getDocs(
-        query(
-          collection(db, 'orders'),
-          where('createdAt', '>=', dateRange.start),
-          where('createdAt', '<=', dateRange.end),
-          orderBy('createdAt', 'desc')
-        )
-      );
+      const ordersSnapshot = await getDocs(collection(db, 'orders'));
+      const orderDocs = ordersSnapshot.docs.filter(d => isInRange(d.data().createdAt || d.data().date, fdRange));
 
       const productsMap = new Map<string, ProductROI>();
 
       // Process bills data - Group by PRODUCT NAME only, not by descriptions
-      billsSnapshot.docs.forEach(doc => {
+      billDocs.forEach(doc => {
         const bill = doc.data();
         if (bill.products && Array.isArray(bill.products)) {
           bill.products.forEach((product: any) => {
@@ -538,7 +409,7 @@ const ROIDashboard: React.FC = () => {
       });
 
       // Process orders data - Group by PRODUCT NAME only, not by descriptions
-      ordersSnapshot.docs.forEach(doc => {
+      orderDocs.forEach(doc => {
         const order = doc.data();
         if (order.products && Array.isArray(order.products)) {
           order.products.forEach((product: any) => {
@@ -581,83 +452,18 @@ const ROIDashboard: React.FC = () => {
     }
   };
 
-  const fetchFiltersData = async () => {
-    try {
-      // Fetch staff for filters
-      const staffSnapshot = await getDocs(collection(db, 'staff'));
-      const staff: StaffMember[] = staffSnapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      } as StaffMember));
-      setStaffList(staff);
-
-      // Extract unique departments
-      const uniqueDepartments = [...new Set(staff.map(s => s.department).filter(Boolean))];
-      setDepartments(uniqueDepartments);
-
-      // Fetch inventory categories
-      const inventorySnapshot = await getDocs(collection(db, 'inventory'));
-      const inventory = inventorySnapshot.docs.map(doc => doc.data());
-      const uniqueCategories = [...new Set(inventory.map((i: any) => i.category).filter(Boolean))];
-      setCategories(uniqueCategories);
-    } catch (error) {
-      console.error('Error fetching filters data:', error);
-    }
-  };
-
-  // Calculate overall metrics
-  useEffect(() => {
-    const totalStaffROI = staffROI.reduce((sum, staff) => sum + staff.netROI, 0);
-    const totalInventoryROI = inventoryROI.reduce((sum, item) => sum + item.netROI, 0);
-    const totalRevenue = staffROI.reduce((sum, staff) => sum + staff.totalBilled, 0) + 
-                        inventoryROI.reduce((sum, item) => sum + item.totalSold, 0);
-    const totalCosts = staffROI.reduce((sum, staff) => sum + staff.salaryAmount, 0) + 
-                      inventoryROI.reduce((sum, item) => sum + item.totalCost, 0);
-    const netProfit = totalStaffROI + totalInventoryROI;
-    const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-    setMetrics({
-      totalStaffROI,
-      totalInventoryROI,
-      totalRevenue,
-      totalCosts,
-      netProfit,
-      profitMargin
-    });
-  }, [staffROI, inventoryROI]);
-
-  const getROIColor = (percentage: number) => {
-    if (percentage >= 50) return 'text-green-600 dark:text-green-400';
-    if (percentage >= 20) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
-  };
-
-  const getROIBadgeVariant = (percentage: number) => {
-    if (percentage >= 50) return 'default';
-    if (percentage >= 20) return 'secondary';
-    return 'destructive';
-  };
-
-  const filteredStaffROI = staffROI.filter(staff => {
-    if (staffFilter !== 'all' && staff.staffId !== staffFilter) return false;
-    if (departmentFilter !== 'all') {
-      const staffData = staffList.find(s => s.id === staff.staffId);
-      if (staffData?.department !== departmentFilter) return false;
-    }
-    return true;
-  });
-
-  const filteredInventoryROI = inventoryROI.filter(item => {
-    if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
-    return true;
-  });
+  // Derived totals for the working (Services / Products) data
+  const totalServicesIncome = servicesROI.reduce((sum, s) => sum + s.totalIncome, 0);
+  const totalProductsIncome = productsROI.reduce((sum, p) => sum + p.totalIncome, 0);
+  const serviceNames = servicesROI.map((s) => s.serviceName);
+  const productNames = productsROI.map((p) => p.productName);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">ROI Analytics Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400">Track return on investment for staff and inventory</p>
+          <p className="text-gray-600 dark:text-gray-400">Service &amp; product performance — manage your billing catalog</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -672,161 +478,139 @@ const ROIDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Date Range Filter */}
+      {/* Filters & Date Range */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters & Date Range
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-base sm:text-lg">
+            <span className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-purple-600" />
+              Filters &amp; Date Range
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAllFilters}
+              disabled={quickRange === 'month' && !hasCustom}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Clear all
+            </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <CardContent className="space-y-4">
+          {/* Quick view toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Quick view:</span>
+            <QuickRangeToggle value={quickRange} onChange={setQuickRange} muted={hasCustom} />
+            {hasCustom && (
+              <span className="text-xs text-amber-600 dark:text-amber-400">Custom dates active — overrides quick view</span>
+            )}
+          </div>
+
+          {/* Custom date range */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end border-t border-gray-100 dark:border-gray-700 pt-4">
             <div>
-              <Label>Start Date</Label>
+              <Label className="text-xs text-gray-600 dark:text-gray-400">From</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(dateRange.start, 'PPP')}
+                    {customStart ? format(customStart, 'PPP') : 'Start date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.start}
-                    onSelect={(date) => date && setDateRange(prev => ({ ...prev, start: date }))}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={customStart} onSelect={setCustomStart} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
             <div>
-              <Label>End Date</Label>
+              <Label className="text-xs text-gray-600 dark:text-gray-400">To</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(dateRange.end, 'PPP')}
+                    {customEnd ? format(customEnd, 'PPP') : 'End date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.end}
-                    onSelect={(date) => date && setDateRange(prev => ({ ...prev, end: date }))}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={customEnd} onSelect={setCustomEnd} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
-            <div>
-              <Label>Staff Filter</Label>
-              <Select value={staffFilter} onValueChange={setStaffFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Staff" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Staff</SelectItem>
-                  {staffList.map(staff => (
-                    <SelectItem key={staff.id} value={staff.id}>
-                      {staff.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Department</Label>
-              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Departments" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map(dept => (
-                    <SelectItem key={dept} value={dept}>
-                      {dept}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {hasCustom && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setCustomStart(undefined); setCustomEnd(undefined); }}
+                className="text-red-600 hover:bg-red-50"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear dates
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Overview Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
               <DollarSign className="h-5 w-5 text-green-600" />
               Total Revenue
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(metrics.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">From all sources</p>
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{formatCurrency(totalBilling)}</div>
+            <p className="text-xs text-muted-foreground">{periodLabel}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
-              Staff ROI
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Services
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getROIColor(metrics.totalStaffROI / (staffROI.reduce((sum, s) => sum + s.salaryAmount, 0) || 1) * 100)}`}>
-              {formatCurrency(metrics.totalStaffROI)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {((metrics.totalStaffROI / (staffROI.reduce((sum, s) => sum + s.salaryAmount, 0) || 1)) * 100).toFixed(1)}% return
-            </p>
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{servicesROI.length}</div>
+            <p className="text-xs text-muted-foreground">{formatCurrency(totalServicesIncome)} income</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
               <Package className="h-5 w-5 text-purple-600" />
-              Inventory ROI
+              Products
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getROIColor(metrics.totalInventoryROI / (inventoryROI.reduce((sum, i) => sum + i.totalCost, 0) || 1) * 100)}`}>
-              {formatCurrency(metrics.totalInventoryROI)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {((metrics.totalInventoryROI / (inventoryROI.reduce((sum, i) => sum + i.totalCost, 0) || 1)) * 100).toFixed(1)}% return
-            </p>
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">{productsROI.length}</div>
+            <p className="text-xs text-muted-foreground">{formatCurrency(totalProductsIncome)} income</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-orange-600" />
-              Profit Margin
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <TrendingUp className="h-5 w-5 text-orange-600" />
+              Top Product
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getROIColor(metrics.profitMargin)}`}>
-              {metrics.profitMargin.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">Overall profitability</p>
+            <div className="text-base sm:text-lg font-bold text-orange-600 truncate">{productsROI[0]?.productName || 'N/A'}</div>
+            <p className="text-xs text-muted-foreground">{productsROI[0] ? formatCurrency(productsROI[0].totalIncome) : '—'}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Detailed Analytics Tabs */}
       <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as any)} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="staff">Staff ROI ({filteredStaffROI.length})</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory ROI ({filteredInventoryROI.length})</TabsTrigger>
           <TabsTrigger value="services">Services ({servicesROI.length})</TabsTrigger>
           <TabsTrigger value="products">Products ({productsROI.length})</TabsTrigger>
         </TabsList>
@@ -834,214 +618,63 @@ const ROIDashboard: React.FC = () => {
         <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>ROI Analysis Summary</CardTitle>
+              <CardTitle>Summary</CardTitle>
               <CardDescription>
-                Period: {format(dateRange.start, 'PPP')} to {format(dateRange.end, 'PPP')}
+                {periodLabel}
+                {quickRange !== 'career' || hasCustom ? ` · ${format(dateRange.start, 'PP')} – ${format(dateRange.end, 'PP')}` : ''}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Staff Performance</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-600" /> Top Services
+                  </h4>
                   <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Staff Earnings:</span>
-                      <span className="font-medium">{formatCurrency(staffROI.reduce((sum, s) => sum + s.totalBilled, 0))}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Staff Costs:</span>
-                      <span className="font-medium">{formatCurrency(staffROI.reduce((sum, s) => sum + s.salaryAmount, 0))}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2">
-                      <span className="text-sm font-medium">Net Staff ROI:</span>
-                      <span className={`font-bold ${getROIColor(metrics.totalStaffROI / (staffROI.reduce((sum, s) => sum + s.salaryAmount, 0) || 1) * 100)}`}>
-                        {formatCurrency(metrics.totalStaffROI)}
-                      </span>
-                    </div>
+                    {servicesROI.slice(0, 5).map((s) => (
+                      <div key={s.serviceName} className="flex justify-between text-sm">
+                        <span className="truncate">{s.serviceName}</span>
+                        <span className="font-medium text-green-600 ml-2 flex-shrink-0">{formatCurrency(s.totalIncome)}</span>
+                      </div>
+                    ))}
+                    {servicesROI.length === 0 && <p className="text-sm text-gray-500">No services in this period.</p>}
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Inventory Performance</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4 text-purple-600" /> Top Products
+                  </h4>
                   <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Inventory Sales:</span>
-                      <span className="font-medium">{formatCurrency(inventoryROI.reduce((sum, i) => sum + i.totalSold, 0))}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Inventory Costs:</span>
-                      <span className="font-medium">{formatCurrency(inventoryROI.reduce((sum, i) => sum + i.totalCost, 0))}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2">
-                      <span className="text-sm font-medium">Net Inventory ROI:</span>
-                      <span className={`font-bold ${getROIColor(metrics.totalInventoryROI / (inventoryROI.reduce((sum, i) => sum + i.totalCost, 0) || 1) * 100)}`}>
-                        {formatCurrency(metrics.totalInventoryROI)}
-                      </span>
-                    </div>
+                    {productsROI.slice(0, 5).map((p) => (
+                      <div key={p.productName} className="flex justify-between text-sm">
+                        <span className="truncate">{p.productName}</span>
+                        <span className="font-medium text-green-600 ml-2 flex-shrink-0">{formatCurrency(p.totalIncome)}</span>
+                      </div>
+                    ))}
+                    {productsROI.length === 0 && <p className="text-sm text-gray-500">No products in this period.</p>}
                   </div>
                 </div>
               </div>
 
               <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Key Insights</h4>
                 <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
-                  <p>• Top performing staff member: {staffROI[0]?.staffName || 'N/A'} ({staffROI[0] ? staffROI[0].roiPercentage.toFixed(1) : '0'}% ROI)</p>
-                  <p>• Most profitable inventory: {inventoryROI[0]?.itemName || 'N/A'} ({inventoryROI[0] ? inventoryROI[0].roiPercentage.toFixed(1) : '0'}% ROI)</p>
-                  <p>• Overall profit margin: {metrics.profitMargin.toFixed(1)}%</p>
-                  <p>• Total active staff: {staffROI.length} members</p>
+                  <p>• Total revenue ({periodLabel}): <b>{formatCurrency(totalBilling)}</b></p>
+                  <p>• {servicesROI.length} distinct services · {productsROI.length} distinct products</p>
+                  <p>• Use the Services / Products tabs to add, rename, merge or delete catalog entries.</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="staff" className="space-y-4">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredStaffROI.map((staff) => (
-                <Card key={staff.staffId} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{staff.staffName}</CardTitle>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{staff.staffRole}</p>
-                      </div>
-                      <Badge variant={getROIBadgeVariant(staff.roiPercentage)}>
-                        {staff.roiPercentage >= 0 ? '+' : ''}{staff.roiPercentage.toFixed(1)}%
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Earnings</span>
-                        <div className="font-medium text-green-600 dark:text-green-400">
-                          {formatCurrency(staff.totalBilled)}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Salary</span>
-                        <div className="font-medium text-red-600 dark:text-red-400">
-                          {formatCurrency(staff.salaryAmount)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t pt-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Net ROI:</span>
-                        <span className={`font-bold ${getROIColor(staff.roiPercentage)}`}>
-                          {formatCurrency(staff.netROI)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>Orders: {staff.ordersCount}</span>
-                      {staff.billingRate && (
-                        <span>Rate: {formatCurrency(staff.billingRate)}</span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {filteredStaffROI.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <Users className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Staff Data</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    No staff ROI data available for the selected period.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="inventory" className="space-y-4">
-          <div className="mb-4">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredInventoryROI.map((item) => (
-                <Card key={item.itemId} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{item.itemName}</CardTitle>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{item.category}</p>
-                      </div>
-                      <Badge variant={getROIBadgeVariant(item.roiPercentage)}>
-                        {item.roiPercentage >= 0 ? '+' : ''}{item.roiPercentage.toFixed(1)}%
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Revenue</span>
-                        <div className="font-medium text-green-600 dark:text-green-400">
-                          {formatCurrency(item.totalSold)}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Cost</span>
-                        <div className="font-medium text-red-600 dark:text-red-400">
-                          {formatCurrency(item.totalCost)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t pt-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Net ROI:</span>
-                        <span className={`font-bold ${getROIColor(item.roiPercentage)}`}>
-                          {formatCurrency(item.netROI)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>Units: {item.unitsSold}</span>
-                      <span>Avg Price: {formatCurrency(item.avgSellingPrice)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {filteredInventoryROI.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <Package className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Inventory Data</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    No inventory ROI data available for the selected period.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
-        
         <TabsContent value="services" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{servicesROI.length} service(s) · {periodLabel}</p>
+            <Button size="sm" onClick={() => openManage('service', 'create')} className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+              <Plus className="h-4 w-4 mr-1" /> Add Service
+            </Button>
+          </div>
           {loading ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner />
@@ -1049,59 +682,57 @@ const ROIDashboard: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {servicesROI.map((service) => (
-                <Card 
-                  key={service.serviceName} 
-                  className="hover:shadow-md transition-shadow cursor-pointer" 
-                  onClick={() => {
-                    setSelectedService(service);
-                    setServiceBillsPage(1);
-                    setServiceOrdersPage(1);
-                    setShowServiceModal(true);
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{service.serviceName}</CardTitle>
+                <Card key={service.serviceName} className="hover:shadow-md transition-shadow">
+                  <CardHeader
+                    className="pb-3 cursor-pointer"
+                    onClick={() => {
+                      setSelectedService(service);
+                      setServiceBillsPage(1);
+                      setServiceOrdersPage(1);
+                      setShowServiceModal(true);
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <CardTitle className="text-lg truncate">{service.serviceName}</CardTitle>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           Total Income: {formatCurrency(service.totalIncome)}
                         </p>
                       </div>
-                      <Badge variant="secondary">
-                        {service.timesUsed} uses
-                      </Badge>
+                      <Badge variant="secondary" className="flex-shrink-0">{service.timesUsed} uses</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Avg Price</span>
-                        <div className="font-medium text-blue-600 dark:text-blue-400">
-                          {formatCurrency(service.avgPrice)}
-                        </div>
+                        <div className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(service.avgPrice)}</div>
                       </div>
                       <div>
-                        <span className="text-gray-500 dark:text-gray-400">Orders</span>
-                        <div className="font-medium text-green-600 dark:text-green-400">
-                          {service.relatedOrders.length}
-                        </div>
+                        <span className="text-gray-500 dark:text-gray-400">Bills / Orders</span>
+                        <div className="font-medium text-green-600 dark:text-green-400">{service.relatedBills.length} / {service.relatedOrders.length}</div>
                       </div>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>Bills: {service.relatedBills.length}</span>
-                      <span>Click for details</span>
+                    <div className="flex items-center gap-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs" onClick={() => openManage('service', 'rename', service.serviceName)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />Rename
+                      </Button>
+                      <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs" onClick={() => openManage('service', 'merge', service.serviceName)}>
+                        <GitMerge className="h-3.5 w-3.5 mr-1" />Merge
+                      </Button>
+                      <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => openManage('service', 'delete', service.serviceName)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
-              
+
               {servicesROI.length === 0 && (
                 <div className="col-span-full text-center py-12">
                   <FileText className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Services Data</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    No services data available for the selected period.
-                  </p>
+                  <p className="text-gray-600 dark:text-gray-400">No services in {periodLabel}. Use "Add Service" to create one.</p>
                 </div>
               )}
             </div>
@@ -1109,6 +740,12 @@ const ROIDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="products" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{productsROI.length} product(s) · {periodLabel}</p>
+            <Button size="sm" onClick={() => openManage('product', 'create')} className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+              <Plus className="h-4 w-4 mr-1" /> Add Product
+            </Button>
+          </div>
           {loading ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner />
@@ -1116,59 +753,57 @@ const ROIDashboard: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {productsROI.map((product) => (
-                <Card 
-                  key={product.productName} 
-                  className="hover:shadow-md transition-shadow cursor-pointer" 
-                  onClick={() => {
-                    setSelectedProduct(product);
-                    setProductBillsPage(1);
-                    setProductOrdersPage(1);
-                    setShowProductModal(true);
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{product.productName}</CardTitle>
+                <Card key={product.productName} className="hover:shadow-md transition-shadow">
+                  <CardHeader
+                    className="pb-3 cursor-pointer"
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      setProductBillsPage(1);
+                      setProductOrdersPage(1);
+                      setShowProductModal(true);
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <CardTitle className="text-lg truncate">{product.productName}</CardTitle>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           Total Income: {formatCurrency(product.totalIncome)}
                         </p>
                       </div>
-                      <Badge variant="secondary">
-                        {product.timesUsed} uses
-                      </Badge>
+                      <Badge variant="secondary" className="flex-shrink-0">{product.timesUsed} uses</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Avg Price</span>
-                        <div className="font-medium text-blue-600 dark:text-blue-400">
-                          {formatCurrency(product.avgPrice)}
-                        </div>
+                        <div className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(product.avgPrice)}</div>
                       </div>
                       <div>
-                        <span className="text-gray-500 dark:text-gray-400">Orders</span>
-                        <div className="font-medium text-green-600 dark:text-green-400">
-                          {product.relatedOrders.length}
-                        </div>
+                        <span className="text-gray-500 dark:text-gray-400">Bills / Orders</span>
+                        <div className="font-medium text-green-600 dark:text-green-400">{product.relatedBills.length} / {product.relatedOrders.length}</div>
                       </div>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                      <span>Bills: {product.relatedBills.length}</span>
-                      <span>Click for details</span>
+                    <div className="flex items-center gap-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs" onClick={() => openManage('product', 'rename', product.productName)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />Rename
+                      </Button>
+                      <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs" onClick={() => openManage('product', 'merge', product.productName)}>
+                        <GitMerge className="h-3.5 w-3.5 mr-1" />Merge
+                      </Button>
+                      <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => openManage('product', 'delete', product.productName)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
-              
+
               {productsROI.length === 0 && (
                 <div className="col-span-full text-center py-12">
                   <Package className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Products Data</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    No products data available for the selected period.
-                  </p>
+                  <p className="text-gray-600 dark:text-gray-400">No products in {periodLabel}. Use "Add Product" to create one.</p>
                 </div>
               )}
             </div>
@@ -1638,6 +1273,17 @@ const ROIDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Catalog management dialog (create / rename / merge / delete) */}
+      <CatalogManageDialog
+        open={manageOpen}
+        onOpenChange={setManageOpen}
+        kind={manageKind}
+        mode={manageMode}
+        sourceName={manageSource}
+        existingNames={manageKind === 'service' ? serviceNames : productNames}
+        onDone={fetchROIData}
+      />
     </div>
   );
 };

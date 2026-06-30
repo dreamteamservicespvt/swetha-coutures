@@ -26,12 +26,26 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
   const [searchValue, setSearchValue] = useState(value);
   const [filteredOptions, setFilteredOptions] = useState<string[]>([]);
   const [justSelectedOption, setJustSelectedOption] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSearchValue(value);
   }, [value]);
+
+  // Reset the keyboard highlight whenever the option list changes or the dropdown closes
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [filteredOptions, isOpen]);
+
+  // Keep the highlighted option scrolled into view during keyboard navigation
+  useEffect(() => {
+    if (highlightedIndex < 0 || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-index="${highlightedIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [highlightedIndex]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -73,17 +87,26 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
     setIsOpen(true);
   };
 
+  // Snap a typed value to an existing option when it matches case-insensitively, so we never
+  // create a casing-duplicate (e.g. "stitching" becomes "Stitching" if that already exists).
+  const canonicalize = (val: string) => {
+    const trimmed = val.trim();
+    const match = options.find(o => o.toLowerCase() === trimmed.toLowerCase());
+    return match || trimmed;
+  };
+
   const handleInputBlur = () => {
     // Don't run blur logic if we just selected an option
     if (justSelectedOption) {
       return; // Exit early, don't reset the flag here
     }
-    
+
     // Small delay to allow for option clicks
     setTimeout(() => {
       // Only update if we're not in the middle of a selection
-      if (!justSelectedOption && searchValue !== value && searchValue.trim() !== '') {
-        onChange(searchValue);
+      if (!justSelectedOption && searchValue.trim() !== '') {
+        const canonical = canonicalize(searchValue);
+        if (canonical !== value) onChange(canonical);
       }
       setIsOpen(false);
     }, 200); // Increased timeout for better reliability
@@ -102,10 +125,33 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      onChange(searchValue);
-      setIsOpen(false);
+      if (!isOpen) {
+        setIsOpen(true);
+        return;
+      }
+      if (filteredOptions.length > 0) {
+        setHighlightedIndex(prev => (prev + 1) % filteredOptions.length);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        return;
+      }
+      if (filteredOptions.length > 0) {
+        setHighlightedIndex(prev => (prev <= 0 ? filteredOptions.length - 1 : prev - 1));
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isOpen && highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
+        // Select the option currently highlighted via the keyboard
+        handleOptionClick(filteredOptions[highlightedIndex]);
+      } else {
+        onChange(canonicalize(searchValue));
+        setIsOpen(false);
+      }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       setSearchValue(value);
@@ -131,12 +177,17 @@ const ProductNameInput: React.FC<ProductNameInputProps> = ({
       {isOpen && filteredOptions.length > 0 && (
         <Card ref={dropdownRef} className="absolute top-full left-0 right-0 z-50 mt-1 shadow-lg max-h-60 overflow-hidden">
           <CardContent className="p-0">
-            <div className="max-h-60 overflow-y-auto">
+            <div ref={listRef} className="max-h-60 overflow-y-auto">
               <div className="py-1">
                 {filteredOptions.map((option, index) => (
                   <div
                     key={`${option}-${index}`}
-                    className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
+                    data-index={index}
+                    className={cn(
+                      "flex items-center px-3 py-2 cursor-pointer transition-colors",
+                      index === highlightedIndex ? "bg-purple-100 dark:bg-purple-900/40" : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                    )}
+                    onMouseEnter={() => setHighlightedIndex(index)}
                     onMouseDown={(e) => e.preventDefault()} // Prevent input blur
                     onClick={() => handleOptionClick(option)}
                   >

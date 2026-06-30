@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import CategoryBreakdown from './CategoryBreakdown';
 import CategoryInput from '../CategoryInput';
 import PaymentModeSelector, { PaymentBreakdown } from './PaymentModeSelector';
+import { isInRange } from '@/utils/financeReports';
 
 interface ExpensesTabProps {
   dateRange: { start: Timestamp; end: Timestamp } | null;
@@ -98,25 +99,10 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
     try {
       let expenseData: ExpenseEntry[] = [];
       
-      // Fetch inventory purchases
-      let inventoryQuery = collection(db, 'inventory');
-      if (dateRange) {
-        inventoryQuery = query(
-          collection(db, 'inventory'),
-          where('broughtAt', '>=', dateRange.start),
-          where('broughtAt', '<=', dateRange.end),
-          orderBy('broughtAt', 'desc')
-        ) as any;
-      } else {
-        inventoryQuery = query(
-          collection(db, 'inventory'),
-          orderBy('broughtAt', 'desc')
-        ) as any;
-      }
-      
-      const inventorySnapshot = await getDocs(inventoryQuery);
+      // Fetch inventory purchases (client-side date filter for consistency)
+      const inventorySnapshot = await getDocs(collection(db, 'inventory'));
       const inventoryEntries = inventorySnapshot.docs
-        .filter(doc => doc.data().cost && doc.data().broughtAt)
+        .filter(doc => doc.data().cost && doc.data().broughtAt && isInRange(doc.data().broughtAt, dateRange))
         .map(doc => ({
           id: doc.id,
           amount: doc.data().cost || 0,
@@ -169,43 +155,29 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
               salaryAmount = monthlySalaryAmount;
             }
           } else {
-            // For daily/hourly, calculate based on attendance
-            let attendanceQuery = query(
+            // For daily/hourly, calculate based on attendance (client-side date filter)
+            const attendanceSnapshot = await getDocs(query(
               collection(db, 'attendance'),
               where('staffId', '==', staff.id),
               where('status', '==', 'confirmed')
-            );
-            
-            if (dateRange) {
-              attendanceQuery = query(
-                collection(db, 'attendance'),
-                where('staffId', '==', staff.id),
-                where('status', '==', 'confirmed'),
-                where('date', '>=', dateRange.start.toDate().toISOString().split('T')[0]),
-                where('date', '<=', dateRange.end.toDate().toISOString().split('T')[0])
-              ) as any;
-            }
-            
-            const attendanceSnapshot = await getDocs(attendanceQuery);
-            const attendanceCount = attendanceSnapshot.size;
-            
-            console.log(`Attendance records for ${staff.name} (${staff.salaryMode}):`, attendanceCount);
-            
+            ));
+            const attDocs = attendanceSnapshot.docs.filter(d => isInRange(d.data().date, dateRange));
+            const attendanceCount = attDocs.length;
+
             if (staff.salaryMode === 'daily') {
               // If no attendance records but we're looking at current date, assume at least one day
-              const workingDays = attendanceCount > 0 ? attendanceCount : 
+              const workingDays = attendanceCount > 0 ? attendanceCount :
                 (dateRange ? 0 : 1); // Default to 1 day if no date range and no records
-              
+
               if (workingDays > 0) {
                 salaryAmount = monthlySalaryAmount * workingDays;
-                console.log(`Daily salary calculation for ${staff.name}: ${workingDays} days × ₹${monthlySalaryAmount} = ₹${salaryAmount}`);
               }
             } else if (staff.salaryMode === 'hourly') {
               let totalHours = 0;
-              
+
               if (attendanceCount > 0) {
                 // Calculate based on actual attendance records
-                attendanceSnapshot.docs.forEach(doc => {
+                attDocs.forEach(doc => {
                   const attendanceData = doc.data();
                   totalHours += attendanceData.hoursWorked || 8; // Default 8 hours if not specified
                 });
@@ -238,28 +210,15 @@ const ExpensesTab = ({ dateRange, onDataChange, loading }: ExpensesTabProps) => 
         console.error('Error calculating staff salaries:', error);
       }
       
-      // Fetch custom expenses
-      let expensesQuery = collection(db, 'expenses');
-      if (dateRange) {
-        expensesQuery = query(
-          collection(db, 'expenses'),
-          where('date', '>=', dateRange.start),
-          where('date', '<=', dateRange.end),
-          orderBy('date', 'desc')
-        ) as any;
-      } else {
-        expensesQuery = query(
-          collection(db, 'expenses'),
-          orderBy('date', 'desc')
-        ) as any;
-      }
-      
-      const expensesSnapshot = await getDocs(expensesQuery);
-      const customEntries = expensesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        type: 'custom' as const
-      })) as ExpenseEntry[];
+      // Fetch custom expenses (client-side date filter)
+      const expensesSnapshot = await getDocs(collection(db, 'expenses'));
+      const customEntries = expensesSnapshot.docs
+        .filter(doc => isInRange(doc.data().date || doc.data().createdAt, dateRange))
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          type: 'custom' as const
+        })) as ExpenseEntry[];
       
       expenseData = [...inventoryEntries, ...salaryEntries, ...customEntries].sort((a, b) => {
         const toDate = (d: any) => {

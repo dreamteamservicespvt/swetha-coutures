@@ -27,14 +27,28 @@ const CategoryInput: React.FC<CategoryInputProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchValue, setSearchValue] = useState(value);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+  const listRef = useRef<HTMLDivElement>(null);
+
   const { suggestions, addCategorySuggestion } = useCategorySuggestions(type);
 
   useEffect(() => {
     setSearchValue(value);
   }, [value]);
+
+  // Reset the keyboard highlight whenever the option list changes or the dropdown closes
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [filteredSuggestions, isOpen]);
+
+  // Keep the highlighted option scrolled into view during keyboard navigation
+  useEffect(() => {
+    if (highlightedIndex < 0 || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-index="${highlightedIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [highlightedIndex]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -77,13 +91,22 @@ const CategoryInput: React.FC<CategoryInputProps> = ({
     setIsOpen(true);
   };
 
+  // Snap a typed value to an existing category when it matches case-insensitively, so we never
+  // create a casing-duplicate (e.g. "fabric" becomes "Fabric" if that already exists).
+  const canonicalize = (val: string) => {
+    const trimmed = val.trim();
+    const match = suggestions.map(s => s.name).find(n => n.toLowerCase() === trimmed.toLowerCase());
+    return match || trimmed;
+  };
+
   const handleInputBlur = () => {
     // Small delay to allow for suggestion clicks
     setTimeout(() => {
-      if (searchValue !== value) {
-        onChange(searchValue);
-        if (searchValue.trim()) {
-          addCategorySuggestion(searchValue.trim());
+      const canonical = canonicalize(searchValue);
+      if (canonical !== value) {
+        onChange(canonical);
+        if (canonical.trim()) {
+          addCategorySuggestion(canonical.trim());
         }
       }
     }, 150);
@@ -97,13 +120,37 @@ const CategoryInput: React.FC<CategoryInputProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      onChange(searchValue);
-      if (searchValue.trim()) {
-        addCategorySuggestion(searchValue.trim());
+      if (!isOpen) {
+        setIsOpen(true);
+        return;
       }
-      setIsOpen(false);
+      if (filteredSuggestions.length > 0) {
+        setHighlightedIndex(prev => (prev + 1) % filteredSuggestions.length);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        return;
+      }
+      if (filteredSuggestions.length > 0) {
+        setHighlightedIndex(prev => (prev <= 0 ? filteredSuggestions.length - 1 : prev - 1));
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isOpen && highlightedIndex >= 0 && highlightedIndex < filteredSuggestions.length) {
+        // Select the option currently highlighted via the keyboard
+        handleSuggestionClick(filteredSuggestions[highlightedIndex]);
+      } else {
+        const canonical = canonicalize(searchValue);
+        onChange(canonical);
+        if (canonical.trim()) {
+          addCategorySuggestion(canonical.trim());
+        }
+        setIsOpen(false);
+      }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       setSearchValue(value);
@@ -129,12 +176,18 @@ const CategoryInput: React.FC<CategoryInputProps> = ({
       {isOpen && filteredSuggestions.length > 0 && (
         <Card ref={dropdownRef} className="absolute top-full left-0 right-0 z-50 mt-1 shadow-lg max-h-60 overflow-hidden">
           <CardContent className="p-0">
-            <div className="max-h-60 overflow-y-auto">
+            <div ref={listRef} className="max-h-60 overflow-y-auto">
               <div className="py-1">
                 {filteredSuggestions.map((suggestion, index) => (
                   <div
                     key={`${suggestion}-${index}`}
-                    className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 group"
+                    data-index={index}
+                    className={cn(
+                      "flex items-center justify-between px-3 py-2 cursor-pointer group transition-colors",
+                      index === highlightedIndex ? "bg-purple-100 dark:bg-purple-900/40" : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                    )}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleSuggestionClick(suggestion)}
                   >
                     <div className="flex items-center gap-2 flex-1">

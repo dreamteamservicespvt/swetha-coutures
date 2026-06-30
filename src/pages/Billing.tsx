@@ -60,52 +60,136 @@ import {
   ChevronDown,
   Share2
 } from 'lucide-react';
-import { collection, getDocs, query, orderBy, where, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Bill, formatCurrency, getBillStatusColor, calculateBillStatus, downloadPDF, printBill, formatBillDate, formatDateForDisplay } from '@/utils/billingUtils';
-import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
 import BillingFilters from '@/components/BillingFilters';
+import QuickRangeToggle, { QuickRange } from '@/components/QuickRangeToggle';
 import BillingExportDialog from '@/components/BillingExportDialog';
 import { getOrCreateShareToken, generatePublicBillUrl, generateWhatsAppShareUrl } from '@/utils/billShareUtils';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
+// ---- Persisted filter state (survives navigating into a bill and back) ----
+const FILTER_STORAGE_KEY = 'billing.filters.v1';
+
+interface PersistedFilters {
+  searchTerm: string;
+  filterStatus: 'all' | 'paid' | 'partial' | 'unpaid';
+  dateToggle: QuickRange;
+  customSingle: number | null;
+  customStart: number | null;
+  customEnd: number | null;
+}
+
+const loadPersistedFilters = (): Partial<PersistedFilters> => {
+  try {
+    const raw = sessionStorage.getItem(FILTER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Partial<PersistedFilters>) : {};
+  } catch {
+    return {};
+  }
+};
+
+const startOfDay = (d: Date): Date => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+const endOfDay = (d: Date): Date => {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+};
+
+const PAGE_SIZE = 10;
+
 const Billing = () => {
   const navigate = useNavigate();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
-  const [filterDateRange, setFilterDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  // Filter state — lazily initialised from sessionStorage so it survives navigation (Req 4)
+  const [searchTerm, setSearchTerm] = useState<string>(() => loadPersistedFilters().searchTerm ?? '');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'partial' | 'unpaid'>(() => loadPersistedFilters().filterStatus ?? 'all');
+  // Quick date range toggle: Career (all-time) / This Month (calendar month) / Today — defaults to This Month (Req 1)
+  const [dateToggle, setDateToggle] = useState<QuickRange>(() => loadPersistedFilters().dateToggle ?? 'month');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [dateFilterLoading, setDateFilterLoading] = useState(false);
   const [downloadingPdfBillId, setDownloadingPdfBillId] = useState<string | null>(null);
   const [sharingBillId, setSharingBillId] = useState<string | null>(null);
-  
+
+  // How many bills are currently rendered (Req 2 — paginated list)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
   // Status update states
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [statusUpdateBill, setStatusUpdateBill] = useState<Bill | null>(null);
   const [partialPaymentAmount, setPartialPaymentAmount] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  
-  // Mobile date filter states
-  const [mobileSingleDate, setMobileSingleDate] = useState<Date | undefined>();
-  const [mobileStartDate, setMobileStartDate] = useState<Date | undefined>();
-  const [mobileEndDate, setMobileEndDate] = useState<Date | undefined>();
 
-  // Calculate stats
+  // Custom date filter state — shared by desktop & mobile, applied client-side (Req 4)
+  const [customSingleDate, setCustomSingleDate] = useState<Date | undefined>(() => {
+    const v = loadPersistedFilters().customSingle;
+    return v ? new Date(v) : undefined;
+  });
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(() => {
+    const v = loadPersistedFilters().customStart;
+    return v ? new Date(v) : undefined;
+  });
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(() => {
+    const v = loadPersistedFilters().customEnd;
+    return v ? new Date(v) : undefined;
+  });
+
+  const hasCustomDate = !!(customSingleDate || customStartDate || customEndDate);
+
+  // Does a bill fall within the currently active date scope (custom range overrides the quick toggle)?
+  const matchesDateScope = (bill: Bill): boolean => {
+    const billDate = formatBillDate(bill.date);
+    if (hasCustomDate) {
+      if (customSingleDate) {
+        return billDate >= startOfDay(customSingleDate) && billDate <= endOfDay(customSingleDate);
+      }
+      let ok = true;
+      if (customStartDate) ok = ok && billDate >= startOfDay(customStartDate);
+      if (customEndDate) ok = ok && billDate <= endOfDay(customEndDate);
+      return ok;
+    }
+    const now = new Date();
+    if (dateToggle === 'today') {
+      return billDate >= startOfDay(now) && billDate <= endOfDay(now);
+    }
+    if (dateToggle === 'month') {
+      return billDate.getFullYear() === now.getFullYear() && billDate.getMonth() === now.getMonth();
+    }
+    return true; // 'career' => all-time
+  };
+
+  // Bills within the active period — drives the stat cards so they follow the Quick view toggle
+  const dateScopedBills = bills.filter(matchesDateScope);
+
+  // Human label for the active period, shown on the stat cards (matches the Quick view toggle)
+  const periodLabel = hasCustomDate
+    ? 'Selected dates'
+    : dateToggle === 'career'
+      ? 'Career'
+      : dateToggle === 'today'
+        ? 'Today'
+        : 'This Month';
+
+  // Stats reflect the selected period (Career / This Month / Today / custom)
   const stats = {
-    totalBills: bills.length,
-    totalRevenue: bills.reduce((sum, bill) => sum + (bill.totalAmount || 0), 0),
-    paidBills: bills.filter(bill => calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0) === 'paid').length,
-    pendingAmount: bills.reduce((sum, bill) => sum + (bill.balance || 0), 0)
+    totalBills: dateScopedBills.length,
+    totalRevenue: dateScopedBills.reduce((sum, bill) => sum + (bill.totalAmount || 0), 0),
+    paidBills: dateScopedBills.filter(bill => calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0) === 'paid').length,
+    pendingAmount: dateScopedBills.reduce((sum, bill) => sum + (bill.balance || 0), 0)
   };
 
   // Fetch bills with real-time updates
@@ -152,131 +236,66 @@ const Billing = () => {
     return () => unsubscribe();
   }, []);
 
-  // Handle date filter
-  const handleDateFilter = async (startDate: Date | null, endDate: Date | null) => {
-    setDateFilterLoading(true);
-    
+  // Persist filter selections so they survive navigating into a bill and back (Req 4)
+  useEffect(() => {
+    const data: PersistedFilters = {
+      searchTerm,
+      filterStatus,
+      dateToggle,
+      customSingle: customSingleDate ? customSingleDate.getTime() : null,
+      customStart: customStartDate ? customStartDate.getTime() : null,
+      customEnd: customEndDate ? customEndDate.getTime() : null,
+    };
     try {
-      let q = query(collection(db, 'bills'));
-      
-      if (startDate && endDate) {
-        q = query(
-          collection(db, 'bills'),
-          where('date', '>=', Timestamp.fromDate(startDate)),
-          where('date', '<=', Timestamp.fromDate(endDate))
-        );
-      }
-      
-      const snapshot = await getDocs(q);
-      let filteredBills = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Bill[];
-      
-      // Sort by billNumber descending
-      filteredBills.sort((a, b) => {
-        const billNumA = a.billNumber || parseInt(a.billId?.replace(/\D/g, '') || '0');
-        const billNumB = b.billNumber || parseInt(b.billId?.replace(/\D/g, '') || '0');
-        return billNumB - billNumA;
-      });
-      
-      setBills(filteredBills);
-      
-      toast({
-        title: "Filter Applied",
-        description: `Found ${filteredBills.length} bills${startDate && endDate ? ' in selected date range' : ''}`,
-      });
-    } catch (error) {
-      console.error('Error filtering bills:', error);
-      toast({
-        title: "Error",
-        description: "Failed to apply date filter",
-        variant: "destructive",
-      });
-    } finally {
-      setDateFilterLoading(false);
+      sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      /* ignore storage errors (private mode etc.) */
     }
-  };
+  }, [searchTerm, filterStatus, dateToggle, customSingleDate, customStartDate, customEndDate]);
 
-  // Handle mobile date filter changes
-  const handleMobileDateChange = (type: 'single' | 'from' | 'to', date: Date | undefined) => {
+  // Whenever the filters change, reset the paginated list back to the first page (Req 2)
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchTerm, filterStatus, dateToggle, customSingleDate, customStartDate, customEndDate]);
+
+  // Client-side custom date filter handlers (Req 4 — no separate query, so the list never resets)
+  const handleCustomDateChange = (type: 'single' | 'from' | 'to', date: Date | undefined) => {
     if (type === 'single') {
-      setMobileSingleDate(date);
-      setMobileStartDate(undefined);
-      setMobileEndDate(undefined);
-      if (date) {
-        const start = new Date(date);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(date);
-        end.setHours(23, 59, 59, 999);
-        handleDateFilter(start, end);
-      }
+      setCustomSingleDate(date);
+      setCustomStartDate(undefined);
+      setCustomEndDate(undefined);
     } else if (type === 'from') {
-      setMobileStartDate(date);
-      setMobileSingleDate(undefined);
-      if (date && mobileEndDate) {
-        const start = new Date(date);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(mobileEndDate);
-        end.setHours(23, 59, 59, 999);
-        handleDateFilter(start, end);
-      }
-    } else if (type === 'to') {
-      setMobileEndDate(date);
-      setMobileSingleDate(undefined);
-      if (mobileStartDate && date) {
-        const start = new Date(mobileStartDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(date);
-        end.setHours(23, 59, 59, 999);
-        handleDateFilter(start, end);
-      }
+      setCustomStartDate(date);
+      setCustomSingleDate(undefined);
+    } else {
+      setCustomEndDate(date);
+      setCustomSingleDate(undefined);
     }
   };
 
-  // Clear mobile date filters
-  const clearMobileDateFilters = () => {
-    setMobileSingleDate(undefined);
-    setMobileStartDate(undefined);
-    setMobileEndDate(undefined);
-    handleDateFilter(null, null);
+  const clearCustomDates = () => {
+    setCustomSingleDate(undefined);
+    setCustomStartDate(undefined);
+    setCustomEndDate(undefined);
   };
 
-  const filteredBills = bills.filter((bill: Bill) => {
-    const matchesSearch = 
+  // Apply search + status on top of the already date-scoped bills
+  const filteredBills = dateScopedBills.filter((bill: Bill) => {
+    const matchesSearch =
       bill.billId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bill.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bill.customerPhone?.includes(searchTerm);
-    
-    const matchesStatus = 
+
+    const matchesStatus =
       filterStatus === 'all' ||
       calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0) === filterStatus;
-    
-    let matchesDate = true;
-    if (filterDateRange !== 'all') {
-      const billDate = formatBillDate(bill.date);
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      switch (filterDateRange) {
-        case 'today':
-          matchesDate = billDate >= startOfDay;
-          break;
-        case 'week': {
-          const weekAgo = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
-          matchesDate = billDate >= weekAgo;
-          break;
-        }
-        case 'month': {
-          const monthAgo = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
-          matchesDate = billDate >= monthAgo;
-          break;
-        }
-      }
-    }
-    
-    return matchesSearch && matchesStatus && matchesDate;
+
+    return matchesSearch && matchesStatus;
   });
+
+  // Only render the first `visibleCount` bills for fast loading (Req 2)
+  const visibleBills = filteredBills.slice(0, visibleCount);
+  const hasMoreBills = filteredBills.length > visibleCount;
 
   const handleDeleteBill = async (billId: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -538,7 +557,7 @@ const Billing = () => {
           </CardHeader>
           <CardContent className="card-content-responsive">
             <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-900 dark:text-purple-100">{stats.totalBills}</div>
-            <p className="responsive-text-xs text-purple-600 dark:text-purple-300">All time records</p>
+            <p className="responsive-text-xs mt-1"><span className="inline-block px-2 py-0.5 rounded-full bg-purple-200/70 text-purple-700 dark:bg-purple-800/40 dark:text-purple-200 text-[10px] font-semibold">{periodLabel}</span></p>
           </CardContent>
         </Card>
 
@@ -549,7 +568,7 @@ const Billing = () => {
           </CardHeader>
           <CardContent className="card-content-responsive">
             <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-900 dark:text-green-100">{formatCurrency(stats.totalRevenue)}</div>
-            <p className="text-xs text-green-600 dark:text-green-300">Gross income</p>
+            <p className="text-xs mt-1"><span className="inline-block px-2 py-0.5 rounded-full bg-green-200/70 text-green-700 dark:bg-green-800/40 dark:text-green-200 text-[10px] font-semibold">{periodLabel}</span></p>
           </CardContent>
         </Card>
 
@@ -560,7 +579,7 @@ const Billing = () => {
           </CardHeader>
           <CardContent className="card-content-responsive">
             <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900 dark:text-blue-100">{stats.paidBills}</div>
-            <p className="text-xs text-blue-600 dark:text-blue-300">Completed payments</p>
+            <p className="text-xs mt-1"><span className="inline-block px-2 py-0.5 rounded-full bg-blue-200/70 text-blue-700 dark:bg-blue-800/40 dark:text-blue-200 text-[10px] font-semibold">{periodLabel}</span></p>
           </CardContent>
         </Card>
 
@@ -571,7 +590,7 @@ const Billing = () => {
           </CardHeader>
           <CardContent className="card-content-responsive">
             <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-900 dark:text-red-100">{formatCurrency(stats.pendingAmount)}</div>
-            <p className="text-xs text-red-600 dark:text-red-300">Outstanding balance</p>
+            <p className="text-xs mt-1"><span className="inline-block px-2 py-0.5 rounded-full bg-red-200/70 text-red-700 dark:bg-red-800/40 dark:text-red-200 text-[10px] font-semibold">{periodLabel}</span></p>
           </CardContent>
         </Card>
       </div>
@@ -596,7 +615,22 @@ const Billing = () => {
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent className="pb-4 sm:pb-6">
+        <CardContent className="pb-4 sm:pb-6 space-y-4">
+          {/* Quick date range toggle — Career / This Month / Today (Req 1) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <span className="responsive-text-sm font-medium text-gray-700 dark:text-gray-300">Quick view:</span>
+            <QuickRangeToggle
+              value={dateToggle}
+              onChange={setDateToggle}
+              muted={hasCustomDate}
+            />
+            {hasCustomDate && (
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                Custom date filter active — overrides quick view
+              </span>
+            )}
+          </div>
+
           <div className="hidden lg:block">
             {/* Desktop version - compact filters */}
             <BillingFilters
@@ -604,17 +638,18 @@ const Billing = () => {
               setSearchTerm={setSearchTerm}
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
-              filterDateRange={filterDateRange}
-              setFilterDateRange={setFilterDateRange}
-              onDateFilter={handleDateFilter}
-              dateFilterLoading={dateFilterLoading}
+              singleDate={customSingleDate}
+              startDate={customStartDate}
+              endDate={customEndDate}
+              onDateChange={handleCustomDateChange}
+              onClearDates={clearCustomDates}
             />
           </div>
-          
+
           {/* Mobile version - preserve the original stacked layout for better mobile experience */}
           <div className="lg:hidden space-y-4 sm:space-y-6">
             {/* Main Filters Row */}
-            <div className="form-grid-responsive-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Search */}
               <div className="space-y-2">
                 <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Search Bills</label>
@@ -628,7 +663,7 @@ const Billing = () => {
                   />
                 </div>
               </div>
-  
+
               {/* Status Filter */}
               <div className="space-y-2">
                 <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Payment Status</label>
@@ -644,73 +679,58 @@ const Billing = () => {
                   </SelectContent>
                 </Select>
               </div>
-  
-              {/* Date Range Filter */}
-              <div className="space-y-2">
-                <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100">Date Range</label>
-                <Select value={filterDateRange} onValueChange={(value: 'all' | 'today' | 'week' | 'month') => setFilterDateRange(value)}>
-                  <SelectTrigger className="h-8 sm:h-10 responsive-text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                    <SelectItem value="all" className="text-gray-900 dark:text-gray-100">All Time</SelectItem>
-                    <SelectItem value="today" className="text-gray-900 dark:text-gray-100">Today</SelectItem>
-                    <SelectItem value="week" className="text-gray-900 dark:text-gray-100">This Week</SelectItem>
-                    <SelectItem value="month" className="text-gray-900 dark:text-gray-100">This Month</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
-  
-            {/* Date Filter Row - Clean and Compact */}
+
+            {/* Custom Date Filter Row - Clean and Compact */}
             <div className="border-t border-gray-200 dark:border-gray-700 pt-3 sm:pt-4">
               <div className="flex items-center justify-between mb-3">
                 <label className="responsive-text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
-                  📅 Date Filter
+                  📅 Custom Date Filter
                 </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearMobileDateFilters}
-                  disabled={dateFilterLoading}
-                  className="text-red-600 hover:bg-red-50 h-7 px-2"
-                >
-                  <X className="h-3 w-3 mr-1" />
-                  Clear
-                </Button>
+                {hasCustomDate && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearCustomDates}
+                    className="text-red-600 hover:bg-red-50 h-7 px-2"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
               </div>
-              
+
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">
                   {/* Pick Date */}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-700 dark:text-gray-300">🗓️ Pick Date</label>
                     <DatePicker
-                      date={mobileSingleDate}
-                      onDateChange={(date) => handleMobileDateChange('single', date)}
+                      date={customSingleDate}
+                      onDateChange={(date) => handleCustomDateChange('single', date)}
                       placeholder="Pick"
                       className="text-xs h-8"
                     />
                   </div>
-                  
+
                   {/* From Date */}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-700 dark:text-gray-300">📆 From Date</label>
                     <DatePicker
-                      date={mobileStartDate}
-                      onDateChange={(date) => handleMobileDateChange('from', date)}
+                      date={customStartDate}
+                      onDateChange={(date) => handleCustomDateChange('from', date)}
                       placeholder="From"
                       className="text-xs h-8"
                     />
                   </div>
-                  
+
                   {/* To Date */}
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-700 dark:text-gray-300">📆 To Date</label>
                     <DatePicker
-                      date={mobileEndDate}
-                      onDateChange={(date) => handleMobileDateChange('to', date)}
+                      date={customEndDate}
+                      onDateChange={(date) => handleCustomDateChange('to', date)}
                       placeholder="To"
                       className="text-xs h-8"
                     />
@@ -781,7 +801,7 @@ const Billing = () => {
             <>
               {/* Grid View - Enhanced to Match Orders Page */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {filteredBills.map((bill: Bill) => {
+                {visibleBills.map((bill: Bill) => {
                   const status = calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0);
                   return (
                     <Card 
@@ -960,7 +980,7 @@ const Billing = () => {
             <>
               {/* Mobile Card View for Table Mode on Small Screens */}
               <div className="block lg:hidden space-y-4">
-                {filteredBills.map((bill: Bill) => {
+                {visibleBills.map((bill: Bill) => {
                   const status = calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0);
                   return (
                     <Card 
@@ -1110,7 +1130,7 @@ const Billing = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredBills.map((bill: Bill) => {
+                      {visibleBills.map((bill: Bill) => {
                         const status = calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0);
                         return (
                           <TableRow 
@@ -1189,7 +1209,7 @@ const Billing = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredBills.map((bill: Bill) => {
+                      {visibleBills.map((bill: Bill) => {
                         const status = calculateBillStatus(bill.totalAmount || 0, bill.paidAmount || 0);
                         return (
                           <TableRow 
@@ -1293,6 +1313,34 @@ const Billing = () => {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Load more / Load all controls (Req 2) */}
+          {hasMoreBills && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Showing {visibleBills.length} of {filteredBills.length} bills
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                  Load 10 more
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleCount(filteredBills.length)}
+                  className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                >
+                  Load all ({filteredBills.length})
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -110,23 +110,25 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
         return; // Nothing to save
       }
 
-      // Save new product names
+      // Save new product names (case-insensitive dedup so "Stitching"/"stitching" can't both exist)
       for (const productName of newProductsArray) {
-        if (productName.trim() && !productNames.includes(productName.trim())) {
+        const clean = productName.trim();
+        if (clean && !productNames.some(p => p.toLowerCase() === clean.toLowerCase())) {
           await addDoc(collection(db, 'products'), {
-            name: productName.trim(),
+            name: clean,
             createdAt: new Date(),
             usageCount: 1
           });
         }
       }
 
-      // Save new descriptions
+      // Save new descriptions (case-insensitive dedup)
       for (const description of newDescriptionsArray) {
-        if (description.trim() && !savedDescriptions.includes(description.trim())) {
+        const clean = description.trim();
+        if (clean && !savedDescriptions.some(d => d.toLowerCase() === clean.toLowerCase())) {
           await addDoc(collection(db, 'descriptions'), {
-            name: description.trim(),
-            description: description.trim(),
+            name: clean,
+            description: clean,
             createdAt: new Date(),
             usageCount: 1
           });
