@@ -15,7 +15,7 @@ import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import QuickRangeToggle, { QuickRange } from '@/components/QuickRangeToggle';
-import { isInRange, getTotalBilling, FinanceDateRange } from '@/utils/financeReports';
+import { isInRange, getTotalBilling, toJsDate, FinanceDateRange } from '@/utils/financeReports';
 import CatalogManageDialog, { CatalogMode } from '@/components/roi/CatalogManageDialog';
 import { CatalogKind } from '@/utils/catalogManagement';
 
@@ -189,6 +189,13 @@ const ROIDashboard: React.FC = () => {
     setQuickRange('month');
     setCustomStart(undefined);
     setCustomEnd(undefined);
+  };
+
+  // Safe date formatter — never throws on string/missing/invalid dates (date-fns format() would)
+  const safeFormatDate = (d: any): string => {
+    const date = toJsDate(d);
+    if (!date || isNaN(date.getTime()) || date.getTime() === 0) return 'No date';
+    return format(date, 'MMM dd, yyyy');
   };
 
   if (userData?.role !== 'admin') {
@@ -910,7 +917,7 @@ const ROIDashboard: React.FC = () => {
                                       {formatCurrency(bill.amount)}
                                     </div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {bill.date ? format(new Date(bill.date.toDate ? bill.date.toDate() : bill.date), 'MMM dd, yyyy') : 'No date'}
+                                      {safeFormatDate(bill.date)}
                                     </div>
                                   </div>
                                 </div>
@@ -989,7 +996,7 @@ const ROIDashboard: React.FC = () => {
                                       {formatCurrency(order.amount)}
                                     </div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {order.date ? format(new Date(order.date.toDate ? order.date.toDate() : order.date), 'MMM dd, yyyy') : 'No date'}
+                                      {safeFormatDate(order.date)}
                                     </div>
                                   </div>
                                 </div>
@@ -1139,7 +1146,7 @@ const ROIDashboard: React.FC = () => {
                                       {formatCurrency(bill.amount)}
                                     </div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {bill.date ? format(new Date(bill.date.toDate ? bill.date.toDate() : bill.date), 'MMM dd, yyyy') : 'No date'}
+                                      {safeFormatDate(bill.date)}
                                     </div>
                                   </div>
                                 </div>
@@ -1223,7 +1230,7 @@ const ROIDashboard: React.FC = () => {
                                       {formatCurrency(order.amount)}
                                     </div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {order.date ? format(new Date(order.date.toDate ? order.date.toDate() : order.date), 'MMM dd, yyyy') : 'No date'}
+                                      {safeFormatDate(order.date)}
                                     </div>
                                   </div>
                                 </div>
