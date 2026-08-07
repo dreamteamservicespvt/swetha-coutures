@@ -5,7 +5,8 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
+    /* No "baseUrl" — deprecated in TypeScript 6 and removed in 7. `paths` alone is enough;
+       the mappings below resolve relative to this file. */
     "paths": {
       "@/*": ["./src/*"]
     },
