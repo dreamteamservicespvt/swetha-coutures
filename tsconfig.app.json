@@ -21,7 +21,8 @@
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
-    "baseUrl": ".",
+    /* No "baseUrl": it is deprecated and stops working in TypeScript 7. Since TS 4.1
+       `paths` works on its own — these mappings resolve relative to this file. */
     "paths": {
       "@/*": ["./src/*"]
     }
