@@ -94,9 +94,9 @@ export const useRealTimeStats = () => {
         return false;
       }
     }).length,
-    activeOrders: safeOrders.filter(order => 
-      ['received', 'in-progress'].includes(order?.status)
-    ).length,
+    // Deliberately disjoint. These used to overlap ('received' counted as both pending and
+    // active), so anything summing them double-counted every new order.
+    activeOrders: safeOrders.filter(order => order?.status === 'in-progress').length,
     pendingOrders: safeOrders.filter(order => order?.status === 'received').length,
     completedOrders: safeOrders.filter(order => 
       ['ready', 'delivered'].includes(order?.status)

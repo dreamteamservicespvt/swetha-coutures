@@ -30,7 +30,9 @@ const fmtDate = (d: any) => {
 };
 
 const incomeDescription = (e: any) =>
-  e?.type === 'billing' ? `Bill - ${e.customerName || 'Customer'}` : e?.sourceName || 'Income Entry';
+  e?.type === 'billing'
+    ? `${e.billNumber || 'Bill'} - ${e.customerName || 'Customer'}${e.instalment ? ` (${e.instalment})` : ''}`
+    : e?.sourceName || 'Income Entry';
 
 const expenseDescription = (e: any) =>
   e?.type === 'salary'

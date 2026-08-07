@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Edit, Trash2, User, Phone, Mail, MapPin, Package, TrendingUp, MessageSquare, FileText } from 'lucide-react';
 import ContactActions from '@/components/ContactActions';
 import CustomersEmptyState from './CustomersEmptyState';
+import { formatBilledDate, formatPendingSince } from '@/utils/customerCalculations';
 
 interface Customer {
   id: string;
@@ -23,6 +24,10 @@ interface Customer {
   customerType: 'regular' | 'premium' | 'vip';
   createdAt: any;
   paymentStatus?: 'paid' | 'partial' | 'unpaid';
+  outstandingBalance?: number;
+  daysPending?: number;
+  oldestPendingDate?: Date;
+  pendingBills?: { billId: string; balance: number; date?: Date }[];
 }
 
 interface CustomersGridViewProps {
@@ -120,6 +125,32 @@ const CustomersGridView: React.FC<CustomersGridViewProps> = ({
                 </p>
               )}
             </div>
+
+            {/* Amount due, with when it was billed and how long it has been waiting */}
+            {(customer.outstandingBalance || 0) > 0.5 && (
+              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900 dark:bg-red-950/40">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs font-medium text-red-700 dark:text-red-300">To collect</span>
+                  <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                    ₹{(customer.outstandingBalance || 0).toLocaleString()}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed text-red-700/90 dark:text-red-300/90">
+                  Billed {formatBilledDate(customer.oldestPendingDate)}
+                  {' · '}pending since {formatPendingSince(customer.daysPending || 0)}
+                </p>
+                <p className="text-[11px] text-red-700/70 dark:text-red-300/70">
+                  {customer.pendingBills?.length || 0} bill
+                  {(customer.pendingBills?.length || 0) === 1 ? '' : 's'}
+                  {customer.pendingBills && customer.pendingBills.length > 0
+                    ? `: ${customer.pendingBills
+                        .slice(0, 3)
+                        .map((bill) => bill.billId)
+                        .join(', ')}${customer.pendingBills.length > 3 ? '…' : ''}`
+                    : ''}
+                </p>
+              </div>
+            )}
 
             {/* Contact Information */}
             <div className="space-y-2 mb-4">

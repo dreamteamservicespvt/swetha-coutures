@@ -9,14 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Users, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, Filter, X, UserCheck } from 'lucide-react';
+import { Plus, Users, Clock, CheckCircle, Search, Edit, Trash2, Phone, MessageCircle, Filter, X, UserCheck, Fingerprint, Wallet, CalendarClock } from 'lucide-react';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ContactActions from '@/components/ContactActions';
 import StaffProfileModal from '@/components/StaffProfileModal';
+import {
+  loadAttendanceContext,
+  summariseAttendance,
+  syncPayToAttendance,
+  type AttendanceSummary,
+} from '@/utils/attendance/employeeLink';
+import { formatMonthLabel, toMonthKey } from '@/utils/attendance/salaryCalc';
+import type { AttendanceEmployee, AttendanceRecord } from '@/utils/attendance/types';
 
 interface StaffMember {
   id: string;
@@ -37,9 +46,11 @@ interface StaffMember {
   ifsc?: string;
   salaryAmount?: number;
   salaryMode?: 'monthly' | 'hourly' | 'daily';
-  // New salary fields
+  /** @deprecated Superseded by salaryAmount + bonus; cleared whenever the form is saved. */
   paidSalary?: number;
   bonus?: number;
+  /** Fingerprint employee code this person's attendance records belong to. */
+  attendanceEmpCode?: string;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -48,9 +59,37 @@ interface StaffMember {
   createdAt: any;
 }
 
+/** How the single "amount" field is labelled for each pay basis (Req 7). */
+const PAY_BASIS = {
+  monthly: {
+    label: 'Monthly salary (₹)',
+    placeholder: 'e.g. 18000',
+    help: 'Paid per month, pro-rated by the days actually present (÷ working days × days present).',
+    suffix: '/month',
+  },
+  daily: {
+    label: 'Daily wage (₹)',
+    placeholder: 'e.g. 700',
+    help: 'A fixed wage for every day the employee checks in.',
+    suffix: '/day',
+  },
+  hourly: {
+    label: 'Rate per hour (₹)',
+    placeholder: 'e.g. 90',
+    help: 'Multiplied by the hours between check-in and check-out.',
+    suffix: '/hour',
+  },
+} as const;
+
 const Staff = () => {
   const { userData } = useAuth();
+  const navigate = useNavigate();
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  // Attendance context for the current month — drives the payable-salary column (Req 7)
+  const [attendanceEmployees, setAttendanceEmployees] = useState<AttendanceEmployee[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const periodKey = toMonthKey(new Date());
   const [roles, setRoles] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,9 +128,8 @@ const Staff = () => {
     ifsc: '',
     salaryAmount: '',
     salaryMode: 'monthly' as 'monthly' | 'hourly' | 'daily',
-    // New salary fields
-    paidSalary: '',
     bonus: '',
+    attendanceEmpCode: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
     emergencyContactRelation: ''
@@ -100,22 +138,117 @@ const Staff = () => {
   const defaultRoles = ['Tailor', 'Cutter', 'Designer', 'Finisher', 'Assistant', 'Manager'];
   const defaultDepartments = ['Production', 'Design', 'Finishing', 'Quality Control', 'Administration'];
 
-  // Helper function to calculate monthly salary based on new logic
-  const calculateMonthlySalary = (staff: StaffMember) => {
-    const paidSalary = staff.paidSalary || 0;
-    const bonus = staff.bonus || 0;
-    const actualSalary = staff.salaryAmount || staff.salary || 0;
-    
-    // If both paid salary and bonus are entered, use their sum
-    if (paidSalary > 0 && bonus > 0) {
-      return paidSalary + bonus;
+  /** The configured rate for whichever pay basis the employee is on. */
+  const payRate = (member: StaffMember) =>
+    member.salaryAmount || member.paidSalary || member.salary || 0;
+
+  /**
+   * Attendance-derived pay for this month, keyed by staff id. Recomputed whenever either
+   * the staff list or the attendance data changes, so editing a rate updates the payable
+   * figure immediately.
+   */
+  const payrollByStaffId = React.useMemo(() => {
+    const map = new Map<string, AttendanceSummary>();
+    staff.forEach((member) => {
+      map.set(
+        member.id,
+        summariseAttendance(
+          {
+            id: member.id,
+            name: member.name,
+            salaryMode: member.salaryMode,
+            salaryAmount: payRate(member),
+            bonus: member.bonus || 0,
+            attendanceEmpCode: member.attendanceEmpCode,
+          },
+          attendanceEmployees,
+          attendanceRecords,
+          periodKey
+        )
+      );
+    });
+    return map;
+  }, [staff, attendanceEmployees, attendanceRecords, periodKey]);
+
+  /**
+   * The pay summary shown on each employee row: the configured rate, and — when their
+   * fingerprint records are linked — the days/hours worked this month and what that
+   * actually comes to (Req 7).
+   */
+  const renderPayLine = (member: StaffMember) => {
+    const rate = payRate(member);
+    const mode = member.salaryMode || 'monthly';
+    const summary = payrollByStaffId.get(member.id);
+
+    if (rate <= 0) {
+      return (
+        <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+          Pay not set — click Edit to choose a pay basis
+        </p>
+      );
     }
-    // If only paid salary is entered, use it
-    if (paidSalary > 0) {
-      return paidSalary;
+
+    return (
+      <div className="mt-1 space-y-1">
+        <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+          <Wallet className="h-3 w-3 shrink-0" />
+          ₹{rate.toLocaleString()}
+          {PAY_BASIS[mode].suffix}
+          {(member.bonus || 0) > 0 && (
+            <span className="text-green-600 dark:text-green-400">
+              + ₹{(member.bonus || 0).toLocaleString()} bonus
+            </span>
+          )}
+        </p>
+
+        {attendanceLoading ? (
+          <p className="text-xs text-gray-400">Loading attendance…</p>
+        ) : summary?.matchedBy === 'none' ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/attendance');
+            }}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
+          >
+            <Fingerprint className="h-3 w-3" />
+            No fingerprint records linked — open Attendance
+          </button>
+        ) : (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+            <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <CalendarClock className="h-3 w-3 shrink-0" />
+              {summary!.daysPresent}/{summary!.workingDays} days · {summary!.hoursWorked} hrs
+            </span>
+            <span className="font-semibold text-green-700 dark:text-green-400">
+              Payable ₹{summary!.payable.toLocaleString()}
+            </span>
+            {summary!.lastCheckIn && (
+              <span className="text-gray-500 dark:text-gray-500">
+                (last {summary!.lastDate}: {summary!.lastCheckIn}
+                {summary!.lastCheckOut ? `–${summary!.lastCheckOut}` : ' – no checkout'})
+              </span>
+            )}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const loadAttendance = async () => {
+    setAttendanceLoading(true);
+    try {
+      const context = await loadAttendanceContext(periodKey);
+      setAttendanceEmployees(context.employees);
+      setAttendanceRecords(context.records);
+    } catch (error) {
+      console.error('Error loading attendance context:', error);
+      setAttendanceEmployees([]);
+      setAttendanceRecords([]);
+    } finally {
+      setAttendanceLoading(false);
     }
-    // Otherwise, use actual salary
-    return actualSalary;
   };
 
   useEffect(() => {
@@ -124,6 +257,7 @@ const Staff = () => {
       return;
     }
     fetchData();
+    loadAttendance();
   }, [userData]);
 
   const fetchData = async () => {
@@ -231,22 +365,27 @@ const Staff = () => {
       // Generate password if not provided
       const password = formData.password || Math.random().toString(36).slice(-8);
       
+      const rate = formData.salaryAmount ? parseFloat(formData.salaryAmount) : 0;
+
       const staffData = {
         name: formData.name,
         phone: formData.phone,
         role: formData.role,
         department: formData.department,
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean),
-        salary: formData.salary ? parseFloat(formData.salary) : 0,
-        salaryAmount: formData.salaryAmount ? parseFloat(formData.salaryAmount) : 0,
+        // One rate for the chosen pay basis. `salary` and the legacy `paidSalary` are kept
+        // in step with it so any older screen that still reads either field agrees with the
+        // Employees form, rather than quoting a stale figure.
+        salary: rate,
+        salaryAmount: rate,
         salaryMode: formData.salaryMode || 'monthly',
-        // New salary fields
-        paidSalary: formData.paidSalary ? parseFloat(formData.paidSalary) : 0,
+        paidSalary: rate,
         bonus: formData.bonus ? parseFloat(formData.bonus) : 0,
+        ...(formData.attendanceEmpCode ? { attendanceEmpCode: formData.attendanceEmpCode } : {}),
         status: 'active' as const,
-        ...(editingStaff ? {} : { 
+        ...(editingStaff ? {} : {
           joinDate: serverTimestamp(),
-          createdAt: serverTimestamp() 
+          createdAt: serverTimestamp()
         }),
         // Only include optional fields if they have values
         ...(formData.email && { email: formData.email }),
@@ -267,9 +406,26 @@ const Staff = () => {
 
       if (editingStaff) {
         await updateDoc(doc(db, 'staff', editingStaff.id), staffData);
+        // Push the pay basis onto the linked fingerprint employee so Payroll and this
+        // page always quote the same rate.
+        try {
+          await syncPayToAttendance(
+            {
+              id: editingStaff.id,
+              name: formData.name,
+              salaryMode: formData.salaryMode,
+              salaryAmount: rate,
+              bonus: staffData.bonus,
+              attendanceEmpCode: formData.attendanceEmpCode || editingStaff.attendanceEmpCode,
+            },
+            attendanceEmployees
+          );
+        } catch (syncError) {
+          console.error('Could not sync pay to attendance:', syncError);
+        }
         toast({
           title: "Success",
-          description: "Staff member updated successfully",
+          description: "Employee updated successfully",
         });
       } else {
         // Create Firebase Auth user if email is provided
@@ -284,7 +440,7 @@ const Staff = () => {
         await addDoc(collection(db, 'staff'), staffData);
         toast({
           title: "Success",
-          description: `Staff member added successfully. Password: ${password}`,
+          description: `Employee added successfully. Password: ${password}`,
         });
       }
 
@@ -292,11 +448,12 @@ const Staff = () => {
       setEditingStaff(null);
       resetForm();
       fetchData();
+      loadAttendance();
     } catch (error) {
-      console.error('Error saving staff member:', error);
+      console.error('Error saving employee:', error);
       toast({
         title: "Error",
-        description: "Failed to save staff member",
+        description: "Failed to save employee",
         variant: "destructive",
       });
     }
@@ -319,9 +476,8 @@ const Staff = () => {
       ifsc: '',
       salaryAmount: '',
       salaryMode: 'monthly',
-      // New salary fields
-      paidSalary: '',
       bonus: '',
+      attendanceEmpCode: '',
       emergencyContactName: '',
       emergencyContactPhone: '',
       emergencyContactRelation: ''
@@ -344,11 +500,10 @@ const Staff = () => {
       bankName: member.bankName || '',
       accountNo: member.accountNo || '',
       ifsc: member.ifsc || '',
-      salaryAmount: member.salaryAmount?.toString() || '',
+      salaryAmount: (member.salaryAmount || member.paidSalary || member.salary || '').toString(),
       salaryMode: member.salaryMode || 'monthly',
-      // New salary fields
-      paidSalary: member.paidSalary?.toString() || '',
       bonus: member.bonus?.toString() || '',
+      attendanceEmpCode: member.attendanceEmpCode || '',
       emergencyContactName: member.emergencyContact?.name || '',
       emergencyContactPhone: member.emergencyContact?.phone || '',
       emergencyContactRelation: member.emergencyContact?.relation || ''
@@ -357,19 +512,19 @@ const Staff = () => {
   };
 
   const handleDelete = async (staffId: string) => {
-    if (window.confirm('Are you sure you want to delete this staff member?')) {
+    if (window.confirm('Are you sure you want to delete this employee?')) {
       try {
         await deleteDoc(doc(db, 'staff', staffId));
         toast({
           title: "Success",
-          description: "Staff member deleted successfully",
+          description: "Employee deleted successfully",
         });
         fetchData();
       } catch (error) {
         console.error('Error deleting staff member:', error);
         toast({
           title: "Error",
-          description: "Failed to delete staff member",
+          description: "Failed to delete employee",
           variant: "destructive",
         });
       }
@@ -385,14 +540,14 @@ const Staff = () => {
       
       toast({
         title: "Success",
-        description: `Staff member marked as ${newStatus}`,
+        description: `Employee marked as ${newStatus}`,
       });
       fetchData();
     } catch (error) {
       console.error('Error updating staff status:', error);
       toast({
         title: "Error",
-        description: "Failed to update staff status",
+        description: "Failed to update employee status",
         variant: "destructive",
       });
     }
@@ -421,6 +576,10 @@ const Staff = () => {
 
   const activeStaff = staff.filter(member => member?.status === 'active').length;
   const totalStaff = staff.length;
+  const totalPayable = Array.from(payrollByStaffId.values()).reduce(
+    (sum, summary) => sum + summary.payable,
+    0
+  );
 
   return (
     <div className="mobile-page-layout">
@@ -428,8 +587,10 @@ const Staff = () => {
         {/* Header */}
         <div className="mobile-page-header">
           <div className="space-y-1 flex-1">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-dark-fix">Staff Management</h1>
-            <p className="responsive-text-base text-muted-dark-fix">Manage your team members and assignments</p>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-dark-fix">Employees</h1>
+            <p className="responsive-text-base text-muted-dark-fix">
+              Team, pay basis and salary payable from attendance — {formatMonthLabel(periodKey)}
+            </p>
           </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -441,16 +602,16 @@ const Staff = () => {
               }}
             >
               <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-              Add Staff Member
+              Add Employee
             </Button>
           </DialogTrigger>
           <DialogContent className="mobile-dialog max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingStaff ? 'Edit Staff Member' : 'Add New Staff Member'}
+                {editingStaff ? 'Edit Employee' : 'Add New Employee'}
               </DialogTitle>
               <DialogDescription>
-                Fill in the staff member details below. Login credentials will be created automatically.
+                Fill in the employee details below. Login credentials are created automatically.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -587,67 +748,107 @@ const Staff = () => {
                 />
               </div>
 
-              {/* Financial Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Financial Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="salaryAmount">Actual Salary</Label>
-                    <NumberInput
-                      id="salaryAmount"
-                      value={formData.salaryAmount ? Number(formData.salaryAmount) : ''}
-                      onChange={(value) => setFormData({...formData, salaryAmount: value?.toString() || ''})}
-                      min={0}
-                      step={0.01}
-                      decimals={2}
-                      allowEmpty={true}
-                      emptyValue={null}
-                      placeholder="Enter actual salary"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="paidSalary">Paid Salary</Label>
-                    <NumberInput
-                      id="paidSalary"
-                      value={formData.paidSalary ? Number(formData.paidSalary) : ''}
-                      onChange={(value) => setFormData({...formData, paidSalary: value?.toString() || ''})}
-                      min={0}
-                      step={0.01}
-                      decimals={2}
-                      allowEmpty={true}
-                      emptyValue={null}
-                      placeholder="Enter paid salary (optional)"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="bonus">Bonus</Label>
-                    <NumberInput
-                      id="bonus"
-                      value={formData.bonus ? Number(formData.bonus) : ''}
-                      onChange={(value) => setFormData({...formData, bonus: value?.toString() || ''})}
-                      min={0}
-                      step={0.01}
-                      decimals={2}
-                      allowEmpty={true}
-                      emptyValue={null}
-                      placeholder="Enter bonus (optional)"
-                    />
-                  </div>
+              {/* Pay — one basis, one amount (Req 7) */}
+              <div className="space-y-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Pay</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Choose how this employee is paid, then enter that one amount. Attendance
+                    check-in/check-out does the rest of the maths.
+                  </p>
                 </div>
-                <div className="form-grid-responsive-3">
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label htmlFor="salaryMode">Salary Mode</Label>
-                    <Select value={formData.salaryMode} onValueChange={(value: 'monthly' | 'hourly' | 'daily') => setFormData({...formData, salaryMode: value})}>
-                      <SelectTrigger>
+                    <Label htmlFor="salaryMode">Pay basis *</Label>
+                    <Select
+                      value={formData.salaryMode}
+                      onValueChange={(value: 'monthly' | 'hourly' | 'daily') =>
+                        setFormData({ ...formData, salaryMode: value })
+                      }
+                    >
+                      <SelectTrigger id="salaryMode">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="monthly">Monthly salary</SelectItem>
+                        <SelectItem value="daily">Daily wage</SelectItem>
+                        <SelectItem value="hourly">Hourly rate</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {PAY_BASIS[formData.salaryMode].help}
+                    </p>
                   </div>
+                  <div>
+                    <Label htmlFor="salaryAmount">{PAY_BASIS[formData.salaryMode].label} *</Label>
+                    <NumberInput
+                      id="salaryAmount"
+                      value={formData.salaryAmount ? Number(formData.salaryAmount) : ''}
+                      onChange={(value) => setFormData({ ...formData, salaryAmount: value?.toString() || '' })}
+                      min={0}
+                      step={1}
+                      decimals={2}
+                      allowEmpty={true}
+                      emptyValue={null}
+                      placeholder={PAY_BASIS[formData.salaryMode].placeholder}
+                    />
+                    {formData.salaryAmount && (
+                      <p className="mt-1 text-xs font-medium text-green-700 dark:text-green-400">
+                        ₹{parseFloat(formData.salaryAmount || '0').toLocaleString()}
+                        {PAY_BASIS[formData.salaryMode].suffix}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor="bonus">Bonus (optional)</Label>
+                    <NumberInput
+                      id="bonus"
+                      value={formData.bonus ? Number(formData.bonus) : ''}
+                      onChange={(value) => setFormData({ ...formData, bonus: value?.toString() || '' })}
+                      min={0}
+                      step={1}
+                      decimals={2}
+                      allowEmpty={true}
+                      emptyValue={null}
+                      placeholder="Added on top of the calculated pay"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="attendanceEmpCode">Fingerprint employee</Label>
+                    <Select
+                      value={formData.attendanceEmpCode || 'auto'}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, attendanceEmpCode: value === 'auto' ? '' : value })
+                      }
+                    >
+                      <SelectTrigger id="attendanceEmpCode">
+                        <SelectValue placeholder="Match by name" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Match automatically by name</SelectItem>
+                        {attendanceEmployees.map((employee) => (
+                          <SelectItem key={employee.empCode} value={employee.empCode}>
+                            {employee.name} (code {employee.empCode})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Links this employee to their fingerprint records so payable salary is
+                      calculated from real check-in / check-out times.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment details */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Payment Details</h3>
+                <div className="form-grid-responsive-3">
                   <div>
                     <Label htmlFor="upiId">UPI ID</Label>
                     <Input
@@ -657,19 +858,6 @@ const Staff = () => {
                       placeholder="Enter UPI ID"
                     />
                   </div>
-                  <div>
-                    <Label>Monthly Salary</Label>
-                    <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded border text-sm text-gray-600 dark:text-gray-400">
-                      {formData.paidSalary && formData.bonus ? 
-                        `₹${(parseFloat(formData.paidSalary) + parseFloat(formData.bonus)).toLocaleString()} (Paid + Bonus)` :
-                        formData.salaryAmount ? 
-                          `₹${parseFloat(formData.salaryAmount).toLocaleString()} (Actual Salary)` :
-                          'Enter salary details'
-                      }
-                    </div>
-                  </div>
-                </div>
-                <div className="form-grid-responsive-3">
                   <div>
                     <Label htmlFor="bankName">Bank Name</Label>
                     <Input
@@ -748,7 +936,7 @@ const Staff = () => {
                   Cancel
                 </Button>
                 <Button type="submit" className="btn-responsive bg-gradient-to-r from-blue-600 to-purple-600">
-                  {editingStaff ? 'Update Staff Member' : 'Add Staff Member'}
+                  {editingStaff ? 'Update Employee' : 'Add Employee'}
                 </Button>
               </div>
             </form>
@@ -760,7 +948,7 @@ const Staff = () => {
       <div className="stats-grid-responsive">
         <Card className="border-0 shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="responsive-text-sm font-medium text-gray-600 dark:text-gray-400">Total Staff</CardTitle>
+            <CardTitle className="responsive-text-sm font-medium text-gray-600 dark:text-gray-400">Total Employees</CardTitle>
             <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent className="card-content-responsive">
@@ -771,7 +959,7 @@ const Staff = () => {
         
         <Card className="border-0 shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="responsive-text-sm font-medium text-gray-600 dark:text-gray-400">Active Staff</CardTitle>
+            <CardTitle className="responsive-text-sm font-medium text-gray-600 dark:text-gray-400">Active Employees</CardTitle>
             <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent className="card-content-responsive">
@@ -790,6 +978,27 @@ const Staff = () => {
             <p className="text-xs text-gray-500 dark:text-gray-400">Active departments</p>
           </CardContent>
         </Card>
+
+        {/* Payroll payable this month, straight from attendance (Req 7) */}
+        <Card
+          className="border-0 shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 cursor-pointer"
+          onClick={() => navigate('/attendance')}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="responsive-text-sm font-medium text-gray-600 dark:text-gray-400">
+              Salary Payable
+            </CardTitle>
+            <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
+          </CardHeader>
+          <CardContent className="card-content-responsive">
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {attendanceLoading ? '…' : `₹${totalPayable.toLocaleString()}`}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {formatMonthLabel(periodKey)} · from attendance
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filters */}
@@ -797,7 +1006,7 @@ const Staff = () => {
         <div className="relative flex-1">
           <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />
           <Input
-            placeholder="Search staff..."
+            placeholder="Search employees..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8 sm:pl-10 responsive-text-sm h-8 sm:h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
@@ -860,7 +1069,7 @@ const Staff = () => {
       {/* Staff List */}
       <Card className="border-0 shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-gray-100">Staff Members</CardTitle>
+          <CardTitle className="text-gray-900 dark:text-gray-100">Employees</CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-400">Manage your team members</CardDescription>
         </CardHeader>
         <CardContent>
@@ -895,16 +1104,7 @@ const Staff = () => {
                           {member.password && (
                             <p className="text-xs text-green-600 dark:text-green-400">Password: {member.password}</p>
                           )}
-                          {(calculateMonthlySalary(member) > 0) && (
-                            <p className="text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">
-                              Monthly Salary: ₹{calculateMonthlySalary(member).toLocaleString()}/{member.salaryMode}
-                              {member.paidSalary && member.bonus && (
-                                <span className="text-green-600 dark:text-green-400 ml-1">
-                                  (₹{member.paidSalary.toLocaleString()} + ₹{member.bonus.toLocaleString()})
-                                </span>
-                              )}
-                            </p>
-                          )}
+                          {renderPayLine(member)}
                           <div className="flex flex-wrap gap-1 mt-1">
                             {(member.skills || []).slice(0, 3).map((skill, index) => (
                               <Badge key={index} variant="outline" className="text-xs">
@@ -1000,16 +1200,7 @@ const Staff = () => {
                       <p className="text-xs text-green-600 dark:text-green-400">Password: {member.password}</p>
                     )}
                     
-                    {(calculateMonthlySalary(member) > 0) && (
-                      <p className="text-xs text-gray-500 dark:text-gray-500 dark:text-gray-400">
-                        Monthly Salary: ₹{calculateMonthlySalary(member).toLocaleString()}/{member.salaryMode}
-                        {member.paidSalary && member.bonus && (
-                          <span className="text-green-600 dark:text-green-400 ml-1">
-                            (₹{member.paidSalary.toLocaleString()} + ₹{member.bonus.toLocaleString()})
-                          </span>
-                        )}
-                      </p>
-                    )}
+                    {renderPayLine(member)}
 
                     <div className="flex flex-wrap gap-1">
                       {(member.skills || []).slice(0, 2).map((skill, index) => (
@@ -1061,9 +1252,9 @@ const Staff = () => {
           ) : (
             <div className="text-center py-12">
               <Users className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No staff members</h3>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No employees</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {searchTerm ? 'No staff members match your search.' : 'Add your first staff member to get started.'}
+                {searchTerm ? 'No employees match your search.' : 'Add your first employee to get started.'}
               </p>
               {!searchTerm && (
                 <Button 
@@ -1071,7 +1262,7 @@ const Staff = () => {
                   onClick={() => setIsDialogOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add First Staff Member
+                  Add First Employee
                 </Button>
               )}
             </div>

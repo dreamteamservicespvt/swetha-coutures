@@ -17,6 +17,11 @@ import CustomersTable from '@/components/CustomersTable';
 import CustomersGridView from '@/components/CustomersGridView';
 import { enrichCustomersWithStats } from '@/utils/customerCalculations';
 
+import { PendingBill } from '@/utils/customerCalculations';
+import { AlertTriangle, IndianRupee, Merge } from 'lucide-react';
+import CustomerDuplicatesDialog from '@/components/CustomerDuplicatesDialog';
+import FilterPanel from '@/components/FilterPanel';
+
 interface Customer {
   id: string;
   name: string;
@@ -34,6 +39,10 @@ interface Customer {
   createdAt: any;
   sizes?: Record<string, string>; // Add sizes field
   paymentStatus?: 'paid' | 'partial' | 'unpaid';
+  outstandingBalance?: number;
+  pendingBills?: PendingBill[];
+  oldestPendingDate?: Date;
+  daysPending?: number;
 }
 
 const Customers = () => {
@@ -46,7 +55,7 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
-  const [profilePanelInitialTab, setProfilePanelInitialTab] = useState<'orders' | 'bills'>('orders');
+  const [profilePanelInitialTab, setProfilePanelInitialTab] = useState<'orders' | 'bills'>('bills');
   const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [isBulkWhatsAppOpen, setIsBulkWhatsAppOpen] = useState(false);
@@ -57,6 +66,13 @@ const Customers = () => {
   const [sortBy, setSortBy] = useState<'name' | 'totalSpent' | 'totalOrders' | 'recent'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [enrichingCustomers, setEnrichingCustomers] = useState(false);
+  /**
+   * Collections view is ON by default (Req 3): only customers who owe money, oldest debt
+   * first, so the admin opens the page already looking at who to chase. Turning it off
+   * hands control back to the normal filters below.
+   */
+  const [collectionsFirst, setCollectionsFirst] = useState(true);
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
 
   useEffect(() => {
     // Set up real-time listener for customers
@@ -65,26 +81,38 @@ const Customers = () => {
       orderBy('createdAt', 'desc')
     );
     
+    // Guards against re-running the (relatively expensive) enrichment when Firestore
+    // re-emits the same customer set — it fires once from cache and again from the server.
+    let lastSignature = '';
+    let run = 0;
+
     const unsubscribe = onSnapshot(customersQuery, async (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Customer[];
-      
-      // Enrich customers with real-time stats
+
+      // Paint the page from the customer records straight away; the balances arrive a beat
+      // later. Waiting for enrichment before the first render left the screen blank for
+      // seconds on every visit.
+      setLoading(false);
+      setCustomers(prev => (prev.length === 0 ? customersData : prev));
+
+      const signature = customersData.map(c => c.id).join(',');
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+
+      const thisRun = ++run;
       setEnrichingCustomers(true);
       try {
         const enrichedCustomers = await enrichCustomersWithStats(customersData);
+        if (thisRun !== run) return; // a newer snapshot already superseded this one
         setCustomers(enrichedCustomers);
-        setFilteredCustomers(enrichedCustomers);
       } catch (error) {
         console.error('Error enriching customers:', error);
-        // Fall back to basic customer data
         setCustomers(customersData);
-        setFilteredCustomers(customersData);
       } finally {
-        setEnrichingCustomers(false);
-        setLoading(false);
+        if (thisRun === run) setEnrichingCustomers(false);
       }
     }, (error) => {
       console.error('Error fetching customers:', error);
@@ -102,7 +130,7 @@ const Customers = () => {
 
   useEffect(() => {
     let filtered = customers;
-    
+
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(customer =>
@@ -112,7 +140,22 @@ const Customers = () => {
         (customer.city || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
+    // Collections view wins over the manual filters: only people who owe money, and the
+    // oldest debt at the top (Req 3).
+    if (collectionsFirst) {
+      const pending = filtered
+        .filter(customer => (customer.outstandingBalance || 0) > 0.5)
+        .sort((a, b) => {
+          const aTime = a.oldestPendingDate ? new Date(a.oldestPendingDate).getTime() : Infinity;
+          const bTime = b.oldestPendingDate ? new Date(b.oldestPendingDate).getTime() : Infinity;
+          if (aTime !== bTime) return aTime - bTime;
+          return (b.outstandingBalance || 0) - (a.outstandingBalance || 0);
+        });
+      setFilteredCustomers(pending);
+      return;
+    }
+
     // Apply payment status filter based on actual bill payment status
     if (paymentStatusFilter) {
       filtered = filtered.filter(customer => {
@@ -166,7 +209,7 @@ const Customers = () => {
     });
     
     setFilteredCustomers(filtered);
-  }, [customers, searchTerm, paymentStatusFilter, sortBy, sortOrder]);
+  }, [customers, searchTerm, paymentStatusFilter, sortBy, sortOrder, collectionsFirst]);
 
   const handleDateFilter = (startDate: Date | null, endDate: Date | null) => {
     if (!startDate || !endDate) {
@@ -229,7 +272,7 @@ const Customers = () => {
     }
   };
 
-  const handleCustomerClick = (customer: Customer, initialTab: 'orders' | 'bills' = 'orders') => {
+  const handleCustomerClick = (customer: Customer, initialTab: 'orders' | 'bills' = 'bills') => {
     setSelectedCustomer(customer);
     setProfilePanelInitialTab(initialTab);
     setIsProfilePanelOpen(true);
@@ -329,6 +372,32 @@ const Customers = () => {
     .map(customer => customer.phone)
     .filter(phone => phone);
 
+  const pendingCustomers = customers.filter(c => (c.outstandingBalance || 0) > 0.5);
+
+  // Duplicate customer records that share a phone number match the same bills, so summing
+  // every record would overstate the amount owed. De-duplicate on phone for the headline
+  // figure — it must agree with the dashboard's collections panel.
+  const totalOutstanding = Array.from(
+    pendingCustomers
+      .reduce((map, c) => {
+        const key = (c.phone || '').replace(/\D/g, '') || c.id;
+        map.set(key, Math.max(map.get(key) || 0, c.outstandingBalance || 0));
+        return map;
+      }, new Map<string, number>())
+      .values()
+  ).reduce((sum, amount) => sum + amount, 0);
+
+  // Count of phone numbers claimed by more than one customer record.
+  const duplicateCount = (() => {
+    const counts = new Map<string, number>();
+    customers.forEach((c) => {
+      const key = (c.phone || '').replace(/\D/g, '').slice(-10);
+      if (key.length < 10) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return Array.from(counts.values()).filter((n) => n > 1).length;
+  })();
+
   return (
     <div className="mobile-page-layout">
       <div className="mobile-page-wrapper container-responsive space-y-4 sm:space-y-6">
@@ -340,8 +409,10 @@ const Customers = () => {
               Manage customer information and relationships
               {enrichingCustomers && (
                 <span className="ml-2 inline-flex items-center gap-1 text-blue-600">
-                  <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  Updating statistics...
+                  {/* A <span>, not a <div>: this sits inside a <p>, and block-level content
+                      there is invalid HTML that React warns about. */}
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  Updating balances…
                 </span>
               )}
             </p>
@@ -393,19 +464,113 @@ const Customers = () => {
       {/* Stats Cards */}
       <CustomersStats customers={customers} />
 
-      {/* Filters */}
-      <CustomerFilters
-        onDateFilter={handleDateFilter}
-        onTypeFilter={handleTypeFilter}
-        onPaymentStatusFilter={handlePaymentStatusFilter}
-        onSearch={handleSearch}
-        onSortChange={handleSortChange}
-        searchTerm={searchTerm}
-        loading={loading || enrichingCustomers}
-      />
+      {/* Duplicate records inflate the amount owed, because bill lookup falls back to
+          matching on phone — offer the fix rather than just tolerating it. */}
+      {duplicateCount > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl border border-orange-300 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950/30 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            <Merge className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                {duplicateCount} phone number{duplicateCount === 1 ? '' : 's'} used by more than one customer
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
+                The same bills get counted against each copy, so the amount owed looks higher than it is.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDuplicatesOpen(true)}
+            className="shrink-0 border-orange-300 text-orange-700 hover:bg-orange-100 dark:text-orange-300"
+          >
+            Review &amp; merge
+          </Button>
+        </div>
+      )}
 
-      {/* Customers Display - Dynamic based on view mode */}
-      {viewMode === 'grid' ? (
+      {/* Collections queue banner — who to collect from first (Req 3) */}
+      <div
+        className={`rounded-xl border p-3 sm:p-4 ${
+          collectionsFirst
+            ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30'
+            : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
+        }`}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            <AlertTriangle
+              className={`mt-0.5 h-5 w-5 shrink-0 ${collectionsFirst ? 'text-amber-600' : 'text-gray-400'}`}
+            />
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                {collectionsFirst ? 'Payments to collect' : 'All customers'}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                {collectionsFirst ? (
+                  <>
+                    {pendingCustomers.length} customer{pendingCustomers.length === 1 ? '' : 's'} owe{' '}
+                    <span className="font-semibold text-red-600">
+                      ₹{totalOutstanding.toLocaleString()}
+                    </span>{' '}
+                    — oldest pending first
+                  </>
+                ) : (
+                  <>
+                    {pendingCustomers.length} customer{pendingCustomers.length === 1 ? '' : 's'} still
+                    owe ₹{totalOutstanding.toLocaleString()}
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant={collectionsFirst ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCollectionsFirst(!collectionsFirst)}
+            className={collectionsFirst ? 'bg-amber-600 hover:bg-amber-700 shrink-0' : 'shrink-0'}
+          >
+            <IndianRupee className="mr-1 h-4 w-4" />
+            {collectionsFirst ? 'Show all customers' : 'Show pending payments'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters — hidden in collections view, which has its own fixed ordering */}
+      {!collectionsFirst && (
+        <CustomerFilters
+          onDateFilter={handleDateFilter}
+          onTypeFilter={handleTypeFilter}
+          onPaymentStatusFilter={handlePaymentStatusFilter}
+          onSearch={handleSearch}
+          onSortChange={handleSortChange}
+          searchTerm={searchTerm}
+          loading={loading || enrichingCustomers}
+        />
+      )}
+
+      {collectionsFirst && (
+        <FilterPanel
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search pending customers by name or phone…"
+          summary={`${filteredCustomers.length} customer${filteredCustomers.length === 1 ? '' : 's'} with a pending balance, oldest first`}
+        />
+      )}
+
+      {/* Balances are computed after the first paint, so say so rather than showing an
+          empty collections list that looks like "nobody owes anything". */}
+      {collectionsFirst && enrichingCustomers && filteredCustomers.length === 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[...Array(8)].map((_, index) => (
+            <div
+              key={index}
+              className="h-56 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"
+            />
+          ))}
+        </div>
+      ) : viewMode === 'grid' ? (
         <CustomersGridView
           customers={filteredCustomers}
           selectedCustomers={selectedCustomers}
@@ -446,6 +611,14 @@ const Customers = () => {
         isOpen={isProfilePanelOpen}
         onClose={() => setIsProfilePanelOpen(false)}
         initialTab={profilePanelInitialTab}
+      />
+
+      {/* Duplicate customer merge */}
+      <CustomerDuplicatesDialog
+        customers={customers}
+        open={duplicatesOpen}
+        onOpenChange={setDuplicatesOpen}
+        onMerged={() => setDuplicatesOpen(false)}
       />
 
       {/* Bulk WhatsApp Modal */}

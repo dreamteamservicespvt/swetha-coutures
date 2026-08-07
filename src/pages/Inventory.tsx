@@ -1046,22 +1046,6 @@ const Inventory = () => {
           categoriesCount={categories.length}
         />
 
-        {/* Date Filters */}
-        <InventoryDateFilters
-          dateField={dateField}
-          setDateField={setDateField}
-          dateFilterMode={dateFilterMode}
-          setDateFilterMode={setDateFilterMode}
-          singleDate={singleDate}
-          setSingleDate={setSingleDate}
-          startDate={startDate}
-          setStartDate={setStartDate}
-          endDate={endDate}
-          setEndDate={setEndDate}
-          onDateChange={fetchItems}
-          onClearFilters={clearDateFilters}
-        />
-
         {/* Mostly Used Filters */}
         {(mostUsedCategories.length > 0 || mostUsedTypes.length > 0) && (
           <Card className="border-0 shadow-md">
@@ -1126,6 +1110,23 @@ const Inventory = () => {
         types={types}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        dateFilters={
+          <InventoryDateFilters
+            dateField={dateField}
+            setDateField={setDateField}
+            dateFilterMode={dateFilterMode}
+            setDateFilterMode={setDateFilterMode}
+            singleDate={singleDate}
+            setSingleDate={setSingleDate}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+            onDateChange={fetchItems}
+            onClearFilters={clearDateFilters}
+          />
+        }
+        dateFilterActive={!!(singleDate || startDate || endDate)}
       />
 
       {/* Low Stock Alert */}

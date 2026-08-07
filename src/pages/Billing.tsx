@@ -62,9 +62,10 @@ import {
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, deleteDoc, doc, onSnapshot, Timestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Bill, formatCurrency, getBillStatusColor, calculateBillStatus, downloadPDF, printBill, formatBillDate, formatDateForDisplay } from '@/utils/billingUtils';
+import { Bill, formatCurrency, getBillStatusColor, calculateBillStatus, downloadPDF, printBill, formatBillDate, formatDateForDisplay, buildPaymentUpdate } from '@/utils/billingUtils';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import BillPaymentDialog from '@/components/BillPaymentDialog';
 import BillWhatsAppAdvanced from '@/components/BillWhatsAppAdvanced';
 import BillingFilters from '@/components/BillingFilters';
 import QuickRangeToggle, { QuickRange } from '@/components/QuickRangeToggle';
@@ -128,10 +129,10 @@ const Billing = () => {
   // How many bills are currently rendered (Req 2 — paginated list)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  // Status update states
+  // Payment update states — the dialog is the shrunk Payment Tracking section (Req 1)
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [statusUpdateBill, setStatusUpdateBill] = useState<Bill | null>(null);
-  const [partialPaymentAmount, setPartialPaymentAmount] = useState('');
+  const [paymentPrefillBalance, setPaymentPrefillBalance] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Custom date filter state — shared by desktop & mobile, applied client-side (Req 4)
@@ -422,90 +423,53 @@ const Billing = () => {
     setShowExportDialog(true);
   };
 
-  // Status update functions
-  const handleStatusUpdate = (bill: Bill, newStatus: 'paid' | 'partial' | 'unpaid', event: React.MouseEvent) => {
+  /**
+   * All three status actions go through the Payment Tracking dialog / payment records, so the
+   * billing list and the bill's own Payment Tracking section can never disagree.
+   *  - Paid    → opens the dialog with the outstanding balance pre-filled (admin picks cash/online)
+   *  - Partial → opens the dialog empty; the entered amount is *added* to what was already paid
+   *  - Unpaid  → clears every payment record (confirmed first, since it discards history)
+   */
+  const handleStatusUpdate = async (
+    bill: Bill,
+    newStatus: 'paid' | 'partial' | 'unpaid',
+    event: React.MouseEvent
+  ) => {
     event.stopPropagation();
-    setStatusUpdateBill(bill);
-    
-    if (newStatus === 'partial') {
-      const remainingBalance = (bill.totalAmount || 0) - (bill.paidAmount || 0);
-      setPartialPaymentAmount(remainingBalance.toString());
-      setShowStatusDialog(true);
-    } else {
-      updateBillStatus(bill, newStatus);
-    }
-  };
 
-  const updateBillStatus = async (bill: Bill, newStatus: 'paid' | 'partial' | 'unpaid', partialAmount?: number) => {
-    setUpdatingStatus(true);
-    
-    try {
-      let newPaidAmount = bill.paidAmount || 0;
-      
-      switch (newStatus) {
-        case 'paid':
-          newPaidAmount = bill.totalAmount || 0;
-          break;
-        case 'unpaid':
-          newPaidAmount = 0;
-          break;
-        case 'partial':
-          newPaidAmount = partialAmount || (bill.paidAmount || 0);
-          break;
+    if (newStatus === 'unpaid') {
+      const paid = bill.paidAmount || 0;
+      if (
+        paid > 0 &&
+        !window.confirm(
+          `Mark ${bill.billId} as unpaid?\n\nThis removes all ${formatCurrency(paid)} of recorded payments for this bill.`
+        )
+      ) {
+        return;
       }
-
-      const newBalance = (bill.totalAmount || 0) - newPaidAmount;
-      
-      await updateDoc(doc(db, 'bills', bill.id), {
-        paidAmount: newPaidAmount,
-        balance: newBalance,
-        status: newStatus,
-        updatedAt: Timestamp.now()
-      });
-
-      toast({
-        title: "Status Updated",
-        description: `Bill ${bill.billId} marked as ${newStatus}`,
-      });
-
-    } catch (error) {
-      console.error('Error updating bill status:', error);
-      toast({
-        title: "Update Failed",
-        description: "Failed to update bill status",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingStatus(false);
-      setShowStatusDialog(false);
-      setStatusUpdateBill(null);
-      setPartialPaymentAmount('');
-    }
-  };
-
-  const handlePartialPaymentSubmit = () => {
-    if (!statusUpdateBill) return;
-    
-    const amount = parseFloat(partialPaymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid payment amount",
-        variant: "destructive",
-      }); 
+      setUpdatingStatus(true);
+      try {
+        await updateDoc(doc(db, 'bills', bill.id), {
+          ...buildPaymentUpdate(bill.totalAmount || 0, []),
+          updatedAt: Timestamp.now(),
+        });
+        toast({ title: 'Status Updated', description: `Bill ${bill.billId} marked as unpaid` });
+      } catch (error) {
+        console.error('Error updating bill status:', error);
+        toast({
+          title: 'Update Failed',
+          description: 'Failed to update bill status',
+          variant: 'destructive',
+        });
+      } finally {
+        setUpdatingStatus(false);
+      }
       return;
     }
 
-    if (amount > (statusUpdateBill.totalAmount || 0)) {
-      toast({
-        title: "Invalid Amount",
-        description: "Payment amount cannot exceed total bill amount",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    updateBillStatus(statusUpdateBill, 'partial', amount);
+    setPaymentPrefillBalance(newStatus === 'paid');
+    setStatusUpdateBill(bill);
+    setShowStatusDialog(true);
   };
 
   if (loading) {
@@ -1369,86 +1333,17 @@ const Billing = () => {
         setOpen={setShowExportDialog}
       />
 
-      {/* Status Update Dialog */}
-      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Update Payment Status
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
-              {statusUpdateBill && `Update payment for Bill ${statusUpdateBill.billId} - ${statusUpdateBill.customerName}`}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {statusUpdateBill && (
-            <div className="space-y-4 py-4">
-              {/* Bill Summary */}
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
-                  <span className="font-medium">{formatCurrency(statusUpdateBill.totalAmount || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Paid Amount:</span>
-                  <span className="font-medium text-green-600">{formatCurrency(statusUpdateBill.paidAmount || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Balance:</span>
-                  <span className="font-medium text-red-600">{formatCurrency(statusUpdateBill.balance || 0)}</span>
-                </div>
-              </div>
+      {/* Payment Tracking dialog — same records the bill form edits (Req 1) */}
+      <BillPaymentDialog
+        bill={statusUpdateBill}
+        open={showStatusDialog}
+        prefillBalance={paymentPrefillBalance}
+        onOpenChange={(open) => {
+          setShowStatusDialog(open);
+          if (!open) setStatusUpdateBill(null);
+        }}
+      />
 
-              {/* Partial Payment Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  Payment Amount
-                </label>
-                <Input
-                  type="number"
-                  placeholder="Enter payment amount"
-                  value={partialPaymentAmount}
-                  onChange={(e) => setPartialPaymentAmount(e.target.value)}
-                  max={statusUpdateBill.totalAmount || 0}
-                  className="responsive-text-sm h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Maximum: {formatCurrency(statusUpdateBill.totalAmount || 0)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="flex justify-end gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                setShowStatusDialog(false);
-                setStatusUpdateBill(null);
-                setPartialPaymentAmount('');
-              }}
-              disabled={updatingStatus}
-              className="text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handlePartialPaymentSubmit}
-              disabled={updatingStatus || !partialPaymentAmount}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {updatingStatus ? (
-                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CreditCard className="h-4 w-4 mr-2" />
-              )}
-              Update Payment
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       </div>
     </div>
   );

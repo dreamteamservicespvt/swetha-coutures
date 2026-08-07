@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, ChevronDown, ChevronRight, Package, AlertTriangle, Scan, Camera } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Package, AlertTriangle, Scan, Camera, ShoppingBag } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Product, ProductDescription } from '@/utils/billingUtils';
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -370,6 +371,27 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
     onProductsChange(updatedProducts);
   };
 
+  /**
+   * Marking the whole product as a store sale ticks every sub-item too, so the common case
+   * ("all of this was sold over the counter") is one click — and the admin can then untick
+   * the odd sub-item that was actually stitching work. Unticking the product clears them all.
+   */
+  const toggleProductSale = (productId: string, isSale: boolean) => {
+    const updatedProducts = products.map(product => {
+      if (product.id !== productId) return product;
+      return {
+        ...product,
+        isSale,
+        descriptions: product.descriptions.map(desc => ({ ...desc, isSale })),
+      };
+    });
+    onProductsChange(updatedProducts);
+  };
+
+  /** How many sub-items under a product are currently flagged as a sale. */
+  const saleCount = (product: Product) =>
+    product.descriptions.filter(desc => desc.isSale).length;
+
   const toggleProductExpansion = (productId: string) => {
     const updatedProducts = products.map(product => {
       if (product.id === productId) {
@@ -381,16 +403,18 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
   };
 
   const addDescription = (productId: string) => {
-    const newDescription: ProductDescription = {
-      id: uuidv4(),
-      description: '',
-      qty: 1, // Default to 1 (better usability)
-      rate: 0,
-      amount: 0
-    };
-
     const updatedProducts = products.map(product => {
       if (product.id === productId) {
+        const newDescription: ProductDescription = {
+          id: uuidv4(),
+          description: '',
+          qty: 1, // Default to 1 (better usability)
+          rate: 0,
+          amount: 0,
+          // Inherit the parent's sale flag, so adding an item to a product already marked
+          // as a store sale does not silently leave it out of the Sales figures.
+          ...(product.isSale ? { isSale: true } : {}),
+        };
         return {
           ...product,
           descriptions: [...product.descriptions, newDescription],
@@ -646,6 +670,25 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                     </Button>
                   </div>
                 </div>
+
+                {/* Store-sale flag — feeds the Sales category in ROI Analytics */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <label className="flex w-fit cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-white px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:bg-gray-900 dark:text-amber-300">
+                    <Checkbox
+                      checked={!!product.isSale}
+                      onCheckedChange={(checked) => toggleProductSale(product.id, checked === true)}
+                    />
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                    Sold from store (counts as a Sale)
+                  </label>
+                  {product.descriptions.length > 0 && saleCount(product) > 0 && (
+                    <span className="text-xs text-amber-700 dark:text-amber-400">
+                      {saleCount(product)} of {product.descriptions.length} item
+                      {product.descriptions.length === 1 ? '' : 's'} marked · untick any below that
+                      isn't a sale
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Expanded Panel - Sub-Items (Descriptions) */}
@@ -743,6 +786,30 @@ const ProductDescriptionManager: React.FC<ProductDescriptionManagerProps> = ({
                             </Button>
                           </div>
                         </div>
+
+                        {/* Per-item store-sale flag — always available, so an item can be
+                            unticked even when the whole product was marked as a sale. */}
+                        <label
+                          className={`mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-medium ${
+                            desc.isSale
+                              ? 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                              : 'border-gray-200 bg-white text-gray-600 hover:bg-amber-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400'
+                          }`}
+                        >
+                          <Checkbox
+                            checked={!!desc.isSale}
+                            onCheckedChange={(checked) =>
+                              updateDescription(
+                                product.id,
+                                desc.id,
+                                'isSale' as keyof ProductDescription,
+                                checked === true
+                              )
+                            }
+                          />
+                          <ShoppingBag className="h-3.5 w-3.5" />
+                          Sold from store
+                        </label>
                       </div>
                     ))
                   )}

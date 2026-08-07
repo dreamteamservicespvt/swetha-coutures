@@ -106,7 +106,9 @@ interface CustomerProfilePanelProps {
   initialTab?: 'orders' | 'bills';
 }
 
-const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, isOpen, onClose, initialTab = 'orders' }) => {
+// Bills open first: what the shop needs from a customer record is almost always money owed,
+// not the order history.
+const CustomerProfilePanel: React.FC<CustomerProfilePanelProps> = ({ customer, isOpen, onClose, initialTab = 'bills' }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(false);

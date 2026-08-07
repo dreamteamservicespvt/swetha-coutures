@@ -13,6 +13,7 @@ import Staff from './pages/Staff';
 import StaffDashboard from './pages/StaffDashboard';
 import Appointments from './pages/Appointments';
 import Alterations from './pages/Alterations';
+import Attendance from './pages/Attendance';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import DashboardRouter from './components/DashboardRouter';
@@ -29,6 +30,8 @@ import ROIDashboard from './components/ROIDashboard';
 import StaffOrdersView from './components/StaffOrdersView';
 import StaffInventoryView from './components/StaffInventoryView';
 import StaffAlterationsView from './components/StaffAlterationsView';
+import Backup from './pages/Backup';
+import BackupReminderDialog from '@/components/backup/BackupReminderDialog';
 import { BusinessSettingsProvider } from '@/components/BusinessSettingsProvider';
 
 function App() {
@@ -101,12 +104,44 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* "Staff" was renamed to "Employees" — /staff stays as an alias so older
+                links and bookmarks keep working. */}
+            <Route
+              path="/employees"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Layout>
+                    <Staff />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/staff"
               element={
                 <ProtectedRoute adminOnly>
                   <Layout>
                     <Staff />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/attendance"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Layout>
+                    <Attendance />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/backup"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Layout>
+                    <Backup />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -302,6 +337,9 @@ function App() {
               }
             />
           </Routes>
+
+          {/* Sits outside <Routes> so the backup nag follows the admin across every page. */}
+          <BackupReminderDialog />
         </div>
       </BusinessSettingsProvider>
     </Router>

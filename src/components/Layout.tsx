@@ -30,7 +30,9 @@ import {
   Sun,
   Moon,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Fingerprint,
+  ShieldCheck
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -60,11 +62,13 @@ const Layout = ({ children }: LayoutProps) => {
     { name: 'Customers', href: '/customers', icon: Users },
     { name: 'Income & Expenses', href: '/income-expenses', icon: DollarSign },
     { name: 'ROI Analytics', href: '/roi-analytics', icon: BarChart3 },
-    { name: 'Staff', href: '/staff', icon: UserPlus },
+    { name: 'Employees', href: '/employees', icon: UserPlus },
+    { name: 'Attendance', href: '/attendance', icon: Fingerprint },
     { name: 'Inventory', href: '/inventory', icon: Package },
     { name: 'Appointments', href: '/appointments', icon: Calendar },
     { name: 'Alterations', href: '/alterations', icon: Scissors },
     { name: 'Reports', href: '/reports', icon: BarChart3 },
+    { name: 'Backup & Restore', href: '/backup', icon: ShieldCheck },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
@@ -445,32 +449,36 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+        {/* Main Content.
+            `min-w-0` matters: a flex item defaults to min-width:auto, so any single wide
+            child (a table, a long row) would stretch this column past the viewport and drag
+            the sticky header out with it. Constraining it here lets <main>'s overflow rules
+            do their job and keeps every page inside the screen on mobile. */}
+        <div className={`flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
           {/* Top Navigation Bar */}
-          <header className="bg-card shadow-sm border-b border-border h-16 flex items-center justify-between px-6 lg:px-8 sticky top-0 z-20">
-            <div className="flex items-center space-x-4">
+          <header className="bg-card shadow-sm border-b border-border h-16 flex items-center justify-between gap-2 px-4 sm:px-6 lg:px-8 sticky top-0 z-20">
+            <div className="flex min-w-0 items-center space-x-2 sm:space-x-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={toggleSidebar}
-                className="lg:hidden"
+                className="lg:hidden shrink-0"
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">
+              <div className="min-w-0">
+                <h2 className="truncate text-base sm:text-xl font-semibold text-foreground">
                   {menuItems.find(item => item.href === location.pathname)?.name || 'Dashboard'}
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="truncate text-xs sm:text-sm text-muted-foreground">
                   Welcome back, {userData?.name}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <Badge 
-                variant="outline" 
+            <div className="flex shrink-0 items-center space-x-4">
+              <Badge
+                variant="outline"
                 className={`${isAdmin ? 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700' : 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'}`}
               >
                 {isAdmin ? 'Admin' : 'Staff'}

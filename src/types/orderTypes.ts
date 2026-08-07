@@ -16,6 +16,8 @@ export interface OrderItem {
   assignedStaff: string[];
   requiredMaterials: { id: string; name: string; quantity: number; unit: string; }[];
   designImages: string[];
+  /** Fabric JSON of the Design Studio sketch, so it can be reopened and edited. */
+  designJson?: string;
   notes: string;
   sizes: Record<string, string>;
 }

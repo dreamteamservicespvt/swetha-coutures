@@ -17,6 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import FilterPanel from '@/components/FilterPanel';
 import ContactActions from '@/components/ContactActions';
 import TimePicker from '@/components/ui/time-picker';
 
@@ -626,30 +627,31 @@ const Appointments = () => {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="search-filter-container">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />
-          <Input
-            placeholder="Search appointments..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 sm:pl-10 responsive-text-sm h-8 sm:h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-          />
+      {/* Search & Filters — one shared, collapsible panel used across every list page */}
+      <FilterPanel
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search appointments by customer, phone or purpose…"
+        activeCount={statusFilter !== 'all' ? 1 : 0}
+        summary={statusFilter !== 'all' ? `Showing: ${statusFilter}` : undefined}
+        onClearAll={() => setStatusFilter('all')}
+      >
+        <div className="max-w-xs">
+          <Label className="mb-1.5 block text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40 h-8 sm:h-10 responsive-text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <SelectItem value="all" className="text-gray-900 dark:text-gray-100">All Status</SelectItem>
-            <SelectItem value="scheduled" className="text-gray-900 dark:text-gray-100">Scheduled</SelectItem>
-            <SelectItem value="confirmed" className="text-gray-900 dark:text-gray-100">Confirmed</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      </FilterPanel>
 
       {/* Appointments List */}
       <Card className="border-0 shadow-md bg-white dark:bg-gray-800">

@@ -25,6 +25,8 @@ export interface ProductDescription {
   amount: number;
   inventoryId?: string;   // Firestore doc id — set when added via barcode scan
   barcodeValue?: string;  // barcode value — used to match duplicate scans
+  /** Marked as a shop sale (goods sold from the store) — surfaces under ROI → Sales. */
+  isSale?: boolean;
 }
 
 export interface Product {
@@ -33,6 +35,8 @@ export interface Product {
   total: number;
   descriptions: ProductDescription[];
   expanded?: boolean; // UI state for collapse/expand
+  /** Marked as a shop sale — the whole product counts as goods sold from the store. */
+  isSale?: boolean;
 }
 
 export interface BillBreakdown {
@@ -351,6 +355,85 @@ export const calculateBillStatus = (totalAmount: number, paidAmount: number): 'p
   if (paidAmount >= totalAmount) return 'paid';
   if (paidAmount > 0) return 'partial';
   return 'unpaid';
+};
+
+/* ------------------------------------------------------------------ payments */
+
+const round2 = (n: number) => Math.round((n || 0) * 100) / 100;
+
+/**
+ * Totals derived from a bill's payment records.
+ *
+ * Payment records are the single source of truth for how much has been collected —
+ * `paidAmount` / `balance` / `status` on the bill doc are denormalised copies of these
+ * numbers. Anything that changes a payment must go through {@link buildPaymentUpdate}
+ * so the two never drift (which is what made partial payments overwrite instead of add up).
+ */
+export const summarisePaymentRecords = (records: PaymentRecord[] = []) => {
+  const totalPaid = round2(records.reduce((sum, r) => sum + (r.amount || 0), 0));
+  const totalCash = round2(
+    records.reduce((sum, r) => {
+      if (r.type === 'cash') return sum + (r.amount || 0);
+      if (r.type === 'split') return sum + (r.cashAmount || 0);
+      return sum;
+    }, 0)
+  );
+  const totalOnline = round2(
+    records.reduce((sum, r) => {
+      if (r.type === 'online') return sum + (r.amount || 0);
+      if (r.type === 'split') return sum + (r.onlineAmount || 0);
+      return sum;
+    }, 0)
+  );
+  return { totalPaid, totalCash, totalOnline };
+};
+
+/**
+ * The exact Firestore field set to write when a bill's payments change.
+ * Keeps paidAmount / balance / status / cash / online consistent with the records.
+ */
+export const buildPaymentUpdate = (totalAmount: number, records: PaymentRecord[]) => {
+  const { totalPaid, totalCash, totalOnline } = summarisePaymentRecords(records);
+  const balance = round2(Math.max(0, (totalAmount || 0) - totalPaid));
+  return {
+    paymentRecords: records,
+    paidAmount: totalPaid,
+    balance,
+    totalCashReceived: totalCash,
+    totalOnlineReceived: totalOnline,
+    status: calculateBillStatus(totalAmount || 0, totalPaid),
+  };
+};
+
+/**
+ * Payment records for a bill, back-filling legacy bills that carry only `paidAmount`.
+ *
+ * Bills created before payment tracking existed have a paid amount but no records; without
+ * this they'd look unpaid in the payment dialog and a new part-payment would wipe the
+ * earlier one.
+ */
+export const getPaymentRecords = (bill: Partial<Bill>): PaymentRecord[] => {
+  const records = Array.isArray(bill?.paymentRecords) ? bill.paymentRecords : [];
+  if (records.length > 0) return records;
+
+  const paid = bill?.paidAmount || 0;
+  if (paid <= 0) return [];
+
+  const cash = bill?.totalCashReceived || 0;
+  const online = bill?.totalOnlineReceived || 0;
+  const type: PaymentRecord['type'] =
+    cash > 0 && online > 0 ? 'split' : online > 0 && cash === 0 ? 'online' : 'cash';
+
+  return [
+    {
+      id: `legacy-${bill?.id || 'bill'}`,
+      amount: paid,
+      type,
+      ...(type === 'split' ? { cashAmount: cash, onlineAmount: online } : {}),
+      paymentDate: bill?.date || new Date(),
+      notes: 'Recorded before payment tracking',
+    },
+  ];
 };
 
 export const getWhatsAppTemplates = async (

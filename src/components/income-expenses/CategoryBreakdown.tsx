@@ -252,7 +252,7 @@ const CategoryBreakdown = ({ type, dateRange, onBack, inline = false }: Category
                         <div className="font-medium">
                           {entry.type === 'salary' ? `${entry.staffName} Salary` :
                            entry.type === 'inventory' ? entry.itemName || 'Material Item' :
-                           entry.type === 'billing' ? `Bill - ${entry.customerName || 'Customer'}` :
+                           entry.type === 'billing' ? `${entry.billNumber || 'Bill'} - ${entry.customerName || 'Customer'}${entry.instalment ? ` (${entry.instalment})` : ''}` :
                            entry.type === 'custom' && type === 'expense' ? entry.expenseName || 'Expense Entry' :
                            entry.type === 'custom' && type === 'income' ? entry.sourceName || 'Income Entry' :
                            entry.sourceName || entry.customerName || entry.itemName || 'Entry'}

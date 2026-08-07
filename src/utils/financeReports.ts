@@ -1,5 +1,14 @@
 import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getPaymentRecords } from '@/utils/billingUtils';
+import { fetchCollectionCached } from '@/utils/firestoreCache';
+
+/**
+ * Whole-collection reads go through the shared burst cache. Several of these helpers run
+ * together on one screen (summary cards + tab + chart), and each was independently pulling
+ * every bill down the wire.
+ */
+const readAll = (name: string) => fetchCollectionCached(name);
 
 export type FinanceDateRange = { start: Timestamp; end: Timestamp } | null;
 
@@ -42,14 +51,17 @@ export function isInRange(value: any, dateRange: FinanceDateRange): boolean {
   return d >= dateRange.start.toDate() && d <= dateRange.end.toDate();
 }
 
-/** Monthly salary using the newer paid-salary + bonus model (falls back to the configured salary). */
+/**
+ * The pay rate for an employee, for the pay basis they are on.
+ *
+ * `salaryAmount` is authoritative — it is the single amount the Employees form writes.
+ * `paidSalary` is a legacy field from an older three-field form; it is only consulted when
+ * `salaryAmount` is missing, so records that predate the form change still produce a figure
+ * instead of silently reading as ₹0.
+ */
 export function calculateMonthlySalary(staff: StaffMember): number {
-  const paidSalary = staff.paidSalary || 0;
-  const bonus = staff.bonus || 0;
-  const actualSalary = staff.salaryAmount || 0;
-  if (paidSalary > 0 && bonus > 0) return paidSalary + bonus;
-  if (paidSalary > 0) return paidSalary;
-  return actualSalary;
+  const rate = staff.salaryAmount || staff.paidSalary || 0;
+  return rate + (staff.bonus || 0);
 }
 
 /**
@@ -75,42 +87,68 @@ export async function getCategoryData(
   };
 
   if (type === 'income') {
-    // Legacy 'billing' collection (date field: createdAt)
-    const billingSnapshot = await getDocs(collection(db, 'billing'));
-    billingSnapshot.docs
-      .filter((doc) => isInRange(doc.data().createdAt, dateRange))
+    // Legacy 'billing' collection — collected amount only, falling back to the bill total
+    // for old records that predate payment tracking.
+    const billingDocs = await readAll('billing');
+    billingDocs
+      .filter((doc) => isInRange(doc.data.createdAt, dateRange))
       .forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data;
+        const collected =
+          data.paidAmount !== undefined && data.paidAmount !== null
+            ? data.paidAmount
+            : data.totalAmount || 0;
+        if (!collected) return;
         add('Sales & Billing (Legacy)', {
           id: doc.id,
-          amount: data.totalAmount || 0,
+          amount: collected,
           date: data.createdAt,
           customerName: data.customerName || 'Unknown Customer',
           type: 'billing',
         });
       });
 
-    // New 'bills' collection (date field: date)
-    const billsSnapshot = await getDocs(collection(db, 'bills'));
-    billsSnapshot.docs
-      .filter((doc) => isInRange(doc.data().date, dateRange))
-      .forEach((doc) => {
-        const data = doc.data();
+    // New 'bills' collection — one entry per *payment received*, dated when the money
+    // actually came in. A ₹20,000 bill with ₹10,000 collected is ₹10,000 of income; the
+    // remaining ₹10,000 appears in the period it is eventually collected in.
+    const billDocs = await readAll('bills');
+    billDocs.forEach((doc) => {
+      const data = doc.data;
+      const bill = { id: doc.id, ...data } as any;
+      const records = getPaymentRecords(bill);
+      if (records.length === 0) return;
+
+      records.forEach((record, index) => {
+        // Legacy paid amounts have no payment date of their own — fall back to the bill date.
+        const paidOn = record.paymentDate || data.date || data.createdAt;
+        if (!isInRange(paidOn, dateRange)) return;
+        if (!record.amount) return;
+
         add('Sales & Billing', {
-          id: doc.id,
-          amount: data.totalAmount || 0,
-          date: data.date,
+          id: `${doc.id}-${record.id || index}`,
+          billDocId: doc.id,
+          billNumber: data.billId || doc.id,
+          amount: record.amount,
+          date: paidOn,
           customerName: data.customerName || 'Unknown Customer',
+          paymentMode: record.type,
+          cashAmount: record.type === 'cash' ? record.amount : record.cashAmount || 0,
+          onlineAmount: record.type === 'online' ? record.amount : record.onlineAmount || 0,
+          billTotal: data.totalAmount || 0,
+          billBalance: data.balance || 0,
+          instalment: records.length > 1 ? `Payment ${index + 1} of ${records.length}` : undefined,
+          notes: record.notes,
           type: 'billing',
         });
       });
+    });
 
     // Custom income (date field: date)
-    const incomeSnapshot = await getDocs(collection(db, 'income'));
-    incomeSnapshot.docs
-      .filter((doc) => isInRange(doc.data().date || doc.data().createdAt, dateRange))
+    const incomeDocs = await readAll('income');
+    incomeDocs
+      .filter((doc) => isInRange(doc.data.date || doc.data.createdAt, dateRange))
       .forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data;
         const category = data.category || data.sourceName || 'Other Income';
         add(category, {
           id: doc.id,
@@ -123,11 +161,11 @@ export async function getCategoryData(
       });
   } else {
     // Inventory purchases (date field: broughtAt)
-    const inventorySnapshot = await getDocs(collection(db, 'inventory'));
-    inventorySnapshot.docs
-      .filter((doc) => doc.data().cost && doc.data().broughtAt && isInRange(doc.data().broughtAt, dateRange))
+    const inventoryDocs = await readAll('inventory');
+    inventoryDocs
+      .filter((doc) => doc.data.cost && doc.data.broughtAt && isInRange(doc.data.broughtAt, dateRange))
       .forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data;
         add('Materials & Inventory', {
           id: doc.id,
           amount: data.cost || 0,
@@ -139,11 +177,11 @@ export async function getCategoryData(
       });
 
     // Custom expenses (date field: date)
-    const expensesSnapshot = await getDocs(collection(db, 'expenses'));
-    expensesSnapshot.docs
-      .filter((doc) => isInRange(doc.data().date || doc.data().createdAt, dateRange))
+    const expenseDocs = await readAll('expenses');
+    expenseDocs
+      .filter((doc) => isInRange(doc.data.date || doc.data.createdAt, dateRange))
       .forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data;
         const category = data.category || 'Other Expenses';
         add(category, {
           id: doc.id,
@@ -158,8 +196,8 @@ export async function getCategoryData(
 
     // Staff salaries
     try {
-      const staffSnapshot = await getDocs(query(collection(db, 'staff')));
-      const staffMembers = staffSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as StaffMember[];
+      const staffDocs = await readAll('staff');
+      const staffMembers = staffDocs.map((doc) => ({ id: doc.id, ...doc.data })) as StaffMember[];
 
       for (const staff of staffMembers) {
         const monthlySalaryAmount = calculateMonthlySalary(staff);
@@ -181,15 +219,15 @@ export async function getCategoryData(
             salaryAmount = monthlySalaryAmount;
           }
         } else {
-          // daily / hourly — count confirmed attendance within range (client-side filtered)
-          const attendanceSnapshot = await getDocs(
-            query(
-              collection(db, 'attendance'),
-              where('staffId', '==', staff.id),
-              where('status', '==', 'confirmed')
-            )
+          // daily / hourly — count confirmed attendance within range. Read once and filter in
+          // memory: this used to fire a Firestore query per employee, per call.
+          const allAttendance = await readAll('attendance');
+          const attDocs = allAttendance.filter(
+            (d) =>
+              d.data.staffId === staff.id &&
+              d.data.status === 'confirmed' &&
+              isInRange(d.data.date, dateRange)
           );
-          const attDocs = attendanceSnapshot.docs.filter((d) => isInRange(d.data().date, dateRange));
           const attendanceCount = attDocs.length;
 
           if (staff.salaryMode === 'daily') {
@@ -199,7 +237,7 @@ export async function getCategoryData(
             let totalHours = 0;
             if (attendanceCount > 0) {
               attDocs.forEach((d) => {
-                totalHours += d.data().hoursWorked || 8;
+                totalHours += d.data.hoursWorked || 8;
               });
             } else if (!dateRange) {
               totalHours = 8;
@@ -235,23 +273,116 @@ export async function getCategoryData(
 export async function getTotalBilling(dateRange: FinanceDateRange): Promise<number> {
   let total = 0;
 
-  const billsSnapshot = await getDocs(collection(db, 'bills'));
-  total += billsSnapshot.docs
-    .filter((doc) => isInRange(doc.data().date, dateRange))
-    .reduce((sum, doc) => sum + (doc.data().totalAmount || 0), 0);
+  const [billDocs, billingDocs] = await Promise.all([readAll('bills'), readAll('billing')]);
+  total += billDocs
+    .filter((doc) => isInRange(doc.data.date, dateRange))
+    .reduce((sum, doc) => sum + (doc.data.totalAmount || 0), 0);
 
-  const billingSnapshot = await getDocs(collection(db, 'billing'));
-  total += billingSnapshot.docs
-    .filter((doc) => isInRange(doc.data().createdAt, dateRange))
-    .reduce((sum, doc) => sum + (doc.data().totalAmount || 0), 0);
+  total += billingDocs
+    .filter((doc) => isInRange(doc.data.createdAt, dateRange))
+    .reduce((sum, doc) => sum + (doc.data.totalAmount || 0), 0);
 
   return total;
+}
+
+export interface MonthlyPoint {
+  month: string;
+  revenue: number;
+  expenses: number;
+}
+
+/**
+ * Collected income and expenses for each month of a year, in a single pass.
+ *
+ * Calling {@link getFinancialSummary} twelve times would re-scan every collection twelve
+ * times over (and re-run the per-employee attendance queries with it), which was slow enough
+ * to leave the Reports page stuck on its skeleton. Same rules as the rest of the finance
+ * layer — income is money actually received, dated when it arrived.
+ */
+export async function getMonthlySeries(year: number): Promise<MonthlyPoint[]> {
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const points: MonthlyPoint[] = monthNames.map((month) => ({ month, revenue: 0, expenses: 0 }));
+
+  const bucket = (value: any): number | null => {
+    const date = toJsDate(value);
+    if (!date || isNaN(date.getTime()) || date.getFullYear() !== year) return null;
+    return date.getMonth();
+  };
+
+  const [bills, billing, income, expenses, inventory] = await Promise.all([
+    readAll('bills'),
+    readAll('billing'),
+    readAll('income'),
+    readAll('expenses'),
+    readAll('inventory'),
+  ]);
+
+  bills.forEach((doc) => {
+    const data = doc.data;
+    getPaymentRecords({ id: doc.id, ...data } as any).forEach((record) => {
+      const month = bucket(record.paymentDate || data.date || data.createdAt);
+      if (month !== null) points[month].revenue += record.amount || 0;
+    });
+  });
+
+  billing.forEach((doc) => {
+    const data = doc.data;
+    const collected =
+      data.paidAmount !== undefined && data.paidAmount !== null ? data.paidAmount : data.totalAmount || 0;
+    const month = bucket(data.createdAt);
+    if (month !== null) points[month].revenue += collected || 0;
+  });
+
+  income.forEach((doc) => {
+    const month = bucket(doc.data.date || doc.data.createdAt);
+    if (month !== null) points[month].revenue += doc.data.amount || 0;
+  });
+
+  expenses.forEach((doc) => {
+    const month = bucket(doc.data.date || doc.data.createdAt);
+    if (month !== null) points[month].expenses += doc.data.amount || 0;
+  });
+
+  inventory.forEach((doc) => {
+    if (!doc.data.cost || !doc.data.broughtAt) return;
+    const month = bucket(doc.data.broughtAt);
+    if (month !== null) points[month].expenses += doc.data.cost || 0;
+  });
+
+  return points;
+}
+
+/**
+ * Money still owed to the business across all bills, regardless of when they were raised.
+ * Deliberately not date-filtered: an unpaid bill from March is still outstanding today.
+ */
+export async function getOutstandingTotal(): Promise<{ amount: number; bills: number }> {
+  const billDocs = await readAll('bills');
+  let amount = 0;
+  let bills = 0;
+  billDocs.forEach((doc) => {
+    const data = doc.data;
+    const balance = (data.totalAmount || 0) - (data.paidAmount || 0);
+    if (balance > 0.5) {
+      amount += balance;
+      bills += 1;
+    }
+  });
+  return { amount, bills };
 }
 
 /** Convenience summary used by the Income & Expenses headline cards — same figures as Tracking/Accounts. */
 export async function getFinancialSummary(
   dateRange: FinanceDateRange
-): Promise<{ totalIncome: number; totalExpenses: number; netProfit: number; totalBilling: number }> {
+): Promise<{
+  totalIncome: number;
+  totalExpenses: number;
+  netProfit: number;
+  totalBilling: number;
+  uncollected: number;
+  incomeCategories: FinanceCategory[];
+  expenseCategories: FinanceCategory[];
+}> {
   const [incomeCats, expenseCats, totalBilling] = await Promise.all([
     getCategoryData('income', dateRange),
     getCategoryData('expense', dateRange),
@@ -259,5 +390,19 @@ export async function getFinancialSummary(
   ]);
   const totalIncome = incomeCats.reduce((s, c) => s + c.total, 0);
   const totalExpenses = expenseCats.reduce((s, c) => s + c.total, 0);
-  return { totalIncome, totalExpenses, netProfit: totalIncome - totalExpenses, totalBilling };
+  // Billed-but-not-yet-collected within this period. Shown next to income so the gap
+  // between "we invoiced X" and "we actually received Y" is never a surprise.
+  const billingIncome = incomeCats
+    .filter((c) => c.name.startsWith('Sales & Billing'))
+    .reduce((s, c) => s + c.total, 0);
+  return {
+    totalIncome,
+    totalExpenses,
+    netProfit: totalIncome - totalExpenses,
+    totalBilling,
+    uncollected: Math.max(0, totalBilling - billingIncome),
+    // Handed back so callers that also want the breakdown do not repeat the whole pass.
+    incomeCategories: incomeCats,
+    expenseCategories: expenseCats,
+  };
 }

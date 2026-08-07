@@ -16,6 +16,7 @@ import CategoryBreakdown from './CategoryBreakdown';
 import CategoryInput from '../CategoryInput';
 import PaymentModeSelector, { PaymentBreakdown } from './PaymentModeSelector';
 import { isInRange } from '@/utils/financeReports';
+import { getPaymentRecords } from '@/utils/billingUtils';
 
 interface IncomeTabProps {
   dateRange: { start: Timestamp; end: Timestamp } | null;
@@ -32,6 +33,12 @@ interface IncomeEntry {
   notes?: string;
   customerName?: string;
   billId?: string;
+  /** Human bill number (e.g. "Bill355") — not the Firestore doc id. */
+  billNumber?: string;
+  /** "Payment 2 of 3" when a bill was settled in instalments. */
+  instalment?: string;
+  /** Outstanding balance left on the bill this payment belongs to. */
+  billBalance?: number;
   type: 'billing' | 'custom';
   // Payment mode tracking
   paymentMode?: 'cash' | 'online' | 'split';
@@ -76,27 +83,52 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
 
       const billingEntries = billingSnapshot.docs
         .filter(doc => isInRange(doc.data().createdAt, dateRange))
-        .map(doc => ({
-          id: doc.id,
-          amount: doc.data().totalAmount || 0,
-          date: doc.data().createdAt,
-          customerName: doc.data().customerName || 'Unknown Customer',
-          billId: doc.id,
-          category: 'Sales & Billing (Legacy)',
-          type: 'billing' as const
-        }));
+        .map(doc => {
+          const data = doc.data();
+          const collected =
+            data.paidAmount !== undefined && data.paidAmount !== null
+              ? data.paidAmount
+              : data.totalAmount || 0;
+          return {
+            id: doc.id,
+            amount: collected,
+            date: data.createdAt,
+            customerName: data.customerName || 'Unknown Customer',
+            billId: doc.id,
+            billNumber: data.billId || doc.id,
+            category: 'Sales & Billing (Legacy)',
+            type: 'billing' as const,
+          };
+        })
+        .filter(entry => entry.amount > 0);
 
-      const billsEntries = billsSnapshot.docs
-        .filter(doc => isInRange(doc.data().date, dateRange))
-        .map(doc => ({
-          id: doc.id,
-          amount: doc.data().totalAmount || 0,
-          date: doc.data().date,
-          customerName: doc.data().customerName || 'Unknown Customer',
-          billId: doc.id,
-          category: 'Sales & Billing',
-          type: 'billing' as const
-        }));
+      // One row per payment received, so a bill settled in instalments shows each
+      // collection on the date the money actually arrived (Req 4).
+      const billsEntries: IncomeEntry[] = [];
+      billsSnapshot.docs.forEach(docSnap => {
+        const data = docSnap.data();
+        const records = getPaymentRecords({ id: docSnap.id, ...data } as any);
+        records.forEach((record, index) => {
+          const paidOn = record.paymentDate || data.date || data.createdAt;
+          if (!isInRange(paidOn, dateRange) || !record.amount) return;
+          billsEntries.push({
+            id: `${docSnap.id}-${record.id || index}`,
+            amount: record.amount,
+            date: paidOn,
+            customerName: data.customerName || 'Unknown Customer',
+            billId: docSnap.id,
+            billNumber: data.billId || docSnap.id,
+            billBalance: (data.totalAmount || 0) - (data.paidAmount || 0),
+            instalment: records.length > 1 ? `Payment ${index + 1} of ${records.length}` : undefined,
+            category: 'Sales & Billing',
+            paymentMode: record.type,
+            cashAmount: record.type === 'cash' ? record.amount : record.cashAmount || 0,
+            onlineAmount: record.type === 'online' ? record.amount : record.onlineAmount || 0,
+            notes: record.notes,
+            type: 'billing' as const,
+          });
+        });
+      });
 
       const customEntries = incomeSnapshot.docs
         .filter(doc => isInRange(doc.data().date || doc.data().createdAt, dateRange))
@@ -321,19 +353,19 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
   return (
     <div className="space-y-6">
       {/* Add Income Button */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold">Income Entries</h2>
-          <p className="text-gray-600 dark:text-gray-400">Total: ₹{totalIncome.toLocaleString()}</p>
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-semibold">Income Collected</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Total: ₹{totalIncome.toLocaleString()}</p>
         </div>
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
             onClick={() => setShowCategoryBreakdown(true)}
-            className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200"
+            className="flex-1 sm:flex-none bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 dark:from-purple-900/20 dark:to-pink-900/20"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
-            Category Breakdown
+            <span className="truncate">Category Breakdown</span>
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -489,33 +521,45 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
             <div className="h-96 overflow-y-auto">
               <div className="space-y-3 pr-2">
                 {incomeEntries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex items-center space-x-4 flex-1">
-                    <div className={`p-2 rounded-full ${entry.type === 'billing' ? 'bg-blue-100' : 'bg-green-100'}`}>
+                <div key={entry.id} className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className={`shrink-0 p-2 rounded-full ${entry.type === 'billing' ? 'bg-blue-100' : 'bg-green-100'}`}>
                       {entry.type === 'billing' ? (
                         <Receipt className={`h-4 w-4 ${entry.type === 'billing' ? 'text-blue-600' : 'text-green-600'}`} />
                       ) : (
                         <DollarSign className="h-4 w-4 text-green-600" />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium">
-                        {entry.type === 'billing' ? `Bill #${entry.billId?.slice(-6)}` : entry.sourceName}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium break-words">
+                        {entry.type === 'billing'
+                          ? entry.billNumber || entry.billId
+                          : entry.sourceName}
+                        {entry.instalment && (
+                          <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-normal text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            {entry.instalment}
+                          </span>
+                        )}
                       </div>
-                      <div className="text-sm text-gray-600 flex items-center space-x-4">
+                      {entry.type === 'billing' && (entry.billBalance || 0) > 0.5 && (
+                        <div className="mt-0.5 text-xs text-red-600 dark:text-red-400">
+                          Still pending on this bill: ₹{(entry.billBalance || 0).toLocaleString()}
+                        </div>
+                      )}
+                      <div className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-1">
                         {entry.customerName && (
-                          <span className="flex items-center">
-                            <User className="h-3 w-3 mr-1" />
-                            {entry.customerName}
+                          <span className="flex items-center min-w-0">
+                            <User className="h-3 w-3 mr-1 shrink-0" />
+                            <span className="truncate">{entry.customerName}</span>
                           </span>
                         )}
                         {entry.category && (
-                          <span className="bg-gray-100 px-2 py-1 rounded text-xs">
+                          <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">
                             {entry.category}
                           </span>
                         )}
                         {/* Payment Mode Display */}
-                        {entry.paymentMode && entry.type === 'custom' && (
+                        {entry.paymentMode && (
                           <span className="flex items-center">
                             {entry.paymentMode === 'cash' && (
                               <span className="flex items-center bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
@@ -546,8 +590,8 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
                         <div className="text-xs text-gray-500 mt-1">{entry.notes}</div>
                       )}
                       {/* Split Payment Breakdown */}
-                      {entry.paymentMode === 'split' && entry.type === 'custom' && (
-                        <div className="text-xs text-gray-600 mt-1 flex items-center space-x-3">
+                      {entry.paymentMode === 'split' && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="flex items-center">
                             <Banknote className="h-3 w-3 mr-1 text-green-600" />
                             Cash: ₹{(entry.cashAmount || 0).toLocaleString()}
@@ -560,10 +604,12 @@ const IncomeTab = ({ dateRange, onDataChange, loading }: IncomeTabProps) => {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                     <div className="text-right">
                       <div className="font-bold text-green-600">₹{entry.amount.toLocaleString()}</div>
-                      <div className="text-xs text-gray-500 capitalize">{entry.type}</div>
+                      <div className="text-xs text-gray-500">
+                        {entry.type === 'billing' ? 'collected' : 'custom'}
+                      </div>
                     </div>
                     {entry.type === 'custom' && (
                       <div className="flex space-x-1">

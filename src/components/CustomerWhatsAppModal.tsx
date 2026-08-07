@@ -7,8 +7,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, Copy, Send, Plus, Save } from 'lucide-react';
+import { MessageSquare, Copy, Send, Plus, Save, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { getOrCreateShareToken, generatePublicBillUrl } from '@/utils/billShareUtils';
+import { useBusinessSettings } from '@/components/BusinessSettingsProvider';
+import { daysSince, formatBilledDate, formatPendingSince } from '@/utils/customerCalculations';
+import { toJsDate } from '@/utils/financeReports';
+
+interface PendingBillRef {
+  id: string;
+  billId: string;
+  balance: number;
+  totalAmount?: number;
+  paidAmount?: number;
+  date?: any;
+}
 
 interface Customer {
   id: string;
@@ -19,6 +32,9 @@ interface Customer {
   totalOrders?: number;
   totalSpent?: number;
   lastOrderDate?: string;
+  outstandingBalance?: number;
+  pendingBills?: PendingBillRef[];
+  daysPending?: number;
 }
 
 interface CustomerWhatsAppModalProps {
@@ -38,13 +54,94 @@ const CustomerWhatsAppModal: React.FC<CustomerWhatsAppModalProps> = ({
   isOpen,
   onClose
 }) => {
+  const { settings: businessSettings } = useBusinessSettings();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [message, setMessage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [customTemplateName, setCustomTemplateName] = useState('');
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [buildingReminder, setBuildingReminder] = useState(false);
+
+  const businessName = businessSettings?.businessName || "Swetha's Couture";
+  const pendingBills = (customer.pendingBills || []).filter((bill) => (bill.balance || 0) > 0.5);
+  const outstanding =
+    customer.outstandingBalance ?? pendingBills.reduce((sum, bill) => sum + (bill.balance || 0), 0);
+  const hasPending = outstanding > 0.5;
+
+  const inr = (value: number) => `₹${(value || 0).toLocaleString('en-IN')}`;
+
+  /**
+   * Builds the polite payment-reminder message.
+   *
+   * Each pending bill gets its own public share link, so the customer can open the bill,
+   * see exactly what is owed and pay straight from that page — minting the share token
+   * here is what makes "share the bill along with it" work without extra clicks.
+   */
+  const buildPaymentReminder = async (): Promise<string> => {
+    const lines: string[] = [];
+
+    for (const bill of pendingBills) {
+      let link = '';
+      try {
+        const token = await getOrCreateShareToken(bill.id);
+        link = generatePublicBillUrl(token);
+      } catch (error) {
+        console.error('Could not create share link for bill', bill.billId, error);
+      }
+
+      const billedOn = toJsDate(bill.date);
+      const age = daysSince(billedOn);
+
+      lines.push(
+        `• ${bill.billId} — ${inr(bill.balance)} pending` +
+          (bill.totalAmount && bill.paidAmount
+            ? `\n  (Bill ${inr(bill.totalAmount)}, paid ${inr(bill.paidAmount)})`
+            : '') +
+          `\n  Billed on: ${formatBilledDate(billedOn)} — pending since ${formatPendingSince(age)}` +
+          (link ? `\n  View & pay: ${link}` : '')
+      );
+    }
+
+    // The oldest bill drives the headline, since that is the one that most needs settling.
+    const oldest = pendingBills.reduce<Date | null>((acc, bill) => {
+      const date = toJsDate(bill.date);
+      if (!date) return acc;
+      return !acc || date < acc ? date : acc;
+    }, null);
+    const oldestAge = daysSince(oldest);
+
+    return [
+      `Dear ${customer.name},`,
+      '',
+      `Warm greetings from ${businessName}! 🙏`,
+      '',
+      `This is a gentle reminder that a payment of *${inr(outstanding)}* is still pending on your account` +
+        (oldest ? `, outstanding since *${formatPendingSince(oldestAge)}* (billed ${formatBilledDate(oldest)}).` : '.'),
+      '',
+      pendingBills.length > 0 ? 'PENDING BILL(S):' : '',
+      pendingBills.length > 0 ? '━━━━━━━━━━━━━━━━━━━━' : '',
+      ...lines,
+      '',
+      'You can open the link above to view your bill and pay directly — UPI, QR and bank details are all on that page.',
+      '',
+      'If you have already made the payment, please ignore this message and kindly share the payment screenshot with us.',
+      '',
+      'Thank you so much for your support and for choosing us 💖',
+      '',
+      `Warm regards,`,
+      `${businessName}`,
+    ]
+      .filter((line, index, all) => !(line === '' && all[index - 1] === ''))
+      .join('\n');
+  };
 
   const [templates, setTemplates] = useState<MessageTemplate[]>([
+    {
+      id: 'payment-reminder',
+      name: '💰 Payment Reminder (with bill link)',
+      // Built asynchronously in handleTemplateChange because it needs share links.
+      content: '',
+    },
     {
       id: 'welcome',
       name: 'Welcome Message',
@@ -195,13 +292,41 @@ Swetha's Couture Team`
       .replace(/\{lastOrderDate\}/g, customer.lastOrderDate || 'N/A');
   };
 
-  const handleTemplateChange = (templateId: string) => {
+  const handleTemplateChange = async (templateId: string) => {
     setSelectedTemplate(templateId);
+
+    if (templateId === 'payment-reminder') {
+      setBuildingReminder(true);
+      try {
+        setMessage(await buildPaymentReminder());
+      } catch (error) {
+        console.error('Error building payment reminder:', error);
+        toast({
+          title: 'Could not build reminder',
+          description: 'The bill links could not be created. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setBuildingReminder(false);
+      }
+      return;
+    }
+
     const template = templates.find(t => t.id === templateId);
     if (template) {
       setMessage(replaceTemplateVariables(template.content));
     }
   };
+
+  // A customer who owes money opens straight onto the reminder — that is the reason
+  // this modal is usually opened from the collections view.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (hasPending && !selectedTemplate) {
+      handleTemplateChange('payment-reminder');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, hasPending]);
 
   const handleSaveTemplate = () => {
     if (customTemplateName.trim() && message.trim()) {
@@ -261,6 +386,37 @@ Swetha's Couture Team`
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - Customer Details */}
           <div className="space-y-4">
+            {hasPending && (
+              <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30">
+                <CardContent className="p-4">
+                  <h3 className="mb-2 flex items-center gap-2 font-semibold text-red-800 dark:text-red-300">
+                    <AlertTriangle className="h-4 w-4" />
+                    Payment pending: {inr(outstanding)}
+                  </h3>
+                  <div className="space-y-1.5 text-sm">
+                    {pendingBills.map((bill) => (
+                      <div key={bill.id} className="flex justify-between gap-2">
+                        <span className="min-w-0 text-gray-700 dark:text-gray-300">
+                          <span className="block truncate font-medium">{bill.billId}</span>
+                          <span className="block text-[11px] text-gray-500 dark:text-gray-400">
+                            {formatBilledDate(toJsDate(bill.date))} · pending{' '}
+                            {formatPendingSince(daysSince(toJsDate(bill.date)))}
+                          </span>
+                        </span>
+                        <span className="shrink-0 font-medium text-red-600 dark:text-red-400">
+                          {inr(bill.balance)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-red-700/80 dark:text-red-300/80">
+                    The reminder template below includes a share link for each bill so the customer
+                    can pay from it directly.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardContent className="p-4">
                 <h3 className="font-semibold mb-3">Customer Information</h3>
@@ -309,13 +465,21 @@ Swetha's Couture Team`
                     <SelectValue placeholder="Select a template" />
                   </SelectTrigger>
                   <SelectContent>
-                    {templates.map(template => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
+                    {templates
+                      .filter(template => template.id !== 'payment-reminder' || hasPending)
+                      .map(template => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
+                {buildingReminder && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Creating secure bill links…
+                  </p>
+                )}
               </div>
             </div>
           </div>

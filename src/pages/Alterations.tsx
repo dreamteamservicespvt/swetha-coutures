@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import FilterPanel from '@/components/FilterPanel';
 import ContactActions from '@/components/ContactActions';
 
 interface Alteration {
@@ -474,52 +475,53 @@ const Alterations = () => {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="search-filter-container">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" />
-          <Input
-            placeholder="Search alterations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 sm:pl-10 responsive-text-sm h-8 sm:h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-          />
+      {/* Search & Filters — one shared, collapsible panel used across every list page */}
+      <FilterPanel
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search alterations by customer, item or phone…"
+        activeCount={statusFilter !== 'all' ? 1 : 0}
+        summary={statusFilter !== 'all' ? `Showing: ${statusFilter.replace('-', ' ')}` : undefined}
+        onClearAll={() => setStatusFilter('all')}
+        actions={
+          <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-700">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="h-8 px-2"
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="h-8 px-2"
+              aria-label="Grid view"
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      >
+        <div className="max-w-xs">
+          <Label className="mb-1.5 block text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="received">Received</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40 h-8 sm:h-10 responsive-text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <SelectItem value="all" className="text-gray-900 dark:text-gray-100">All Status</SelectItem>
-            <SelectItem value="received" className="text-gray-900 dark:text-gray-100">Received</SelectItem>
-            <SelectItem value="in-progress" className="text-gray-900 dark:text-gray-100">In Progress</SelectItem>
-            <SelectItem value="completed" className="text-gray-900 dark:text-gray-100">Completed</SelectItem>
-            <SelectItem value="delivered" className="text-gray-900 dark:text-gray-100">Delivered</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        {/* View Toggle */}
-        <div className="flex rounded-lg border bg-white dark:bg-gray-800">
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-            className="rounded-r-none"
-            title="List View"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-            className="rounded-l-none"
-            title="Grid View"
-          >
-            <Grid className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      </FilterPanel>
 
       {/* Alterations List */}
       <Card className="border-0 shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
