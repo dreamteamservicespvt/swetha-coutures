@@ -11,7 +11,7 @@
 > The user will describe the developments to make. Capture each here with: goal, scope,
 > decisions made, files touched, and status. Keep newest at top.
 
-### Fingerprint device → our own endpoint (ZKTeco K40 Pro) — status: DONE, awaiting hardware test (2026-08-10)
+### Fingerprint device → our own endpoint (ZKTeco K40 Pro) — status: WORKING on LAN; needs a plain-HTTP front door for production (2026-08-10)
 - **Goal:** every thumb press lands in our own Firestore within seconds, viewable from anywhere,
   with no dependence on the reseller's ZKBio Time Cloud tenant.
 - **Final shape: one endpoint on Vercel.** `api/iclock/cdata.ts` + `api/_deviceIngest.ts`, with
@@ -31,14 +31,23 @@
 - **Verified:** `npm run test:device` 54/54; `npm run build` clean; all three tsconfig surfaces
   typecheck with zero new errors (8 pre-existing in `ROIDashboard_backup.tsx` / `Dashboard.tsx`,
   confirmed identical on a clean tree); `firebase-admin` confirmed absent from `dist/`.
-- **NOT yet verified against real hardware.** `deviceRawLogs` exists precisely to make any
-  firmware deviation diagnosable rather than a guess.
-- **Blocked on the user:** Firebase service-account key in `.env` + Vercel, device menu change,
-  Approve in the app. Steps in `docs/BIOMETRIC_DEVICE.md`.
-- **🔴 Open risk:** Vercel forces HTTPS with TLS 1.2/1.3 only; the K40 Pro is a classic-series
-  terminal that may only speak plain HTTP and does not reliably follow redirects. The LAN
-  dev-server path will work; the live Vercel path is unproven. Test on LAN first — that isolates
-  "does the device work" from "can it reach Vercel".
+- **VERIFIED ON THE REAL HARDWARE (2026-08-10).** With `npm run device:receiver` on the office
+  LAN and the device on plain HTTP, 20 punches arrived and folded into a correct day record
+  (in 17:47, out 18:53, 1.1h). Device serial `GED7261700069`, pre-registered as approved.
+- **🔴 The device CANNOT reach Vercel, and this is proven, not suspected.** A TLS probe on the
+  LAN presented a self-signed certificate: the terminal connected **55 times and failed all 55**,
+  resetting the connection immediately after receiving the certificate. So it *does* enforce
+  certificate validation. Its ClientHello offers TLS 1.2 and 80 ciphers, so the TLS version is
+  not the problem. Vercel's certificate is issued by Google Trust Services (root created 2016);
+  the reseller's, which works, is issued by Amazon (roots from 2009); the device's firmware trust
+  store is from `22.5.10-20170306`. Raw evidence kept in `docs/device-tls-evidence.log`.
+  **Vercel only ever issues Google-signed certificates, so this cannot be fixed on Vercel.**
+- **The fix is a plain-HTTP front door**, because then no certificate is presented at all.
+  Recommended: a domain on Cloudflare (free) with `Always Use HTTPS` OFF and SSL mode
+  Full (strict), proxying to Vercel. Full click-by-click steps in `docs/BIOMETRIC_DEVICE.md`.
+  Interim: `npm run device:receiver` on an office PC — works today, device buffers punches while
+  the PC is off and replays them on reconnect.
+- **Blocked on the user:** buying a domain, then the Cloudflare setup.
 - **BioTime removed entirely 2026-08-10** at the client's request. Rollback to the reseller is now
   a device menu change only (put the old Server Address back); there is no code path left.
 - **Follow-ups:** (a) confirm the public bill share link still works after deploying
@@ -135,8 +144,12 @@ These are features that exist but look unfinished or unverified (see present.md 
    and that email is hardcoded to admin in `AuthContext`. Review before launch.
 3. **🟠 Legacy/duplicate files** (see past.md §3) — `*_backup`, `*_broken`, `*_fixed`, `*_New`,
    `Billing_New`, throwaway root `test-*.js`/`debug-*.js`. Remove once confirmed dead (check `App.tsx` imports first).
-4. **🟠 Doc sprawl** — 90+ root `*_FIX.md` logs. Consider moving to `docs/archive/` so the root
-   is clean and this `project-memory/` folder is the canonical knowledge base.
+4. **✅ Doc sprawl — RESOLVED (2026-08-10).** The 89 root `*_FIX.md` / `*_IMPLEMENTATION.md`
+   logs now live in `docs/archive/<topic>/` (billing, payments, whatsapp, finance,
+   pdf-invoices, products, orders, staff, cloudinary, ui-components, general) with an index at
+   `docs/archive/README.md`. 17 of them are 0 bytes and can be deleted whenever. The 11 empty
+   root `test-*.js` / `debug-*.js` throwaways were deleted outright — they contained nothing
+   and were referenced by nothing. Root now holds only `README.md`, which points here.
 5. **🟡 Data consistency** — date formats and duplicate bills needed repair tools; consider
    normalizing on write so the `/date-format-fixer` and `/duplicate-bill-fixer` tools become unnecessary.
    _Partially resolved (2026-06-30):_ the **Income & Expenses surface** no longer depends on date format

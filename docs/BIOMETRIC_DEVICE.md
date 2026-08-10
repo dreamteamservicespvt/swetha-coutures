@@ -8,7 +8,7 @@ three places, all running the identical code:
 
 | Where | What runs it | Used for |
 |---|---|---|
-| Production | `api/iclock/cdata.ts` on Vercel | The live system |
+| Production | `api/iclock/cdata.ts` on Vercel | The ![alt text](image.png)live system |
 | Your PC | Vite dev server (`npm run dev`) | Testing with the real device on the LAN |
 | No hardware | `npm run test:device` | Proving the logic without a device at all |
 

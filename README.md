@@ -1,74 +1,62 @@
-# Swetha's Couture - Business Management System
+# Swetha's Couture — Business Management System
 
-## Project info
+**Developed by:** Dream Team Services · **Client:** Swetha's Couture
 
-**Developed by**: Dream Team Services  
-**Client**: Swetha's Couture
+Customers, orders, billing, inventory, staff, finance, appointments, alterations, reports,
+and fingerprint attendance.
 
-## How can I edit this code?
+## Where the documentation lives
 
-There are several ways of editing your application.
+| Read this | For |
+|---|---|
+| **[`project-memory/`](./project-memory/)** | **Start here.** How the system works today, what's been built, what's left |
+| [`docs/BIOMETRIC_DEVICE.md`](./docs/BIOMETRIC_DEVICE.md) | Fingerprint terminal — setup, troubleshooting, why it needs plain HTTP |
+| [`docs/DATA_SAFETY.md`](./docs/DATA_SAFETY.md) | Backup and restore |
+| [`docs/archive/`](./docs/archive/) | Historical build notes, kept for reference only |
 
-**Use your preferred IDE**
+`project-memory/` is the canonical knowledge base — three files covering the past
+(lessons and traps), the present (architecture and data model) and the future (backlog).
+Anything in `docs/archive/` is a snapshot of one past change and may describe code that has
+since been rewritten.
 
-You can clone this repo and push changes. The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Running it
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+npm run dev          # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+Copy [`.env.example`](./.env.example) to `.env` and fill it in first — the app refuses to
+start without the Firebase config, by design.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Command | Does |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Production build into `dist/` |
+| `npm run lint` | ESLint |
+| `npm run test:device` | Fingerprint device simulator (54 checks, no hardware needed) |
+| `npm run device:receiver` | Plain-HTTP receiver for the fingerprint terminal on the office LAN |
 
-**Use GitHub Codespaces**
+## Stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Vite · React · TypeScript · shadcn/ui · Tailwind, on Firebase (Firestore + Auth) and
+Cloudinary, deployed to Vercel. Serverless functions live in [`api/`](./api/).
 
-## What technologies are used for this project?
+## ⚠️ Before changing anything
 
-This project is built with:
+**Billing is in production and client-approved.** Read
+[`project-memory/future.md`](./project-memory/future.md) §D for the working agreements —
+notably that bills exist in two shapes, and that bill-ID generation and date handling are
+fragile and have been fixed many times.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Two traps that cost real debugging time:
 
-## How can I deploy this project?
-
-This project can be deployed to any modern hosting platform that supports Node.js applications, such as:
-
-- Vercel
-- Netlify
-- AWS
-- Digital Ocean
-- Heroku
-
-Build the project using `npm run build` and deploy the `dist` folder to your hosting platform.
-
-## Custom Domain Setup
-
-You can connect a custom domain through your hosting platform's domain management settings.
+- Relative imports in [`api/`](./api/) **must** carry a `.js` extension. `package.json`
+  declares `"type": "module"`, so Node rejects extensionless imports at load and the
+  function dies with an unhelpful 500.
+- New Firestore collections must be added to `src/utils/backup/backupSchema.ts`, or they
+  are silently missing from every backup.
 
 ---
 
-**© 2024 Dream Team Services - Premium Business Management Solutions**
+**© 2026 Dream Team Services**
