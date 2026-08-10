@@ -108,13 +108,29 @@ function buildStore(): DocStore {
 
 /* ---------------------------------------------------------------------- server */
 
-const lanAddresses = () =>
-  Object.values(os.networkInterfaces())
-    .flat()
-    .filter((e): e is os.NetworkInterfaceInfo => Boolean(e && e.family === 'IPv4' && !e.internal))
-    // 169.254.x is a self-assigned address from an adapter with no DHCP — never reachable.
-    .filter((e) => !e.address.startsWith('169.254.'))
-    .map((e) => e.address);
+interface Address {
+  address: string;
+  iface: string;
+  selfAssigned: boolean;
+}
+
+/**
+ * Every IPv4 address on this machine, with the adapter it belongs to.
+ *
+ * 169.254.x addresses are listed rather than hidden. They mean the adapter found no DHCP
+ * server — usually a device cabled straight into this PC — and in exactly that case it is
+ * the *only* address the device can reach. Filtering them out hides the one that works.
+ */
+const lanAddresses = (): Address[] =>
+  Object.entries(os.networkInterfaces()).flatMap(([iface, entries]) =>
+    (entries || [])
+      .filter((e) => e.family === 'IPv4' && !e.internal)
+      .map((e) => ({
+        address: e.address,
+        iface,
+        selfAssigned: e.address.startsWith('169.254.'),
+      }))
+  );
 
 loadEnv();
 const store = buildStore();
@@ -199,10 +215,15 @@ server.listen(port, '0.0.0.0', () => {
   console.log('');
   console.log('    Server Mode          \x1b[36mADMS\x1b[0m');
   console.log('    Enable Domain Name   \x1b[36mOFF\x1b[0m');
-  for (const address of addresses) {
-    console.log(`    Server Address       \x1b[36m${address}\x1b[0m`);
+  for (const { address, iface, selfAssigned } of addresses) {
+    const note = selfAssigned
+      ? '  \x1b[33m<- use this if the device is cabled straight to this PC\x1b[0m'
+      : '';
+    console.log(`    Server Address       \x1b[36m${address}\x1b[0m  (${iface})${note}`);
   }
   if (addresses.length === 0) console.log('    Server Address       (no network address found)');
+  console.log('');
+  console.log('    Pick the address on the SAME adapter the device is plugged into.');
   console.log(`    Server Port          \x1b[36m${port}\x1b[0m`);
   console.log('    Enable Proxy Server  \x1b[36mOFF\x1b[0m');
   console.log('    HTTPS                \x1b[36mOFF\x1b[0m   <-- important');
