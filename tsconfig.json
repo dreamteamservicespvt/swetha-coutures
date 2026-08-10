@@ -5,6 +5,19 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
+    /* These exist for Vercel, not for the Vite build.
+       tsconfig.app.json and tsconfig.node.json are standalone (they do not "extends" this
+       file), so nothing here reaches the frontend. But Vercel's Node builder compiles the
+       serverless functions in api/ using THIS config, and without an explicit module
+       setting TypeScript defaults to emitting CommonJS. package.json declares
+       "type": "module", so Node then loads that CommonJS output as ESM and dies with
+       "exports is not defined" before a single line of handler code runs — which surfaces
+       as FUNCTION_INVOCATION_FAILED on every api/ route. Do not remove these. */
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+
     /* No "baseUrl" — deprecated in TypeScript 6 and removed in 7. `paths` alone is enough;
        the mappings below resolve relative to this file. */
     "paths": {
