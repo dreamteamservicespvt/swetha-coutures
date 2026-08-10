@@ -144,17 +144,116 @@ Then repoint the device at your live domain:
 
 Reboot the device.
 
-### ⚠️ This is the step that may not work
+---
 
-Vercel forces HTTPS and accepts only TLS 1.2/1.3 with modern ciphers. The K40 Pro is a
-classic-series terminal that often speaks plain HTTP, or TLS 1.0, and does not reliably follow
-redirects. If it connects on your LAN but goes silent against the live domain, that is the
-cause — not a bug in the code.
+## Why the device cannot talk to Vercel directly (verified 2026-08-10)
 
-If that happens, the fix is a plain-HTTP relay that the device can reach, forwarding to
-Vercel. Ask and it can be rebuilt; the handler itself needs no changes.
+The K40 Pro reaches the reseller's cloud but never reached Vercel — not one request. The
+cause is the TLS certificate, not the TLS version:
+
+| | Certificate issued by |
+|---|---|
+| Reseller (works) | Amazon RSA 2048 M01 → Amazon Root CA 1 → Starfield Root (2009) |
+| `*.vercel.app` (fails) | Google Trust Services WR1 → GTS Root R1 (2016) |
+
+The terminal's System Version is `22.5.10-20170306`, so its trusted-authority list predates
+Google Trust Services. It opens the connection, rejects the certificate and hangs up before
+sending anything — which is why nothing appears in `deviceRawLogs` or the Vercel logs.
+
+Both hosts require TLS 1.2, and the device does TLS 1.2 fine, so the version is not the
+issue and cannot be worked around. **Vercel only issues Google-signed certificates and this
+cannot be changed**, so the device needs either a plain-HTTP front door or a certificate
+from an authority it trusts.
+
+Proven working on 2026-08-10: with `scripts/device-receiver.ts` on the office LAN and the
+device set to plain HTTP, 20 punches arrived and folded into a day record correctly.
 
 ---
+
+## Putting Cloudflare in front (the permanent fix)
+
+Gives the device a plain-HTTP address on the internet, so no certificate is involved on the
+device's side. Free, and nothing to maintain.
+
+```
+Device --plain HTTP :80--> punch.yourdomain.com (Cloudflare) --HTTPS--> Vercel --> Firestore
+```
+
+A dedicated subdomain is used so the main website keeps forced HTTPS; only the device's
+hostname permits plain HTTP.
+
+### 1. Put the domain on Cloudflare
+
+1. Sign up at [cloudflare.com](https://dash.cloudflare.com/sign-up) — **Free** plan.
+2. **Add a site** → enter your domain → choose **Free**.
+3. Cloudflare shows two nameservers. Copy them.
+4. At the company you bought the domain from, replace its nameservers with those two.
+5. Wait for Cloudflare to say **Active** (usually minutes, up to a few hours).
+
+### 2. Tell Vercel about the subdomain
+
+Vercel project → **Settings → Domains → Add** → `punch.yourdomain.com`.
+Vercel shows a CNAME target, normally `cname.vercel-dns.com`.
+
+### 3. Add the DNS record in Cloudflare
+
+Cloudflare → **DNS → Records → Add record**:
+
+| Field | Value |
+|---|---|
+| Type | CNAME |
+| Name | `punch` |
+| Target | `cname.vercel-dns.com` (whatever Vercel showed) |
+| Proxy status | **DNS only** (grey cloud) — for now |
+
+Grey cloud first so Vercel can verify the domain and issue its own certificate. Wait until
+Vercel shows **Valid Configuration**, then edit the record and switch it to
+**Proxied** (orange cloud). Cloudflare only accepts plain HTTP on proxied records.
+
+### 4. Two SSL settings — these are the ones that matter
+
+Cloudflare → **SSL/TLS**:
+
+- **Overview → Full (strict)**. Cloudflare talks to Vercel over HTTPS, which Vercel requires.
+  "Flexible" would make Vercel redirect back to HTTPS and cause an endless loop.
+- **Edge Certificates → Always Use HTTPS → OFF**. This is the whole point: with it on,
+  Cloudflare redirects the device's plain HTTP to HTTPS and the certificate problem returns.
+
+To keep the main website on forced HTTPS, add **Rules → Page Rules → Create**:
+URL `yourdomain.com/*`, setting **Always Use HTTPS → On**. The device's subdomain is not
+matched by that rule, so it stays HTTP-friendly.
+
+### 5. Let the device through Cloudflare's bot protection
+
+The terminal's user agent (`iClock`) looks like a bot. Cloudflare → **Security → Bots** →
+turn **Bot Fight Mode OFF**, or add a **WAF skip rule** for hostname
+`punch.yourdomain.com`. Skipping this usually shows up as the device connecting and then
+being silently blocked.
+
+### 6. Point the device at it
+
+`Menu → Comm. → Cloud Server Setting`:
+
+| Setting | Value |
+|---|---|
+| Server Mode | ADMS |
+| Enable Domain Name | ON |
+| Server Address | `punch.yourdomain.com` — no `http://`, no trailing slash |
+| Enable Proxy Server | OFF |
+| HTTPS | **OFF** |
+
+Unplug the device's power, wait 10 seconds, plug it back in.
+
+### 7. Check it
+
+```bash
+curl -i "http://punch.yourdomain.com/iclock/cdata?SN=TEST123&options=all"
+```
+
+Note `http://`, not `https://`. A correct reply starts `GET OPTION FROM: TEST123`. If you
+get a redirect (301/302/308) instead, **Always Use HTTPS** is still on.
+
+Then press a finger on the device and watch the Punches tab.
 
 ## Step 4 — Lock it down
 
