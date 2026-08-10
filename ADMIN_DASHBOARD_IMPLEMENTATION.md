@@ -3,7 +3,7 @@
 ## Overview
 Successfully merged the Dashboard and Admin components into a unified **Admin Dashboard** that combines the best design elements from Dashboard with the comprehensive functionality from Admin panel.
 
-## Key Features Implemented
+## Key Features Implemented   
 
 ### 🎯 **Primary Metrics Dashboard**
 - **Total Orders** - Clickable card leading to Orders page
