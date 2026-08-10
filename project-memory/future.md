@@ -11,6 +11,40 @@
 > The user will describe the developments to make. Capture each here with: goal, scope,
 > decisions made, files touched, and status. Keep newest at top.
 
+### Fingerprint device → our own endpoint (ZKTeco K40 Pro) — status: DONE, awaiting hardware test (2026-08-10)
+- **Goal:** every thumb press lands in our own Firestore within seconds, viewable from anywhere,
+  with no dependence on the reseller's ZKBio Time Cloud tenant.
+- **Final shape: one endpoint on Vercel.** `api/iclock/cdata.ts` + `api/_deviceIngest.ts`, with
+  `vercel.json` rewriting the device's three fixed `/iclock/*` paths onto it.
+- **A standalone VPS ingest service was built first and then deleted (2026-08-10) at the client's
+  request** — they wanted one implementation, not two. If the Vercel path fails on TLS (see risk
+  below), what is needed is a *small plain-HTTP relay* forwarding to Vercel, not that whole
+  service back: `api/_deviceIngest.ts` is host-agnostic by design and can be mounted anywhere.
+- **Also considered and rejected:** a local agent polling the device on TCP 4370. Its selling
+  point is "no always-on server", but a Pi/office PC running 24/7 *is* an always-on server, one
+  nobody administers, and it needs the same Firebase credential. ~30s latency for no saving.
+- **Built:** `api/_deviceIngest.ts` (all protocol + ingest logic, import-free so it runs in three
+  hosts), `api/_firebaseAdmin.ts`, `api/iclock/cdata.ts`, `iclockDevApi` plugin in
+  `vite.config.ts` (LAN testing), `scripts/simulate-device.ts`, `firestore.rules`,
+  `src/utils/attendance/deviceStore.ts`, `PunchesTab.tsx` + `DeviceHealthBar.tsx`, 4th tab on
+  `/attendance`, two rows in `backupSchema.ts`, `docs/BIOMETRIC_DEVICE.md`.
+- **Verified:** `npm run test:device` 54/54; `npm run build` clean; all three tsconfig surfaces
+  typecheck with zero new errors (8 pre-existing in `ROIDashboard_backup.tsx` / `Dashboard.tsx`,
+  confirmed identical on a clean tree); `firebase-admin` confirmed absent from `dist/`.
+- **NOT yet verified against real hardware.** `deviceRawLogs` exists precisely to make any
+  firmware deviation diagnosable rather than a guess.
+- **Blocked on the user:** Firebase service-account key in `.env` + Vercel, device menu change,
+  Approve in the app. Steps in `docs/BIOMETRIC_DEVICE.md`.
+- **🔴 Open risk:** Vercel forces HTTPS with TLS 1.2/1.3 only; the K40 Pro is a classic-series
+  terminal that may only speak plain HTTP and does not reliably follow redirects. The LAN
+  dev-server path will work; the live Vercel path is unproven. Test on LAN first — that isolates
+  "does the device work" from "can it reach Vercel".
+- **Follow-ups:** (a) retire the BioTime pull path once the device is live — currently dormant so
+  rollback is a device menu change, not a redeploy; (b) confirm the public bill share link still
+  works after deploying `firestore.rules` (catch-all deny); (c) `hoursBetween` is deliberately
+  duplicated in `api/_deviceIngest.ts` and `src/utils/attendance/salaryCalc.ts` — the former must
+  stay import-free to run in three hosts. Change both together.
+
 ### ROI Analytics overhaul + catalog management + dedup — status: DONE (2026-06-30)
 Big batch. Verified in-browser (desktop + mobile, 0 console errors); the bill-rewrite was proven with a self-reverting rename round-trip ("dresses"→temp→back, 23 bills rewritten each way).
 - **Toggle + Clear all + client-side dates:** `/roi-analytics` now has the Career/This Month/Today `QuickRangeToggle` (default This Month, was a weird last-month→this-month window) + a **Clear all** button + custom From/To pickers. Services/Products calcs now use `isInRange` client-side filtering (same as the rest of the app) instead of server-side `where(date)` queries.
@@ -90,9 +124,11 @@ These are features that exist but look unfinished or unverified (see present.md 
 
 > Don't mass-delete or refactor without asking — billing is in production and the client is happy.
 
-1. **🔴 Security — Firestore/Storage rules are NOT in the repo.** No `firestore.rules` /
-   `storage.rules` / `firebase.json`. Confirm rules exist in the Firebase console and are
-   restrictive; ideally version-control them. Without rules, the DB may be world-readable/writable.
+1. **🟠 Security — Firestore rules.** _Partially resolved (2026-08-08):_ `firestore.rules` is now
+   in the repo, covering every collection with an explicit catch-all deny. **Not yet deployed** —
+   before publishing, confirm the public bill share link (`/view-bill/:token`, which reads a bill
+   while signed out) still works, or give it its own token-keyed rule. `storage.rules` /
+   `firebase.json` are still absent.
 2. **🔴 Security — secrets & hardcoded admin.** Firebase config + API key are committed in
    `src/lib/firebase.ts`. `createAdminUser()` creates `swetha@gmail.com` with a trivial password,
    and that email is hardcoded to admin in `AuthContext`. Review before launch.

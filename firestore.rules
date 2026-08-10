@@ -1,0 +1,149 @@
+rules_version = '2';
+
+/**
+ * Firestore security rules for Swetha's Couture.
+ *
+ * These were previously not under version control at all, which meant nobody could review
+ * or restore them. This file is the source of truth — edit here, then deploy.
+ *
+ * Deploy:
+ *   firebase deploy --only firestore:rules
+ * Or paste into Firebase Console -> Firestore Database -> Rules -> Publish.
+ *
+ * NOTE ON THE INGEST SERVER: it authenticates with a service-account key, and service
+ * accounts bypass these rules entirely. Nothing below needs to grant it access, and
+ * nothing below can restrain it — that containment comes from the key living only on the
+ * ingest VPS and that service writing only to attendance collections.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc().role == 'admin';
+    }
+
+    /* ------------------------------------------------------------ device feed */
+
+    /**
+     * The fingerprint terminal never authenticates as a user — it talks to the ingest
+     * server, which writes with a service account. So from the browser's point of view
+     * these are read-mostly: an admin may approve or rename a device, but no client may
+     * invent a punch. Attendance that a person can hand-write into the raw feed would
+     * make the audit trail worthless.
+     */
+    match /devices/{deviceSn} {
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow create, delete: if false;
+    }
+
+    match /devicePunches/{punchId} {
+      allow read: if isAdmin();
+      // Approving a device clears the `parked` flag on the punches it held.
+      allow update: if isAdmin();
+      allow create, delete: if false;
+    }
+
+    match /deviceRawLogs/{logId} {
+      // Diagnostic evidence. Readable for debugging, never writable from a browser.
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    /* ------------------------------------------------------- attendance module */
+
+    match /attendanceEmployees/{empCode} {
+      allow read, write: if isAdmin();
+    }
+
+    match /attendanceRecords/{recordId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /salaryPayments/{paymentId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /syncState/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    /* ------------------------------------------------------------------ people */
+
+    /**
+     * A user may read their own profile — AuthContext needs this on every sign-in to
+     * discover the role. Only an admin may change roles; self-service promotion to admin
+     * would make every other rule here decorative.
+     */
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role == 'staff';
+      allow update, delete: if isAdmin();
+    }
+
+    match /staff/{staffId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /roles/{docId}      { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /departments/{docId} { allow read: if signedIn(); allow write: if isAdmin(); }
+
+    /* -------------------------------------------------------------- operations */
+
+    // Staff need these to do their job; both roles read and write.
+    match /orders/{docId}       { allow read, write: if signedIn(); }
+    match /alterations/{docId}  { allow read, write: if signedIn(); }
+    match /appointments/{docId} { allow read, write: if signedIn(); }
+    match /tasks/{docId}        { allow read, write: if signedIn(); }
+    match /customers/{docId}    { allow read, write: if signedIn(); }
+    match /inventory/{docId}    { allow read, write: if signedIn(); }
+    match /attendance/{docId}   { allow read, write: if signedIn(); }
+
+    /* ----------------------------------------------------------------- finance */
+
+    // Money is admin-only. Staff have no business reading revenue.
+    match /bills/{docId}    { allow read, write: if isAdmin(); }
+    match /billing/{docId}  { allow read, write: if isAdmin(); }
+    match /income/{docId}   { allow read, write: if isAdmin(); }
+    match /expenses/{docId} { allow read, write: if isAdmin(); }
+
+    /* ------------------------------------------------- catalog / reference data */
+
+    match /products/{docId}            { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /descriptions/{docId}        { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /categories/{docId}          { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /inventoryCategories/{docId} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /inventoryTypes/{docId}      { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /workDescriptions/{docId}    { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /customItemTypes/{docId}     { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /settings/{docId}            { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /designs/{docId}             { allow read, write: if signedIn(); }
+    match /userPreferences/{uid}       { allow read, write: if signedIn() && request.auth.uid == uid; }
+
+    /* --------------------------------------------------------------- catch-all */
+
+    /**
+     * Anything not named above is denied. A new collection must be added here
+     * deliberately rather than inheriting access by accident.
+     *
+     * ⚠️ Public bill share links (/view-bill/:token) read a bill without being signed in.
+     * If those stop working after deploying these rules, that feature needs its own rule
+     * keyed on the share token rather than a blanket public read on `bills`.
+     */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

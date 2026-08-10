@@ -19,7 +19,8 @@ export interface AttendanceEmployee {
   active: boolean;
   /** Optional link to an existing `staff` doc. Purely informational. */
   linkedStaffId?: string;
-  source: 'biotime' | 'manual';
+  /** 'device' = created by a punch arriving over ADMS from the office terminal. */
+  source: 'biotime' | 'manual' | 'device';
   firstSeenAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -45,7 +46,7 @@ export interface AttendanceRecord {
   status: 'present' | 'incomplete';
   /** Every raw punch seen that day, kept for audit when times look wrong. */
   punches?: string[];
-  source: 'biotime' | 'manual';
+  source: 'biotime' | 'manual' | 'device';
   /** When true, sync will not overwrite checkIn/checkOut. */
   manuallyEdited?: boolean;
   createdAt?: string;
@@ -75,6 +76,61 @@ export interface SalaryPayment {
   paidBy: string;
   revertedAt?: string;
   revertedBy?: string;
+}
+
+/**
+ * A fingerprint terminal that has contacted the ingest server.
+ * Firestore doc ID = the device's serial number.
+ */
+export interface AttendanceDevice {
+  id: string;
+  sn: string;
+  name: string;
+  /**
+   * 'pending' = seen but not yet trusted. Its punches are stored but kept out of
+   * payroll until an admin approves it, so the public ingest endpoint cannot be used
+   * by a stranger to invent attendance.
+   */
+  status: 'pending' | 'approved' | 'blocked';
+  /** Any contact at all, including the empty command polls the device sends every ~30s. */
+  lastSeenAt?: string;
+  /** The last time an actual punch arrived. */
+  lastPunchAt?: string;
+  punchCount?: number;
+  ip?: string;
+  firmware?: string;
+  firstSeenAt?: string;
+  updatedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+}
+
+/**
+ * One fingerprint press, exactly as the device reported it.
+ * Firestore doc ID = `${sn}_${userPin}_${YYYYMMDDHHmmss}` — deterministic, which is what
+ * makes the device's retries idempotent instead of duplicating punches.
+ */
+export interface DevicePunch {
+  id: string;
+  deviceSn: string;
+  userPin: string;
+  employeeName?: string;
+  /** The device's original string, stored verbatim and never reformatted. */
+  punchTimeRaw: string;
+  /** 'YYYY-MM-DD HH:mm:ss' */
+  punchTimeLocal: string;
+  /** 'YYYY-MM-DD' */
+  punchDate: string;
+  /** ISO 8601 UTC, derived by applying the configured device offset. */
+  punchTimeUtc?: string;
+  punchState?: string;
+  punchStateLabel?: string;
+  verifyMode?: string;
+  workCode?: string;
+  source?: string;
+  /** True while the sending device was still awaiting approval. */
+  parked?: boolean;
+  receivedAt?: string;
 }
 
 export interface BiotimeSyncState {

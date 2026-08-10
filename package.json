@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "diagnose-bills": "node scripts/diagnose-bills.js",
-    "migrate-bills": "node scripts/migrate-bills.js"
+    "migrate-bills": "node scripts/migrate-bills.js",
+    "test:device": "node --experimental-strip-types --no-warnings scripts/simulate-device.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -55,6 +56,7 @@
     "fabric": "^6.7.0",
     "file-saver": "^2.0.5",
     "firebase": "^11.9.0",
+    "firebase-admin": "^13.6.0",
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.8",
     "input-otp": "^1.2.4",

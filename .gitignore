@@ -17,6 +17,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Firebase service-account keys. These bypass every Firestore security rule, so a
+# committed one hands the whole database to anyone who can read the repo.
+*firebase-adminsdk*.json
+*service-account*.json
+serviceAccountKey.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

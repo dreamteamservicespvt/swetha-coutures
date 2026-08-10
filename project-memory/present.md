@@ -55,6 +55,70 @@
   shell past the viewport on mobile (this was the cause of the I&E / Attendance / Settings
   horizontal-scroll bugs).
 
+## 0a. 2026-08-08/10 change set — fingerprint device pushes to us directly (read this first)
+
+- **The ZKTeco K40 Pro now pushes punches to our own endpoint** over the **ADMS** protocol,
+  instead of us pulling them from the reseller's cloud. Reason: the `itime.minervaiot.com`
+  tenant's only working credential is a portal `accessToken` that **expires** and must be
+  re-pasted by hand — an attendance feed that dies every few days is not a feed.
+- **One handler, three hosts.** All protocol and database logic is in **`api/_deviceIngest.ts`**,
+  which is deliberately **import-free and self-contained** — that is what lets the identical code
+  run in Vercel (`api/iclock/cdata.ts`), in the Vite dev server (`iclockDevApi` plugin in
+  `vite.config.ts`, so the device can be tested over the office LAN before any deploy), and in
+  `scripts/simulate-device.ts`. The database is injected as a `DocStore`, so the simulator needs
+  no Firebase project at all.
+- **`vercel.json` rewrites** `/iclock/cdata`, `/iclock/getrequest`, `/iclock/devicecmd` →
+  `/api/iclock/cdata`. ⚠️ **These MUST stay above the `/(.*)` → `/` SPA catch-all** — rewrites
+  match top-down, and the catch-all would otherwise serve the React app to the device.
+- **`firebase-admin` was added** (`api/_firebaseAdmin.ts`, `getApps().length` guarded) because the
+  device cannot authenticate, so writing its punches needs real admin credentials. This differs
+  from `api/_auth.ts`, which verifies ID tokens by hand precisely to avoid a service account —
+  that works for *checking a caller*, not for *writing on behalf of a device*.
+- **New collections:** `devices` (doc id = serial number), `devicePunches`
+  (doc id = `${sn}_${pin}_${YYYYMMDDHHmmss}`), `deviceRawLogs` (every request, logged **before**
+  parsing, self-deleting via a Firestore TTL policy on `expiresAt`). The first two are in
+  `backupSchema.ts`; `deviceRawLogs` is deliberately excluded — short-lived diagnostics, and
+  every punch in it is already in `devicePunches`.
+- **Dedup is the deterministic doc ID**, the same mechanism `attendanceRecords` already uses. The
+  device replays its whole batch after any failed handshake; an already-present ID is simply not
+  written again. No unique index, no transaction, no read-modify-write race.
+- **Unknown serials are quarantined, not rejected.** A new device is written `status: 'pending'`,
+  its punches stored but flagged `parked` and kept out of payroll, and it appears on the
+  Attendance page with an **Approve** button. Approving backfills everything it held
+  (`deviceStore.approveDevice` → `backfillParkedPunches`). This is why the serial number never
+  had to be known before deployment.
+- **It feeds the existing module.** `attendanceEmployees` / `attendanceRecords` get the same rules
+  as before (check-in = earliest punch, check-out = latest; `manuallyEdited` records keep their
+  admin-corrected times). Records and Payroll are unchanged.
+- **Non-obvious protocol facts — do not "fix" these:**
+  1. The endpoint must answer **exactly `OK`** after ATTLOG. Anything else and the device retries
+     forever. `/iclock/getrequest` also returns `OK` when no commands are queued.
+  2. **It answers `OK` even when our own processing threw.** Counter-intuitive but correct: the
+     body is already in `deviceRawLogs` so nothing is lost, whereas a non-OK reply starts a retry
+     loop that stalls every later punch behind the failed batch.
+  3. One malformed row is skipped and counted — it never fails the batch, for the same reason.
+  4. `Content-Length` and charset are **never trusted**; the body is read as raw bytes and decoded
+     UTF-8 with a latin1 fallback.
+  5. Timestamps are converted by arithmetic on the parsed parts, not `new Date(string)` — Vercel
+     runs in UTC, so that would put every punch 5.5 hours out.
+  6. **ATTLOG rows need their own splitter** (`splitAttlogRow`). The generic space fallback tears
+     `1003 2026-08-09 10:00:00 0 1` apart at the space *inside the timestamp* and silently drops
+     the punch. This was a real bug, fixed 2026-08-08, with a regression test.
+- **UI:** fourth tab **Punches** on `/attendance` (raw feed, employee filter, CSV export) and
+  `DeviceHealthBar` — the health signal. The device polls every ~30s even with no punches, so
+  `lastSeenAt` going quiet is meaningful on its own; stale threshold is
+  `VITE_DEVICE_STALE_MINUTES` (default 15). The BioTime status bar is now only rendered while
+  BioTime is actually configured, or while no device has connected yet.
+- **`firestore.rules` is now in the repo** — previously not version-controlled at all (was §C.1
+  🔴). Device collections are admin-read / client-write-denied. ⚠️ Contains a catch-all deny; the
+  public bill share link (`/view-bill/:token`) may need its own rule before deploying.
+- **Tests:** `npm run test:device` — 54 checks, no framework, no Firebase, no hardware.
+- **⚠️ Open risk:** Vercel forces HTTPS and modern TLS; the K40 Pro is a classic-series terminal
+  that may only speak plain HTTP. The LAN dev-server path is proven; the live Vercel path is not
+  yet confirmed against real hardware. If the device connects on LAN but goes silent against the
+  domain, that is the cause and a plain-HTTP relay is needed.
+- See `docs/BIOMETRIC_DEVICE.md`.
+
 ## 0b. 2026-08-08 change set
 
 - **Performance.** `utils/firestoreCache.ts` is a short-TTL (30s) burst cache that coalesces
