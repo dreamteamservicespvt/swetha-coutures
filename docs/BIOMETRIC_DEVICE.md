@@ -184,6 +184,19 @@ the device made, stored *before* anything tried to interpret it.
 
 Firebase Console → Firestore Database → `deviceRawLogs` → sort by `receivedAt` descending.
 
+### The endpoint returns 500 / `FUNCTION_INVOCATION_FAILED`
+
+Go to **`https://your-domain.com/api/ping`** first. It reports Node version, whether each
+`FIREBASE_*` variable is set, and whether every import and the Firestore connection actually
+build. It reveals no secrets.
+
+Two causes have already been hit and fixed, both of which produce an identical, useless 500:
+
+1. **A relative import in `api/` without a `.js` extension.** `package.json` says
+   `"type": "module"`, so Node requires the extension. Always write `from './_foo.js'`.
+2. **A mangled `FIREBASE_PRIVATE_KEY`.** The code now repairs the common paste mistakes, but
+   `/api/ping` will show `build_firestore_store=FAILED` with the real reason if it cannot.
+
 ### Nothing in `deviceRawLogs` at all
 
 The device is not reaching you.

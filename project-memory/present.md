@@ -113,6 +113,22 @@
   🔴). Device collections are admin-read / client-write-denied. ⚠️ Contains a catch-all deny; the
   public bill share link (`/view-bill/:token`) may need its own rule before deploying.
 - **Tests:** `npm run test:device` — 54 checks, no framework, no Firebase, no hardware.
+- **🔴 THE api/ GOTCHA — read before adding any serverless function.** `package.json` declares
+  `"type": "module"`, so Node ESM requires **explicit `.js` extensions on relative imports** in
+  `api/`. TypeScript does not add them. An extensionless `import './_foo'` compiles fine, deploys
+  fine, and then throws `ERR_MODULE_NOT_FOUND` at module load — surfacing as a bare
+  `FUNCTION_INVOCATION_FAILED` 500 with no usable message. **`api/biotime.ts` had this bug from
+  the day it was written and had never once worked in production**; it was found and fixed
+  2026-08-10 while debugging the device endpoint. Always write `from './_foo.js'`.
+- **The other 500 was the private key.** `FIREBASE_PRIVATE_KEY` in Vercel had been pasted as the
+  bare base64 body with the `-----BEGIN/-----END` armour lines left behind. OpenSSL reports only
+  `DECODER routines::unsupported`. `normalisePrivateKey()` in `api/_firebaseAdmin.ts` now strips
+  wrapping quotes, unescapes `\n`, and rebuilds the PEM armour, so all five common paste
+  manglings work. Verified against the real key.
+- **`api/ping.ts`** is a permanent diagnostic: reports Node version, whether each `FIREBASE_*` var
+  is set, and whether each import and the Firestore handle actually build. It exposes no secret
+  values. It is how both bugs above were found without Vercel dashboard access — start there next
+  time an `api/` route 500s.
 - **⚠️ Open risk:** Vercel forces HTTPS and modern TLS; the K40 Pro is a classic-series terminal
   that may only speak plain HTTP. The LAN dev-server path is proven; the live Vercel path is not
   yet confirmed against real hardware. If the device connects on LAN but goes silent against the
