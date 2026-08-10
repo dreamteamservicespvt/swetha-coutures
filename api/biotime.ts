@@ -4,8 +4,8 @@
  * Thin adapter only — all logic lives in _biotimeCore so the Vite dev middleware
  * can run exactly the same code path locally.
  */
-import { handleBiotimeRequest } from './_biotimeCore';
-import { AuthError, requireAdmin } from './_auth';
+import { handleBiotimeRequest } from './_biotimeCore.js';
+import { AuthError, requireAdmin } from './_auth.js';
 
 // Structurally typed to avoid a hard dependency on @vercel/node.
 interface VercelRequest {

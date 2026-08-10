@@ -10,7 +10,7 @@
  * code path.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { decodeBody, defaultConfig, handleDeviceRequest } from '../_deviceIngest';
+import { decodeBody, defaultConfig, handleDeviceRequest } from '../_deviceIngest.js';
 
 /**
  * `_firebaseAdmin` is imported dynamically, inside the try block below, on purpose.
@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse): 
   }
 
   try {
-    const { getDeviceStore } = await import('../_firebaseAdmin');
+    const { getDeviceStore } = await import('../_firebaseAdmin.js');
     const store = getDeviceStore();
     const result = await handleDeviceRequest(
       {

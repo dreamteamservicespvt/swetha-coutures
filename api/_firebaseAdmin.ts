@@ -12,7 +12,7 @@
  */
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
-import { COLLECTIONS, type DocData, type DocStore } from './_deviceIngest';
+import { COLLECTIONS, type DocData, type DocStore } from './_deviceIngest.js';
 
 export class AdminConfigError extends Error {
   constructor(message: string) {
