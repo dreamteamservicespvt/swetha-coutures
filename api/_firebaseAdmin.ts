@@ -51,6 +51,21 @@ export function normalisePrivateKey(raw: string): string {
 
   // Un-escape literal \n (and the \r\n some editors introduce).
   key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '\n');
+  key = key.trim();
+
+  /**
+   * Re-attach the PEM armour when only the base64 body was copied.
+   *
+   * Selecting the key inside a JSON viewer very easily grabs the middle and leaves the
+   * `-----BEGIN PRIVATE KEY-----` / `-----END PRIVATE KEY-----` lines behind. The result is
+   * still a perfectly good key, just not a parseable PEM, and OpenSSL's only complaint is
+   * "DECODER routines::unsupported".
+   */
+  if (!key.startsWith('-----BEGIN') && /^[A-Za-z0-9+/=\s]+$/.test(key) && key.length > 100) {
+    // PEM bodies are wrapped at 64 characters; Node's parser expects that shape.
+    const body = key.replace(/\s+/g, '').match(/.{1,64}/g)?.join('\n') ?? '';
+    key = `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----\n`;
+  }
 
   return key.trim();
 }
