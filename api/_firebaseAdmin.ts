@@ -24,6 +24,38 @@ export class AdminConfigError extends Error {
 let cachedDb: Firestore | null = null;
 
 /**
+ * Turns whatever ended up in the environment variable into a usable PEM.
+ *
+ * Two things reliably go wrong when a service-account key is moved by hand from a JSON
+ * file into a hosting dashboard, and both produce the same opaque OpenSSL error
+ * ("DECODER routines::unsupported") with no hint as to the cause:
+ *
+ *  1. The surrounding double quotes from the JSON get copied along with the value, so the
+ *     string starts with `"` instead of `-----BEGIN`.
+ *  2. The `\n` escape sequences stay literal, because most dashboards cannot hold real
+ *     newlines in a single-line field.
+ *
+ * Both are recoverable here, so they are recovered rather than turned into a support
+ * problem. Exported for the /api/ping diagnostic.
+ */
+export function normalisePrivateKey(raw: string): string {
+  let key = String(raw ?? '').trim();
+
+  // Strip one layer of matching wrapping quotes.
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1);
+  }
+
+  // Un-escape literal \n (and the \r\n some editors introduce).
+  key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '\n');
+
+  return key.trim();
+}
+
+/**
  * Returns the shared Firestore handle, initialising the app on first use.
  *
  * Serverless containers are reused between invocations, so this module stays loaded and
@@ -35,15 +67,24 @@ export function getAdminDb(env: NodeJS.ProcessEnv = process.env): Firestore {
 
   const projectId = (env.FIREBASE_PROJECT_ID || '').trim();
   const clientEmail = (env.FIREBASE_CLIENT_EMAIL || '').trim();
-  // Environment dashboards cannot hold real newlines, so the PEM is pasted with literal
-  // \n sequences and unescaped here. Without this the key fails to parse.
-  const privateKey = (env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n').trim();
+  const privateKey = normalisePrivateKey(env.FIREBASE_PRIVATE_KEY || '');
 
   const missing = [
     !projectId && 'FIREBASE_PROJECT_ID',
     !clientEmail && 'FIREBASE_CLIENT_EMAIL',
     !privateKey && 'FIREBASE_PRIVATE_KEY',
   ].filter(Boolean);
+
+  // Caught here rather than left to OpenSSL, which reports only
+  // "DECODER routines::unsupported" and gives no clue what is actually wrong.
+  if (privateKey && !privateKey.startsWith('-----BEGIN')) {
+    throw new AdminConfigError(
+      'FIREBASE_PRIVATE_KEY does not look like a PEM key — it should start with ' +
+        `"-----BEGIN PRIVATE KEY-----" but starts with "${privateKey.slice(0, 12)}...". ` +
+        'Copy the private_key value out of the service-account JSON without the ' +
+        'surrounding double quotes.'
+    );
+  }
 
   if (missing.length > 0) {
     throw new AdminConfigError(

@@ -9,6 +9,11 @@
  * Safe to leave deployed. Error messages are truncated and no secret is ever echoed.
  */
 export default async function handler(_req: unknown, res: any) {
+  const { normalisePrivateKey } = await import('./_firebaseAdmin.js').catch(() => ({
+    normalisePrivateKey: (raw: string) => raw,
+  }));
+  const normalised = normalisePrivateKey(process.env.FIREBASE_PRIVATE_KEY || '');
+
   const lines: string[] = [
     'pong',
     `node=${process.version}`,
@@ -18,8 +23,8 @@ export default async function handler(_req: unknown, res: any) {
     // A key pasted with the surrounding quotes, or with its newlines flattened, is the
     // single most common reason credentials that "look right" fail to parse.
     `private_key_length=${(process.env.FIREBASE_PRIVATE_KEY || '').length}`,
-    `private_key_starts_correctly=${(process.env.FIREBASE_PRIVATE_KEY || '').trimStart().startsWith('-----BEGIN')}`,
-    `private_key_has_newlines=${/\\n|\n/.test(process.env.FIREBASE_PRIVATE_KEY || '')}`,
+    `private_key_raw_starts_correctly=${(process.env.FIREBASE_PRIVATE_KEY || '').trimStart().startsWith('-----BEGIN')}`,
+    `private_key_after_cleanup_ok=${normalised.startsWith('-----BEGIN') && normalised.endsWith('-----')}`,
   ];
 
   const probe = async (label: string, load: () => Promise<unknown>) => {
