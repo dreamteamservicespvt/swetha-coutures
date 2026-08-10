@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "diagnose-bills": "node scripts/diagnose-bills.js",
     "migrate-bills": "node scripts/migrate-bills.js",
-    "test:device": "node --experimental-strip-types --no-warnings scripts/simulate-device.ts"
+    "test:device": "node --experimental-strip-types --no-warnings scripts/simulate-device.ts",
+    "device:receiver": "node --experimental-strip-types --no-warnings scripts/device-receiver.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
