@@ -1,8 +1,6 @@
 {
   "rewrites": [
-    { "source": "/iclock/cdata", "destination": "/api/iclock/cdata" },
-    { "source": "/iclock/getrequest", "destination": "/api/iclock/cdata" },
-    { "source": "/iclock/devicecmd", "destination": "/api/iclock/cdata" },
+    { "source": "/iclock/:path*", "destination": "/api/iclock/cdata" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }

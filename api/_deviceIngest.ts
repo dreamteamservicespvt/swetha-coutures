@@ -309,6 +309,44 @@ export function buildHandshakeResponse(serialNumber: string, config: IngestConfi
   ].join('\n');
 }
 
+/**
+ * PushSDK 2.x registration reply.
+ *
+ * Firmware with a "Push Service 2.x" build (this shop's K40 Pro reports 2.0.33S) may call
+ * `/iclock/registry` before anything else and refuse to continue without a RegistryCode.
+ * The code is server-assigned and opaque to us, so the serial itself is a fine value.
+ */
+export function buildRegistryResponse(serialNumber: string): string {
+  return `RegistryCode=${serialNumber}\n`;
+}
+
+/**
+ * PushSDK 2.x configuration reply for `/iclock/push`.
+ *
+ * The 2.x handshake asks for its operating parameters here rather than in the `cdata`
+ * GET. `TransTables=User Transaction` is what subscribes us to attendance records;
+ * without it the device connects happily and then never sends a punch.
+ */
+export function buildPushConfigResponse(serialNumber: string, config: IngestConfig): string {
+  return [
+    `registry=ok`,
+    `RegistryCode=${serialNumber}`,
+    `ServerVersion=2.4.1`,
+    `ServerName=ADMS`,
+    `PushProtVer=2.4.1`,
+    `ErrorDelay=30`,
+    `RequestDelay=10`,
+    `TransTimes=00:00;14:05`,
+    `TransInterval=1`,
+    `TransTables=User Transaction`,
+    `Realtime=1`,
+    `SessionID=${serialNumber}`,
+    `TimeoutSec=10`,
+    `TimeZone=${config.timezoneOffsetMinutes / 60}`,
+    '',
+  ].join('\n');
+}
+
 /* --------------------------------------------------------------------- helpers */
 
 const nowIso = () => new Date().toISOString();
@@ -753,7 +791,10 @@ export async function handleDeviceRequest(
    * device getting its OK. Command polls are excluded by default: they arrive every ~30s
    * and carry nothing.
    */
-  const shouldLog = config.rawLogMode === 'all' || path.endsWith('/cdata');
+  // Everything except the command poll, which arrives every ~30s and carries nothing.
+  // Registration and config exchanges are exactly what you need when a device will not
+  // connect, so they must not be filtered out.
+  const shouldLog = config.rawLogMode === 'all' || !path.endsWith('/getrequest');
   if (shouldLog) {
     try {
       await writeRawLog(store, config, {
@@ -804,6 +845,23 @@ export async function handleDeviceRequest(
   const blocked = device.status === 'blocked';
 
   try {
+    /* ------------------------------------------------ PushSDK 2.x registration */
+    if (path.endsWith('/registry')) {
+      return {
+        status: 200,
+        body: buildRegistryResponse(serialNumber),
+        log: `PushSDK registry from ${serialNumber} (${device.status})`,
+      };
+    }
+
+    if (path.endsWith('/push')) {
+      return {
+        status: 200,
+        body: buildPushConfigResponse(serialNumber, config),
+        log: `PushSDK config request from ${serialNumber} (${device.status})`,
+      };
+    }
+
     /* -------------------------------------------------- registration handshake */
     if (path.endsWith('/cdata') && method === 'GET') {
       return {
