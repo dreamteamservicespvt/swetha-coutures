@@ -11,7 +11,18 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { decodeBody, defaultConfig, handleDeviceRequest } from '../_deviceIngest';
-import { AdminConfigError, getDeviceStore } from '../_firebaseAdmin';
+
+/**
+ * `_firebaseAdmin` is imported dynamically, inside the try block below, on purpose.
+ *
+ * It pulls in `firebase-admin`, and a module-load failure there — a dependency missing from
+ * the deployment, a bad build — happens before any handler code runs, so a static import
+ * would crash the whole function with a 500 that no try/catch can reach. The device reads a
+ * 500 as "delivery failed" and retries in a loop. Loading it lazily turns that class of
+ * failure into a logged error and a well-formed `OK`.
+ *
+ * `_deviceIngest` above is safe to import statically: it is deliberately dependency-free.
+ */
 
 // Structurally typed to avoid a hard dependency on @vercel/node, matching api/biotime.ts.
 interface VercelRequest extends IncomingMessage {
@@ -82,6 +93,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse): 
   }
 
   try {
+    const { getDeviceStore } = await import('../_firebaseAdmin');
     const store = getDeviceStore();
     const result = await handleDeviceRequest(
       {
@@ -104,8 +116,10 @@ export default async function handler(req: VercelRequest, res: ServerResponse): 
     if (result.log) console.log(`[iclock] ${result.log}`);
     sendText(res, result.body);
   } catch (error) {
-    if (error instanceof AdminConfigError) {
-      console.error(`[iclock] ${error.message}`);
+    // Compared by name rather than instanceof: the class now lives behind a dynamic import,
+    // and if that import is what failed there is no class to compare against.
+    if ((error as Error)?.name === 'AdminConfigError') {
+      console.error(`[iclock] ${(error as Error).message}`);
     } else {
       console.error('[iclock] Unhandled failure:', error);
     }
