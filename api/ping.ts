@@ -1,21 +1,49 @@
 /**
- * Diagnostic endpoint. No imports, no dependencies, no database.
+ * Diagnostic endpoint. Reveals nothing sensitive and touches no data.
  *
- * Exists to answer one question when an api/ route returns FUNCTION_INVOCATION_FAILED:
- * is the Vercel serverless runtime itself working, or is the fault in what a function
- * imports? If /api/ping fails too, nothing about the failure is specific to that route —
- * it is the build or runtime configuration.
+ * Exists to answer, without access to the Vercel dashboard, why an api/ route is failing:
+ * is the serverless runtime itself working, are the environment variables visible, and can
+ * the function actually load firebase-admin? A route that returns a bare "OK" when it
+ * should return real content is usually one of those three.
  *
- * Safe to leave deployed: it reveals nothing and touches nothing.
+ * Safe to leave deployed. Error messages are truncated and no secret is ever echoed.
  */
-export default function handler(_req: unknown, res: any) {
+export default async function handler(_req: unknown, res: any) {
+  const lines: string[] = [
+    'pong',
+    `node=${process.version}`,
+    `firebase_project_id=${process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING'}`,
+    `firebase_client_email=${process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING'}`,
+    `firebase_private_key=${process.env.FIREBASE_PRIVATE_KEY ? 'SET' : 'MISSING'}`,
+    // A key pasted with the surrounding quotes, or with its newlines flattened, is the
+    // single most common reason credentials that "look right" fail to parse.
+    `private_key_length=${(process.env.FIREBASE_PRIVATE_KEY || '').length}`,
+    `private_key_starts_correctly=${(process.env.FIREBASE_PRIVATE_KEY || '').trimStart().startsWith('-----BEGIN')}`,
+    `private_key_has_newlines=${/\\n|\n/.test(process.env.FIREBASE_PRIVATE_KEY || '')}`,
+  ];
+
+  const probe = async (label: string, load: () => Promise<unknown>) => {
+    try {
+      await load();
+      lines.push(`${label}=OK`);
+    } catch (error) {
+      lines.push(`${label}=FAILED: ${(error as Error)?.message?.slice(0, 300)}`);
+    }
+  };
+
+  await probe('import_firebase_admin_app', () => import('firebase-admin/app'));
+  await probe('import_firebase_admin_firestore', () => import('firebase-admin/firestore'));
+  await probe('import_local_deviceIngest', () => import('./_deviceIngest.js'));
+  await probe('import_local_firebaseAdmin', () => import('./_firebaseAdmin.js'));
+
+  // The real thing: can we actually build an authenticated Firestore handle?
+  await probe('build_firestore_store', async () => {
+    const { getDeviceStore } = await import('./_firebaseAdmin.js');
+    getDeviceStore();
+  });
+
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  res.end(
-    `pong\nnode=${process.version}\nruntime-ok=true\n` +
-      `firebase_project_id=${process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING'}\n` +
-      `firebase_client_email=${process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING'}\n` +
-      `firebase_private_key=${process.env.FIREBASE_PRIVATE_KEY ? 'SET' : 'MISSING'}\n`
-  );
+  res.end(lines.join('\n') + '\n');
 }
