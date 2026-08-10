@@ -21,7 +21,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { foldPunchesIntoRecords } from './biotimeSync';
+import { foldPunchesIntoRecords } from './punchFolding';
 import {
   EMPLOYEES_COLLECTION,
   fetchEmployees,
@@ -123,9 +123,9 @@ export async function fetchPunches(
 /**
  * Turns a device's parked punches into real attendance.
  *
- * Reuses the same folding the BioTime path uses (`foldPunchesIntoRecords` +
- * `writeRecordsBatch`), so there is exactly one definition in the app of what a day
- * record means — first punch in, last punch out, hand-edited records left alone.
+ * Reuses `foldPunchesIntoRecords` + `writeRecordsBatch`, so there is exactly one
+ * definition in the app of what a day record means — first punch in, last punch out,
+ * hand-edited records left alone.
  */
 export async function backfillParkedPunches(
   sn: string
@@ -218,7 +218,7 @@ export async function backfillParkedPunches(
 
 /* -------------------------------------------------------------------- health */
 
-export type DeviceHealth = 'healthy' | 'stale' | 'pending' | 'blocked' | 'none';
+export type DeviceHealth = 'healthy' | 'stale' | 'waiting' | 'pending' | 'blocked' | 'none';
 
 export interface DeviceHealthSummary {
   health: DeviceHealth;
@@ -253,6 +253,16 @@ export function summariseDeviceHealth(
   const mostRecent = [...approved].sort((a, b) =>
     (b.lastSeenAt || '').localeCompare(a.lastSeenAt || '')
   )[0];
+
+  /**
+   * A device registered in advance that has never once made contact is a different
+   * situation from one that was working and went quiet. "Stopped reporting" would send
+   * someone to check a power cable when the real problem is the address typed into the
+   * terminal's menu.
+   */
+  if (!mostRecent.lastSeenAt) {
+    return { health: 'waiting', device: mostRecent, pending };
+  }
 
   const seenAt = mostRecent.lastSeenAt ? new Date(mostRecent.lastSeenAt).getTime() : NaN;
   const minutesSinceSeen = Number.isNaN(seenAt)

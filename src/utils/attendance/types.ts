@@ -4,7 +4,7 @@ export type SalaryMode = 'monthly' | 'daily' | 'hourly';
 
 /**
  * One unique person tracked by the fingerprint device.
- * Firestore doc ID = empCode (the BioTime employee code — stable and device-issued).
+ * Firestore doc ID = empCode — the numeric user PIN assigned on the fingerprint device.
  */
 export interface AttendanceEmployee {
   id: string;
@@ -20,7 +20,7 @@ export interface AttendanceEmployee {
   /** Optional link to an existing `staff` doc. Purely informational. */
   linkedStaffId?: string;
   /** 'device' = created by a punch arriving over ADMS from the office terminal. */
-  source: 'biotime' | 'manual' | 'device';
+  source: 'manual' | 'device';
   firstSeenAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -46,7 +46,7 @@ export interface AttendanceRecord {
   status: 'present' | 'incomplete';
   /** Every raw punch seen that day, kept for audit when times look wrong. */
   punches?: string[];
-  source: 'biotime' | 'manual' | 'device';
+  source: 'manual' | 'device';
   /** When true, sync will not overwrite checkIn/checkOut. */
   manuallyEdited?: boolean;
   createdAt?: string;
@@ -131,22 +131,4 @@ export interface DevicePunch {
   /** True while the sending device was still awaiting approval. */
   parked?: boolean;
   receivedAt?: string;
-}
-
-export interface BiotimeSyncState {
-  lastSyncedAt?: string;
-  lastRunAt?: string;
-  lastRunStatus?: 'success' | 'error' | 'not_configured';
-  lastError?: string;
-  punchesImported?: number;
-  employeesCreated?: number;
-}
-
-/** Result of one sync run, surfaced to the user as a toast. */
-export interface SyncOutcome {
-  status: 'success' | 'error' | 'not_configured';
-  punches: number;
-  daysWritten: number;
-  employeesCreated: number;
-  message?: string;
 }

@@ -162,7 +162,7 @@ const EmployeesTab: React.FC<EmployeesTabProps> = ({
                         <TableCell>{employee.standardHoursPerDay ?? 8}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
-                            {employee.source === 'biotime' ? 'Fingerprint' : 'Manual'}
+                            {employee.source === 'device' ? 'Fingerprint' : 'Manual'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">

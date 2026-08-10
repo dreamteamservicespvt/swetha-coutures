@@ -5,7 +5,6 @@
  *   attendanceEmployees  doc id = empCode
  *   attendanceRecords    doc id = `${empCode}_${date}`
  *   salaryPayments       doc id = `${empCode}_${periodKey}`
- *   syncState/biotime    single doc
  */
 import {
   collection,
@@ -25,7 +24,6 @@ import { hoursBetween } from './salaryCalc';
 import type {
   AttendanceEmployee,
   AttendanceRecord,
-  BiotimeSyncState,
   SalaryPayment,
   SalaryMode,
 } from './types';
@@ -33,7 +31,6 @@ import type {
 export const EMPLOYEES_COLLECTION = 'attendanceEmployees';
 export const RECORDS_COLLECTION = 'attendanceRecords';
 export const PAYMENTS_COLLECTION = 'salaryPayments';
-const SYNC_STATE_DOC = 'biotime';
 
 /** Firestore rejects a batch over 500 writes; 400 leaves room for the sync-state write. */
 const BATCH_LIMIT = 400;
@@ -271,57 +268,4 @@ export async function undoPayment(empCode: string, periodKey: string, revertedBy
     revertedAt: nowIso(),
     revertedBy,
   });
-}
-
-/* ----------------------------------------------------------------- sync state */
-
-/**
- * BioTime connection settings, editable from the Attendance page.
- *
- * Held here rather than only in environment variables because ZKBio Time Cloud session
- * tokens expire and the portal offers no permanent API key — the admin must be able to
- * paste a fresh one without a redeploy.
- */
-export interface BiotimeConnection {
-  baseUrl: string;
-  token: string;
-  authScheme: string;
-  updatedAt?: string;
-  updatedBy?: string;
-}
-
-const CONNECTION_DOC = 'biotimeConnection';
-
-export async function fetchConnection(): Promise<BiotimeConnection | null> {
-  const snap = await getDoc(doc(db, 'syncState', CONNECTION_DOC));
-  if (!snap.exists()) return null;
-  const data = snap.data() as BiotimeConnection;
-  return data.baseUrl || data.token ? data : null;
-}
-
-export async function saveConnection(
-  connection: Omit<BiotimeConnection, 'updatedAt'>
-): Promise<void> {
-  await setDoc(
-    doc(db, 'syncState', CONNECTION_DOC),
-    { ...connection, updatedAt: nowIso() },
-    { merge: true }
-  );
-}
-
-export async function clearConnection(): Promise<void> {
-  await setDoc(
-    doc(db, 'syncState', CONNECTION_DOC),
-    { baseUrl: '', token: '', updatedAt: nowIso() },
-    { merge: true }
-  );
-}
-
-export async function fetchSyncState(): Promise<BiotimeSyncState> {
-  const snap = await getDoc(doc(db, 'syncState', SYNC_STATE_DOC));
-  return snap.exists() ? (snap.data() as BiotimeSyncState) : {};
-}
-
-export async function saveSyncState(state: BiotimeSyncState): Promise<void> {
-  await setDoc(doc(db, 'syncState', SYNC_STATE_DOC), state, { merge: true });
 }

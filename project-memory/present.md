@@ -107,8 +107,15 @@
 - **UI:** fourth tab **Punches** on `/attendance` (raw feed, employee filter, CSV export) and
   `DeviceHealthBar` — the health signal. The device polls every ~30s even with no punches, so
   `lastSeenAt` going quiet is meaningful on its own; stale threshold is
-  `VITE_DEVICE_STALE_MINUTES` (default 15). The BioTime status bar is now only rendered while
-  BioTime is actually configured, or while no device has connected yet.
+  `VITE_DEVICE_STALE_MINUTES` (default 15). Health states: healthy / waiting-for-first-contact /
+  stale / pending-approval / blocked / none.
+- **BioTime is GONE (2026-08-10, client's call — "no requirement of that biotime").** Deleted:
+  `api/biotime.ts`, `api/_biotimeCore.ts`, `api/_auth.ts`, `src/utils/attendance/biotimeSync.ts`,
+  `SyncStatusBar.tsx`, `BiotimeConnectDialog.tsx`, the vite dev plugin, all `BIOTIME_*` env vars,
+  the `syncState/biotime` + `syncState/biotimeConnection` docs, and the 2026-08-07 spec.
+  `todayKey` and `foldPunchesIntoRecords` survived into **`src/utils/attendance/punchFolding.ts`**
+  — they are not BioTime-specific and the device backfill needs them.
+  `AttendanceRecord.source` / `AttendanceEmployee.source` are now `'manual' | 'device'`.
 - **`firestore.rules` is now in the repo** — previously not version-controlled at all (was §C.1
   🔴). Device collections are admin-read / client-write-denied. ⚠️ Contains a catch-all deny; the
   public bill share link (`/view-bill/:token`) may need its own rule before deploying.

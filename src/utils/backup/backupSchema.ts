@@ -70,7 +70,7 @@ export const BACKUP_COLLECTIONS: CollectionSpec[] = [
   { name: 'roles', sheet: 'ref_roles', label: 'Roles', dateFields: [], description: 'Staff org structure' },
   { name: 'departments', sheet: 'ref_departments', label: 'Departments', dateFields: [], description: 'Staff org structure' },
   { name: 'settings', sheet: 'settings', label: 'Business settings', dateFields: [], description: 'Branding, bank, UPI' },
-  { name: 'syncState', sheet: 'sync_state', label: 'Sync state', dateFields: [], description: 'BioTime connection + backup history' },
+  { name: 'syncState', sheet: 'sync_state', label: 'Sync state', dateFields: [], description: 'Backup history' },
 
   // ---- Design & preferences
   // `designs` holds the saved design-canvas data for order items. Losing it means the

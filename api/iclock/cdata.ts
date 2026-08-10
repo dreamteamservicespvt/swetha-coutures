@@ -24,7 +24,7 @@ import { decodeBody, defaultConfig, handleDeviceRequest } from '../_deviceIngest
  * `_deviceIngest` above is safe to import statically: it is deliberately dependency-free.
  */
 
-// Structurally typed to avoid a hard dependency on @vercel/node, matching api/biotime.ts.
+// Structurally typed to avoid a hard dependency on @vercel/node.
 interface VercelRequest extends IncomingMessage {
   query?: Record<string, string | string[] | undefined>;
   body?: unknown;

@@ -114,6 +114,7 @@ const DeviceHealthBar: React.FC<DeviceHealthBarProps> = ({ devices, loading, onC
   const tone = {
     healthy: 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40',
     stale: 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40',
+    waiting: 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40',
     pending: 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40',
     blocked: 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40',
     none: 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40',
@@ -140,6 +141,18 @@ const DeviceHealthBar: React.FC<DeviceHealthBarProps> = ({ devices, loading, onC
             (summary.device?.lastPunchAt
               ? ` · last punch ${relativeTime(summary.device.lastPunchAt)}`
               : ' · no punches yet'),
+        };
+
+      case 'waiting':
+        return {
+          Icon: Fingerprint,
+          iconTone: 'text-blue-600 dark:text-blue-400',
+          headline: `Waiting for ${summary.device?.name || summary.device?.sn} to connect`,
+          detail:
+            'The device is registered but has never contacted the server. On the terminal open ' +
+            'Menu → Comm. → Cloud Server Setting, set the Server Address to your website ' +
+            'address with no "https://" and no trailing slash, set the port to 443, then ' +
+            'reboot it. Punches appear here within a minute of it connecting.',
         };
 
       case 'stale':

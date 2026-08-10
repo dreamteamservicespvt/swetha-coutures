@@ -39,11 +39,12 @@
   terminal that may only speak plain HTTP and does not reliably follow redirects. The LAN
   dev-server path will work; the live Vercel path is unproven. Test on LAN first — that isolates
   "does the device work" from "can it reach Vercel".
-- **Follow-ups:** (a) retire the BioTime pull path once the device is live — currently dormant so
-  rollback is a device menu change, not a redeploy; (b) confirm the public bill share link still
-  works after deploying `firestore.rules` (catch-all deny); (c) `hoursBetween` is deliberately
-  duplicated in `api/_deviceIngest.ts` and `src/utils/attendance/salaryCalc.ts` — the former must
-  stay import-free to run in three hosts. Change both together.
+- **BioTime removed entirely 2026-08-10** at the client's request. Rollback to the reseller is now
+  a device menu change only (put the old Server Address back); there is no code path left.
+- **Follow-ups:** (a) confirm the public bill share link still works after deploying
+  `firestore.rules` (catch-all deny); (b) `hoursBetween` is deliberately duplicated in
+  `api/_deviceIngest.ts` and `src/utils/attendance/{salaryCalc,punchFolding}.ts` — the api/ one
+  must stay import-free to run in three hosts. Change them together.
 
 ### ROI Analytics overhaul + catalog management + dedup — status: DONE (2026-06-30)
 Big batch. Verified in-browser (desktop + mobile, 0 console errors); the bill-rewrite was proven with a self-reverting rename round-trip ("dresses"→temp→back, 23 bills rewritten each way).

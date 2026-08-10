@@ -20,7 +20,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { saveRecordManually } from '@/utils/attendance/attendanceStore';
 import { hoursBetween } from '@/utils/attendance/salaryCalc';
-import { todayKey } from '@/utils/attendance/biotimeSync';
+import { todayKey } from '@/utils/attendance/punchFolding';
 import type { AttendanceEmployee, AttendanceRecord } from '@/utils/attendance/types';
 
 interface RecordEditDialogProps {
@@ -35,7 +35,7 @@ interface RecordEditDialogProps {
 /**
  * Corrects or adds one day's check-in / check-out.
  *
- * Saving marks the record `manuallyEdited`, which stops the next BioTime sync from
+ * Saving marks the record `manuallyEdited`, which stops the device feed from
  * overwriting the correction with the device's original (wrong or missing) punch.
  */
 const RecordEditDialog: React.FC<RecordEditDialogProps> = ({

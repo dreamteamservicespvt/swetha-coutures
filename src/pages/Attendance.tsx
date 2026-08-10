@@ -5,9 +5,7 @@ import { db } from '@/lib/firebase';
 import { toast } from '@/hooks/use-toast';
 import { Fingerprint } from 'lucide-react';
 import QuickRangeToggle, { type QuickRange } from '@/components/QuickRangeToggle';
-import SyncStatusBar from '@/components/attendance/SyncStatusBar';
 import DeviceHealthBar from '@/components/attendance/DeviceHealthBar';
-import BiotimeConnectDialog from '@/components/attendance/BiotimeConnectDialog';
 import AttendanceRecordsTab from '@/components/attendance/AttendanceRecordsTab';
 import EmployeesTab from '@/components/attendance/EmployeesTab';
 import PayrollTab from '@/components/attendance/PayrollTab';
@@ -15,28 +13,22 @@ import PunchesTab from '@/components/attendance/PunchesTab';
 import {
   fetchEmployees as fetchAttendanceEmployees,
   fetchRecords,
-  fetchSyncState,
 } from '@/utils/attendance/attendanceStore';
 import { fetchDevices, fetchPunches } from '@/utils/attendance/deviceStore';
-import { checkBiotimeStatus, syncFromBiotime, type BiotimeStatus } from '@/utils/attendance/biotimeSync';
 import { toDateKey } from '@/utils/attendance/salaryCalc';
 import type {
   AttendanceDevice,
   AttendanceEmployee,
   AttendanceRecord,
-  BiotimeSyncState,
   DevicePunch,
 } from '@/utils/attendance/types';
-
-/** How often the page re-pulls punches from BioTime while it is open and visible. */
-const LIVE_REFRESH_MS = 60_000;
 
 /**
  * How often the page re-reads Firestore.
  *
- * The office device pushes to our ingest server, which writes straight to Firestore — so
- * unlike the BioTime path there is nothing to pull. This interval only controls how
- * quickly an already-open page notices a punch that has already landed.
+ * The device pushes to /iclock/cdata, which writes straight to Firestore, so there is
+ * nothing for the page to pull. This interval only controls how quickly an already-open
+ * page notices a punch that has already landed.
  */
 const DEVICE_REFRESH_MS = 30_000;
 
@@ -59,9 +51,10 @@ function rangeBounds(range: QuickRange): { start?: string; end?: string } {
 /**
  * Biometric attendance & payroll.
  *
- * Punches arrive from BioTime Cloud through the /api/biotime proxy; everything here
- * reads and writes the attendanceEmployees / attendanceRecords / salaryPayments
- * collections. No existing collection is touched.
+ * Punches arrive by push from the office fingerprint terminal to /iclock/cdata, which
+ * writes them to Firestore. Everything here only reads devices / devicePunches /
+ * attendanceEmployees / attendanceRecords / salaryPayments. No existing collection is
+ * touched.
  */
 const Attendance: React.FC = () => {
   const [employees, setEmployees] = useState<AttendanceEmployee[]>([]);
@@ -69,12 +62,8 @@ const Attendance: React.FC = () => {
   const [punches, setPunches] = useState<DevicePunch[]>([]);
   const [devices, setDevices] = useState<AttendanceDevice[]>([]);
   const [staffOptions, setStaffOptions] = useState<{ id: string; name: string }[]>([]);
-  const [syncState, setSyncState] = useState<BiotimeSyncState>({});
-  const [status, setStatus] = useState<BiotimeStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [range, setRange] = useState<QuickRange>('month');
-  const [connectOpen, setConnectOpen] = useState(false);
 
   // The payroll tab needs its own month, which may sit outside the Records filter.
   // Tracked in a ref so asking for a range never re-triggers the effect that loads it.
@@ -106,13 +95,11 @@ const Attendance: React.FC = () => {
   const loadAll = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [employeeRows, syncStateRow, deviceRows] = await Promise.all([
+      const [employeeRows, deviceRows] = await Promise.all([
         fetchAttendanceEmployees(),
-        fetchSyncState(),
         fetchDevices().catch(() => [] as AttendanceDevice[]),
       ]);
       setEmployees(employeeRows);
-      setSyncState(syncStateRow);
       setDevices(deviceRows);
       await loadRecords();
     } catch (error) {
@@ -144,92 +131,12 @@ const Attendance: React.FC = () => {
     loadAll();
   }, [loadAll]);
 
-  const runSync = useCallback(
-    async (silent = false) => {
-      setSyncing(true);
-      try {
-        const outcome = await syncFromBiotime();
-
-        if (outcome.status === 'success') {
-          // The background poll re-reads an overlap window every minute, so "punches
-          // found" is true almost always. Only announce a silent sync when something
-          // actually changed, otherwise the user gets a toast every 60 seconds.
-          const changed = outcome.daysWritten > 0 || outcome.employeesCreated > 0;
-
-          if (!silent || changed) {
-            toast({
-              title: changed ? 'Attendance updated' : 'Sync complete — nothing new',
-              description: changed
-                ? `${outcome.daysWritten} day record(s) updated` +
-                  (outcome.employeesCreated
-                    ? `, ${outcome.employeesCreated} new employee(s) added`
-                    : '')
-                : `BioTime returned ${outcome.punches} punch(es), all already recorded.`,
-            });
-          }
-        } else if (outcome.status === 'error' && !silent) {
-          toast({
-            title: 'Sync failed',
-            description: outcome.message || 'Unknown error',
-            variant: 'destructive',
-          });
-        }
-
-        await loadAll();
-      } finally {
-        setSyncing(false);
-      }
-    },
-    [loadAll]
-  );
-
-  // On first open, check the connection and pull quietly if it is configured.
-  useEffect(() => {
-    let cancelled = false;
-    checkBiotimeStatus().then((result) => {
-      if (cancelled) return;
-      setStatus(result);
-      if (result.configured && !result.error) runSync(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // Deliberately runs once on mount: an auto-sync on every dependency change would
-    // hammer BioTime as the user clicks around.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /**
-   * Live refresh: re-pull every 60s while the page is open, so a punch made at the
-   * device shows up without anyone clicking anything.
-   *
-   * Paused while the tab is hidden — a backgrounded tab polling BioTime all day earns
-   * nothing but rate-limiting. Syncs once immediately on becoming visible again to
-   * cover whatever was missed.
-   */
-  useEffect(() => {
-    if (!status?.configured || status.error) return;
-
-    const tick = () => {
-      if (document.visibilityState !== 'visible') return;
-      runSync(true);
-    };
-
-    const interval = window.setInterval(tick, LIVE_REFRESH_MS);
-    document.addEventListener('visibilitychange', tick);
-
-    return () => {
-      window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', tick);
-    };
-  }, [status?.configured, status?.error, runSync]);
-
   /**
    * Keeps an open page current with what the device has already pushed.
    *
-   * Independent of the BioTime poll above: punches now arrive by push, so this is a plain
-   * Firestore re-read and it must keep working even when the legacy BioTime path is not
-   * configured at all. Paused while the tab is hidden, and re-read immediately on return.
+   * A plain Firestore re-read — there is nothing to pull from anywhere, the punch is
+   * already stored by the time this runs. Paused while the tab is hidden, and re-read
+   * immediately on return so a backgrounded tab catches up in one go.
    */
   useEffect(() => {
     const tick = () => {
@@ -271,41 +178,6 @@ const Attendance: React.FC = () => {
       </div>
 
       <DeviceHealthBar devices={devices} loading={loading} onChanged={loadAll} />
-
-      {/*
-        The BioTime Cloud pull is the legacy path. Once the office device is pushing to our
-        own ingest server it is redundant, so it is only shown while it is actually in use —
-        or while no device has connected yet, so it stays available as a fallback.
-      */}
-      {!!status && (status.configured || devices.length === 0) && (
-        <SyncStatusBar
-          status={status}
-          syncState={syncState}
-          syncing={syncing}
-          onSync={() => runSync(false)}
-          onConnect={() => setConnectOpen(true)}
-        />
-      )}
-
-      <BiotimeConnectDialog
-        open={connectOpen}
-        onOpenChange={setConnectOpen}
-        onSaved={async () => {
-          // Re-check with the new credentials, then pull straight away so the admin
-          // sees whether it worked without having to press anything else.
-          const result = await checkBiotimeStatus();
-          setStatus(result);
-          if (result.configured && !result.error) {
-            await runSync(false);
-          } else if (result.error) {
-            toast({
-              title: 'BioTime connection failed',
-              description: result.error,
-              variant: 'destructive',
-            });
-          }
-        }}
-      />
 
       <Tabs defaultValue="records" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex md:grid-cols-4">
